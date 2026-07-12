@@ -1,30 +1,50 @@
 import Link from "next/link";
-import { RoleCard } from "@/components/landing/RoleCard";
+
+const FEATURES = [
+  {
+    title: "AI receipt parsing",
+    body: "Upload a receipt photo — the system reads the document type, number, supplier, amount, and itemized breakdown for you. No manual typing of parsed fields.",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-6 w-6">
+        <path d="M6 3h9l3 3v15H6z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+        <path d="M9 9h6M9 13h6M9 17h4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    title: "Real-time budget tracking",
+    body: "Total, Spent, and Remaining update the moment an entry is deducted. Overspend is flagged the instant it happens — nothing slips through.",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-6 w-6">
+        <path d="M4 19V5M4 19h16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        <path d="M8 15l3-4 3 2 4-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  {
+    title: "Signed, anchored reports",
+    body: "Generate the financial report, route it to your adviser, collect the physical signatures, then anchor and archive it for good.",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-6 w-6">
+        <path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+        <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+];
 
 const STEPS = [
-  {
-    n: "01",
-    title: "Log",
-    body: "Upload a receipt photo or enter an expense by hand. AI reads the receipt for you — no manual typing of parsed fields.",
-  },
-  {
-    n: "02",
-    title: "Track",
-    body: "Total, Spent, and Remaining update the moment an entry is deducted. Overspend is flagged the instant it happens.",
-  },
-  {
-    n: "03",
-    title: "Report",
-    body: "Generate the financial report, route it to your adviser, get it signed, then anchor and archive it for good.",
-  },
+  { n: "01", title: "Log", body: "Upload a receipt photo or enter an expense by hand. AI reads the receipt for you." },
+  { n: "02", title: "Track", body: "Total, Spent, and Remaining update the moment an entry is deducted. Overspend is flagged instantly." },
+  { n: "03", title: "Report", body: "Generate the financial report, route it to your adviser, get it signed, then anchor and archive." },
 ];
 
 export default function LandingPage() {
   return (
-    <main className="flex min-h-full flex-col bg-background">
+    <main className="flex min-h-full flex-col bg-background font-sans">
       {/* Header */}
-      <header className="w-full border-b border-border bg-surface">
-        <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between px-6">
+      <header className="sticky top-0 z-50 w-full border-b border-border bg-surface/90 backdrop-blur">
+        <div className="relative mx-auto flex h-16 max-w-[1440px] items-center justify-between px-4 md:px-8">
           <Link href="/" className="flex items-center gap-2" aria-label="Liquifi home">
             <svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden="true">
               <rect x="3" y="3" width="26" height="26" rx="7" stroke="var(--color-accent)" strokeWidth="2" />
@@ -33,116 +53,169 @@ export default function LandingPage() {
             </svg>
             <span className="text-[20px] font-bold leading-7 text-text-primary">Liquifi</span>
           </Link>
-          <nav className="flex items-center gap-2">
-            <Link
-              href="/login"
-              className="rounded-md px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary"
-            >
-              Sign in
-            </Link>
-            <Link
-              href="/signup"
-              className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent-hover"
-            >
-              Get started
-            </Link>
+
+          {/* Desktop nav */}
+          <nav className="hidden items-center gap-1 md:flex">
+            <a href="#features" className="rounded-md px-3 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary">Features</a>
+            <a href="#how" className="rounded-md px-3 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary">How it works</a>
+            <Link href="/login" className="ml-2 rounded-md px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary">Sign in</Link>
+            <Link href="/signup" className="ml-1 rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent-hover">Get started</Link>
           </nav>
+
+          {/* Mobile menu */}
+          <details className="group relative md:hidden">
+            <summary className="flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-md border border-border text-text-primary [&::-webkit-details-marker]:hidden">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              </svg>
+            </summary>
+            <div className="absolute right-0 top-full mt-2 w-56 rounded-lg border border-border bg-surface p-2 shadow-[0px_4px_16px_rgba(17,17,20,0.10)]">
+              <a href="#features" className="block rounded-md px-3 py-2 text-sm font-medium text-text-secondary hover:bg-surface-secondary hover:text-text-primary">Features</a>
+              <a href="#how" className="block rounded-md px-3 py-2 text-sm font-medium text-text-secondary hover:bg-surface-secondary hover:text-text-primary">How it works</a>
+              <div className="my-2 h-px bg-border" />
+              <Link href="/login" className="block rounded-md px-3 py-2 text-sm font-medium text-text-secondary hover:bg-surface-secondary hover:text-text-primary">Sign in</Link>
+              <Link href="/signup" className="mt-1 block rounded-full bg-accent px-3 py-2 text-center text-sm font-medium text-accent-foreground hover:bg-accent-hover">Get started</Link>
+            </div>
+          </details>
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="mx-auto w-full max-w-[1440px] px-6 pb-16 pt-20 text-center">
+      {/* Hero — eyebrow → headline → subcopy → CTAs */}
+      <section className="mx-auto w-full max-w-[1440px] px-4 pb-16 pt-20 text-center md:px-8 md:pb-24 md:pt-32">
         <span className="mb-6 inline-flex items-center rounded-full bg-accent-light px-3 py-1 text-xs font-medium text-text-dark">
           For Mabini Colleges department councils
         </span>
-        <h1 className="mx-auto max-w-3xl text-[32px] font-semibold leading-10 text-text-primary sm:text-[40px] sm:leading-[48px]">
-          The liquidation system built for your department council.
+        <h1 className="mx-auto max-w-3xl text-[34px] font-bold leading-[1.1] tracking-tight text-text-primary sm:text-[48px] md:text-[56px]">
+          From receipt to signed report — all in one place.
         </h1>
-        <p className="mx-auto mt-4 max-w-xl text-base font-normal text-text-secondary">
+        <p className="mx-auto mt-6 max-w-xl text-base font-normal text-text-secondary md:text-lg">
           Log expenses, track your budget in real time, and hand your adviser a signed,
           verifiable report — without the paper trail.
         </p>
-        <div className="mt-8 flex items-center justify-center gap-3">
-          <Link
-            href="/signup"
-            className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent-hover"
-          >
-            Get started
-          </Link>
-          <Link
-            href="/login"
-            className="rounded-full border border-border bg-surface px-5 py-2.5 text-sm font-medium text-text-primary transition-colors hover:border-border-strong hover:bg-surface-secondary"
-          >
-            Sign in
-          </Link>
+        <div className="mt-10 flex items-center justify-center gap-3">
+          <Link href="/signup" className="rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent-hover">Get started</Link>
+          <Link href="/login" className="rounded-full border border-border bg-surface px-6 py-3 text-sm font-medium text-text-primary transition-colors hover:border-border-strong hover:bg-surface-secondary">Sign in</Link>
         </div>
       </section>
 
-      {/* Roles — confirm the visitor is in the right place */}
-      <section className="mx-auto w-full max-w-[1440px] px-6 pb-16">
-        <div className="mb-6 text-center">
-          <h2 className="text-base font-semibold text-text-primary">
-            Built for the three people who run it
-          </h2>
-          <p className="mt-1 text-sm font-normal text-text-muted">
-            Find where you fit — Liquifi is shaped around your role.
+      {/* Hero product visual — budget dashboard mock (focal point) */}
+      <section className="mx-auto w-full max-w-[1440px] px-4 md:px-8">
+        <div className="mx-auto max-w-4xl rounded-[24px] border border-border bg-surface p-6 shadow-[0px_1px_2px_rgba(17,17,20,0.04),0px_8px_24px_rgba(17,17,20,0.06)] md:p-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-text-muted">Department Council Event</p>
+              <p className="mt-0.5 text-base font-semibold text-text-primary">Intrams 2026 Liquidation</p>
+            </div>
+            <span className="rounded-full bg-success-lightest px-2 py-0.5 text-xs font-medium text-success-foreground">Open</span>
+          </div>
+
+          <div className="mt-6 grid grid-cols-3 gap-4">
+            <div>
+              <p className="text-xs font-medium text-text-secondary">Total</p>
+              <p className="mt-1 text-[28px] font-semibold leading-9 text-text-primary">₱50,000.00</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-text-secondary">Spent</p>
+              <p className="mt-1 text-[28px] font-semibold leading-9 text-text-primary">₱32,400.00</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-text-secondary">Remaining</p>
+              <p className="mt-1 text-[28px] font-semibold leading-9 text-text-primary">₱17,600.00</p>
+            </div>
+          </div>
+
+          {/* Budget bar — 64.8% used, healthy */}
+          <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-border-light">
+            <div className="h-full rounded-full bg-success" style={{ width: "64.8%" }} />
+          </div>
+
+          <div className="mt-6 divide-y divide-border">
+            <div className="flex items-center justify-between py-3">
+              <div className="flex items-center gap-3">
+                <span className="flex h-8 w-8 items-center justify-center rounded-md bg-info-lightest text-info-foreground">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 3h9l3 3v15H6z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /></svg>
+                </span>
+                <div className="text-left">
+                  <p className="text-sm font-medium text-text-primary">Official Receipt #1029</p>
+                  <p className="text-xs text-text-muted">Supplier · ₱12,200.00</p>
+                </div>
+              </div>
+              <span className="rounded-full bg-info-lightest px-2 py-0.5 text-xs font-medium text-info-foreground">AI-parsed</span>
+            </div>
+            <div className="flex items-center justify-between py-3">
+              <div className="flex items-center gap-3">
+                <span className="flex h-8 w-8 items-center justify-center rounded-md bg-surface-secondary text-text-secondary">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 3h9l3 3v15H6z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /><path d="M9 13h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
+                </span>
+                <div className="text-left">
+                  <p className="text-sm font-medium text-text-primary">Printing</p>
+                  <p className="text-xs text-text-muted">No receipt · ₱4,300.00</p>
+                </div>
+              </div>
+              <span className="rounded-full bg-warning-lightest px-2 py-0.5 text-xs font-medium text-warning-foreground">Pending</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features — eyebrow → heading → intro → cards */}
+      <section id="features" className="mx-auto w-full max-w-[1440px] px-4 py-20 md:px-8 md:py-28">
+        <div className="mx-auto mb-14 max-w-2xl text-center">
+          <p className="text-xs font-medium uppercase tracking-[0.08em] text-text-muted">Capabilities</p>
+          <h2 className="mt-3 text-base font-semibold text-text-primary">Features</h2>
+          <div className="mx-auto mt-3 h-0.5 w-12 rounded-full bg-accent" />
+          <p className="mx-auto mt-5 max-w-xl text-sm font-normal text-text-secondary">
+            Everything a department council needs to keep liquidation honest and effortless.
           </p>
         </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <RoleCard
-            role="Treasurer"
-            title="Log it, watch it add up"
-            description="Record every receipt or no-receipt expense, see your budget update live, and generate the report your adviser signs."
-            icon={
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <rect x="3" y="6" width="18" height="13" rx="2" />
-                <path d="M3 10h18" />
-                <circle cx="17" cy="14" r="1.5" />
-              </svg>
-            }
-          />
-          <RoleCard
-            role="Adviser"
-            title="Review without the chase"
-            description="Approve no-receipt expenses in a batch, sign off on the report, and confirm any overspend in a single pass."
-            icon={
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <circle cx="12" cy="12" r="9" />
-                <path d="M8 12l3 3 5-6" />
-              </svg>
-            }
-          />
-          <RoleCard
-            role="Admin"
-            title="Provision and oversee"
-            description="Create departments, approve signups, and audit every action taken across your councils — all in one place."
-            icon={
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M12 3l8 3v6c0 5-4 8-8 9-4-1-8-4-8-9V6z" />
-              </svg>
-            }
-          />
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+          {FEATURES.map((feature) => (
+            <div key={feature.title} className="rounded-lg border border-border bg-surface p-6 shadow-[0px_1px_2px_rgba(17,17,20,0.04),0px_1px_3px_rgba(17,17,20,0.06)]">
+              <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-accent-muted text-accent">{feature.icon}</span>
+              <h3 className="mt-5 text-base font-semibold text-text-primary">{feature.title}</h3>
+              <p className="mt-2 text-sm font-normal leading-5 text-text-secondary">{feature.body}</p>
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* How it works */}
-      <section className="mx-auto w-full max-w-[1440px] px-6 pb-20">
-        <div className="rounded-lg border border-border bg-surface p-6 shadow-[0px_1px_2px_rgba(17,17,20,0.04),0px_1px_3px_rgba(17,17,20,0.06)]">
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-            {STEPS.map((step) => (
-              <div key={step.n}>
-                <div className="mb-2 text-sm font-semibold text-accent">{step.n}</div>
-                <h3 className="mb-1 text-base font-semibold text-text-primary">{step.title}</h3>
-                <p className="text-sm font-normal leading-5 text-text-secondary">{step.body}</p>
-              </div>
-            ))}
+      {/* How it works — eyebrow → heading → cards */}
+      <section id="how" className="mx-auto w-full max-w-[1440px] px-4 pb-20 md:px-8 md:pb-28">
+        <div className="mx-auto mb-14 max-w-2xl text-center">
+          <p className="text-xs font-medium uppercase tracking-[0.08em] text-text-muted">The process</p>
+          <h2 className="mt-3 text-base font-semibold text-text-primary">How it works</h2>
+          <div className="mx-auto mt-3 h-0.5 w-12 rounded-full bg-accent" />
+        </div>
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+          {STEPS.map((step) => (
+            <div key={step.n} className="rounded-lg border border-border bg-surface p-6 shadow-[0px_1px_2px_rgba(17,17,20,0.04),0px_1px_3px_rgba(17,17,20,0.06)]">
+              <div className="text-sm font-semibold text-accent">{step.n}</div>
+              <h3 className="mt-3 text-base font-semibold text-text-primary">{step.title}</h3>
+              <p className="mt-2 text-sm font-normal leading-5 text-text-secondary">{step.body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Final CTA — eyebrow → heading → subcopy → button */}
+      <section className="mx-auto w-full max-w-[1440px] px-4 pb-20 md:px-8">
+        <div className="rounded-lg border border-border bg-surface px-6 py-14 text-center shadow-[0px_1px_2px_rgba(17,17,20,0.04),0px_1px_3px_rgba(17,17,20,0.06)] md:px-10">
+          <p className="text-xs font-medium uppercase tracking-[0.08em] text-text-muted">Get started</p>
+          <h2 className="mx-auto mt-3 max-w-xl text-base font-semibold text-text-primary">
+            Ready to get your council&rsquo;s liquidation in order?
+          </h2>
+          <p className="mx-auto mt-4 max-w-md text-sm font-normal text-text-secondary">
+            Create an event, invite your treasurer, and close the loop from first receipt to final signature.
+          </p>
+          <div className="mt-8 flex items-center justify-center">
+            <Link href="/signup" className="rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent-hover">Get started</Link>
           </div>
         </div>
       </section>
 
       {/* Footer */}
       <footer className="mt-auto border-t border-border bg-surface">
-        <div className="mx-auto flex max-w-[1440px] flex-col items-start justify-between gap-2 px-6 py-6 sm:flex-row sm:items-center">
+        <div className="mx-auto flex max-w-[1440px] flex-col items-start justify-between gap-2 px-4 py-8 sm:flex-row sm:items-center md:px-8">
           <div className="flex items-center gap-2">
             <svg width="22" height="22" viewBox="0 0 32 32" fill="none" aria-hidden="true">
               <rect x="3" y="3" width="26" height="26" rx="7" stroke="var(--color-accent)" strokeWidth="2" />

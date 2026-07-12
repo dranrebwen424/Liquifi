@@ -59,37 +59,23 @@ Last updated: YYYY-MM-DD
 ### LandingPage
 
 File: app/page.tsx
-Last updated: 2026-07-12
+Last updated: 2026-07-12 (redesigned from Figma; refined for Antigravity-style whitespace + per-section visual hierarchy)
 
 - Public route (no auth). Server Component, no `"use client"` needed.
-- Page max-width `max-w-[1440px]`, `px-6` (16px) mobile padding per `ui-rules.md`.
-- Header: full-width `bg-surface` white, `border-b border-border`, inner `h-16` flex with logo (inline monoline SVG mark in `--color-accent` + 20px/700 wordmark) and two links: "Sign in" (ghost → `/login`), "Get started" (primary → `/signup`).
-- Hero: centered eyebrow pill (`bg-accent-light text-text-dark`), `text-[32px]`/`sm:text-[40px]` H1, subcopy `text-text-secondary`, two CTAs (primary + secondary) linking to `/signup` + `/login`.
-- Roles section: `grid md:grid-cols-3` of `<RoleCard>` so a visitor self-identifies their role (the page's narrow job: confirm the right person is in the right place).
-- How-it-works: single `bg-surface` card, 3-col grid, accent `01/02/03` labels.
-- Footer: `mt-auto border-t` so it pins to bottom; brand + muted internal note.
+- Structure mirrors Figma (web `#154:23` + mobile `#156:87`): sticky header (logo + nav), centered hero (eyebrow + H1 + subcopy + dual CTAs) followed by a product-visual panel, Features (×3), How it works (×3), final CTA card, footer.
+- Page max-width `max-w-[1440px]`, `px-4 md:px-8` (16px mobile / 32px desktop) per `ui-rules.md`.
+- Header: `sticky top-0` `bg-surface/90 backdrop-blur` `border-b border-border`, inner `h-16` flex. Logo = inline monoline SVG mark (`--color-accent`) + 20px/700 wordmark. Desktop nav (`md:flex`): ghost links "Features"/"How it works" (anchor `#features`/`#how`) + "Sign in" (`/login`) + "Get started" primary (`/signup`). Mobile (`md:hidden`): `<details>`/`<summary>` hamburger (3-line SVG, `list-none [&::-webkit-details-marker]:hidden`) → absolute dropdown with the same links + buttons; no client JS.
+- Hero: eyebrow pill (`bg-accent-light text-text-dark`), H1 "From receipt to signed report — all in one place." (`text-[34px] sm:text-[48px] md:text-[56px]` bold, `tracking-tight`), subcopy `text-text-secondary`, two CTAs — primary `bg-accent text-accent-foreground` + secondary `border border-border bg-surface`.
+- Hero visual: `rounded-[24px]` surface card (`border border-border` + soft shadow) mocking an event budget dashboard — status badge ("Open", `bg-success-lightest`), three stat numbers (Total/Spent/Remaining, `text-[28px]/600`), budget bar (`bg-border-light` track + `bg-success` fill, 64.8%), and two entry rows with source/status badges (`info` = AI-parsed, `warning` = Pending). Demonstrates the product in the Figma "hero image" slot.
+- Features: centered heading "Features" + `h-0.5 w-12 bg-accent` underline + intro line; 3-col grid of `bg-surface` cards, each with `bg-accent-muted text-accent` icon tile (inline monoline SVG), title, body.
+- How it works: same heading+underline pattern; 3-col cards with accent `01/02/03` labels.
+- Final CTA: single `bg-surface` card (`border border-border`), heading + primary button (replaces the earlier `bg-accent` band so every section is a white card per `ui-rules.md`).
+- Footer: `mt-auto border-t bg-surface`, logo + muted note.
+- All styling uses `@theme` tokens only — no hardcoded hex, no raw Tailwind color classes. Inline SVG icons use `currentColor` resolved to token classes.
 
-### RoleCard
+**Note:** Figma copy ("Automate Student Council Liquidation…") and gray placeholder rectangles are treated as layout/structure only — real copy and token styling come from `ui-tokens.md`/`ui-rules.md`; font stays Poppins (Figma used Montserrat, but our system mandates Poppins). The earlier `RoleCard` component was deleted 2026-07-12.
 
-File: components/landing/RoleCard.tsx
-Last updated: 2026-07-12
-
-| Property         | Class |
-| ---------------- | ----- |
-| Background       | `bg-surface` |
-| Border           | `border border-border` → hover `border-border-strong` |
-| Border radius    | `rounded-lg` |
-| Text — primary   | `text-text-primary` (title, 16px/600) |
-| Text — secondary | `text-text-secondary` (description, 14px/400) |
-| Spacing          | `p-6`, `gap-4` grid, `mb-4` header row |
-| Hover state      | `transition-colors hover:border-border-strong` |
-| Shadow           | `shadow-[0px_1px_2px_rgba(17,17,20,0.04),0px_1px_3px_rgba(17,17,20,0.06)]` |
-| Accent usage     | icon chip `bg-surface-secondary`; role badge uses `--role-*` tokens |
-
-**Pattern notes:**
-- Reused 3× (Treasurer / Adviser / Admin). `role` prop drives the fixed role-badge color map (`ROLE_BADGE`) — never inline role colors.
-- Icon passed as `ReactNode` prop (inline stroke SVGs, `currentColor` inheriting `text-text-primary`).
-- Badge pill: `inline-flex rounded-full px-2 py-0.5 text-xs font-medium` per `ui-rules.md` Badges.
+**Hierarchy/whitespace (2026-07-12 refinement):** Every section uses a consistent 3-tier visual hierarchy — small uppercase `text-text-muted` eyebrow (`tracking-[0.08em]`) → `text-base font-semibold text-text-primary` heading → `text-sm text-text-secondary` intro → content. Generous whitespace: sections `py-20 md:py-28`, hero `pt-20 md:pt-32 pb-16 md:pb-24`, feature/how grids `gap-8`. This is Antigravity-inspired (structural pattern + whitespace + hierarchy) but rendered in the light, monochrome token system — no dark bands, no card-color changes. Whitespace intentionally exceeds the `ui-rules.md` 24/32px spacing caps (pre-approved deviation for the airy feel). Still token-only; `tsc --noEmit` passes; page renders with 0 console errors.
 
 ---
 
