@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 const FEATURES = [
   {
@@ -98,63 +99,17 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Hero product visual — budget dashboard mock (focal point) */}
+      {/* Hero product visual — image holder */}
       <section className="mx-auto w-full max-w-[1440px] px-4 md:px-8">
-        <div className="mx-auto max-w-4xl rounded-[24px] border border-border bg-surface p-6 shadow-[0px_1px_2px_rgba(17,17,20,0.04),0px_8px_24px_rgba(17,17,20,0.06)] md:p-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-text-muted">Department Council Event</p>
-              <p className="mt-0.5 text-base font-semibold text-text-primary">Intrams 2026 Liquidation</p>
-            </div>
-            <span className="rounded-full bg-success-lightest px-2 py-0.5 text-xs font-medium text-success-foreground">Open</span>
-          </div>
-
-          <div className="mt-6 grid grid-cols-3 gap-4">
-            <div>
-              <p className="text-xs font-medium text-text-secondary">Total</p>
-              <p className="mt-1 text-[28px] font-semibold leading-9 text-text-primary">₱50,000.00</p>
-            </div>
-            <div>
-              <p className="text-xs font-medium text-text-secondary">Spent</p>
-              <p className="mt-1 text-[28px] font-semibold leading-9 text-text-primary">₱32,400.00</p>
-            </div>
-            <div>
-              <p className="text-xs font-medium text-text-secondary">Remaining</p>
-              <p className="mt-1 text-[28px] font-semibold leading-9 text-text-primary">₱17,600.00</p>
-            </div>
-          </div>
-
-          {/* Budget bar — 64.8% used, healthy */}
-          <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-border-light">
-            <div className="h-full rounded-full bg-success" style={{ width: "64.8%" }} />
-          </div>
-
-          <div className="mt-6 divide-y divide-border">
-            <div className="flex items-center justify-between py-3">
-              <div className="flex items-center gap-3">
-                <span className="flex h-8 w-8 items-center justify-center rounded-md bg-info-lightest text-info-foreground">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 3h9l3 3v15H6z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /></svg>
-                </span>
-                <div className="text-left">
-                  <p className="text-sm font-medium text-text-primary">Official Receipt #1029</p>
-                  <p className="text-xs text-text-muted">Supplier · ₱12,200.00</p>
-                </div>
-              </div>
-              <span className="rounded-full bg-info-lightest px-2 py-0.5 text-xs font-medium text-info-foreground">AI-parsed</span>
-            </div>
-            <div className="flex items-center justify-between py-3">
-              <div className="flex items-center gap-3">
-                <span className="flex h-8 w-8 items-center justify-center rounded-md bg-surface-secondary text-text-secondary">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 3h9l3 3v15H6z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /><path d="M9 13h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
-                </span>
-                <div className="text-left">
-                  <p className="text-sm font-medium text-text-primary">Printing</p>
-                  <p className="text-xs text-text-muted">No receipt · ₱4,300.00</p>
-                </div>
-              </div>
-              <span className="rounded-full bg-warning-lightest px-2 py-0.5 text-xs font-medium text-warning-foreground">Pending</span>
-            </div>
-          </div>
+        <div className="mx-auto max-w-4xl overflow-hidden rounded-[24px] border border-border bg-surface shadow-[0px_1px_2px_rgba(17,17,20,0.04),0px_8px_24px_rgba(17,17,20,0.06)]">
+          <Image
+            src="/landing/img-1.png"
+            alt="Liquifi event budget dashboard preview"
+            width={722}
+            height={530}
+            className="h-auto w-full"
+            priority
+          />
         </div>
       </section>
 
