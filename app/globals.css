@@ -1,26 +1,94 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  /* Font */
+  --font-sans: "Poppins", sans-serif;
+
+  /* Page and surface backgrounds */
+  --color-background: #fafafa;
+  --color-surface: #ffffff;
+  --color-surface-secondary: #f5f5f6;
+  --color-surface-tertiary: #f0f0f2;
+  --color-surface-inverse: #111114;
+
+  /* Borders */
+  --color-border: #e5e5e8;
+  --color-border-light: #eeeeef;
+  --color-border-strong: #d4d4d8;
+
+  /* Text */
+  --color-text-primary: #111114;
+  --color-text-secondary: #63636b;
+  --color-text-muted: #9a9aa2;
+  --color-text-dark: #3a3a42;
+  --color-text-inverse: #ffffff;
+
+  /* Primary accent — ink black (buttons, active nav, focus, links) */
+  --color-accent: #111114;
+  --color-accent-hover: #27272e;
+  --color-accent-light: #eeeeef;
+  --color-accent-muted: #f5f5f6;
+  --color-accent-foreground: #ffffff;
+
+  /* Success — green (approved, on-budget, matched) */
+  --color-success: #10b981;
+  --color-success-dark: #047857;
+  --color-success-light: #d1fae5;
+  --color-success-lightest: #ecfdf5;
+  --color-success-foreground: #047857;
+
+  /* Info — blue (in review, informational, no-receipt entries) */
+  --color-info: #3b82f6;
+  --color-info-dark: #1d4ed8;
+  --color-info-light: #dbeafe;
+  --color-info-lightest: #eff6ff;
+  --color-info-foreground: #1d4ed8;
+
+  /* Warning — amber (pending approval, nearing budget limit) */
+  --color-warning: #f59e0b;
+  --color-warning-dark: #b45309;
+  --color-warning-light: #fef3c7;
+  --color-warning-lightest: #fffbeb;
+  --color-warning-foreground: #b45309;
+
+  /* Error — red (rejected, overspent, voided) */
+  --color-error: #ef4444;
+  --color-error-dark: #b91c1c;
+  --color-error-light: #fee2e2;
+  --color-error-lightest: #fef2f2;
+  --color-error-foreground: #b91c1c;
+
+  /* Neutral / archived — gray (locked, archived, closed) */
+  --color-neutral: #71717a;
+  --color-neutral-light: #f0f0f2;
+  --color-neutral-foreground: #52525b;
+
+  /* Role tags */
+  --color-role-admin: #111114;
+  --color-role-admin-light: #eeeeef;
+  --color-role-adviser: #3b82f6;
+  --color-role-adviser-light: #dbeafe;
+  --color-role-treasurer: #10b981;
+  --color-role-treasurer-light: #d1fae5;
+
+  /* Overlays */
+  --color-overlay: #111114;
+  --color-overlay-alpha: rgba(17, 17, 20, 0.5);
+
+  /* Border radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  body {
+    background-color: var(--color-background);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
 }
