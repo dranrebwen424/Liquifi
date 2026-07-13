@@ -6,9 +6,9 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Current Status
 
-**Phase:** Phase 0 — Authorization Foundation
-**Last completed:** 00 Route × Role × Precondition Matrix
-**Next:** 01 Landing + Auth Shell
+**Phase:** Phase 1 — Foundation
+**Last completed:** 01 Landing + Auth Shell
+**Next:** 02 Database Schema
 
 ---
 
@@ -20,7 +20,7 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ### Phase 1 — Foundation
 
-- [ ] 01 Landing + Auth Shell
+- [x] 01 Landing + Auth Shell
 - [ ] 02 Database Schema
 - [ ] 03 Auth — Signup, OTP, Approval Routing
 - [ ] 04 Login, Session, Role-Based Redirect
@@ -92,6 +92,7 @@ Update this file after every completed feature. Any AI agent reading this should
 - **2026-07-12 (hierarchy/whitespace refinement) — Antigravity pattern, token-only:** Per user, adopted Antigravity's *structural pattern, whitespace, and visual hierarchy* — **not** its dark theme (stayed light/monochrome per `ui-tokens`). Every section now has a 3-tier hierarchy: uppercase `text-text-muted` eyebrow → `text-base` heading → `text-sm text-text-secondary` intro → content. Whitespace increased (sections `py-20 md:py-28`, hero `pt-20 md:pt-32`, grids `gap-8`); the hero product mock is the focal "product shot". No new sections, no dark bands, no card-color changes. **Deviation:** whitespace exceeds `ui-rules.md` 24/32px spacing caps (pre-approved for the airy Antigravity feel). Verified: `tsc --noEmit` passes, page renders 200, **0 console errors**, a11y tree shows eyebrow→heading→intro on every section.
 - **2026-07-12 (image holder) — hero visual now shows `img-1.png`:** The hero product-visual card (the former budget-dashboard mock) became a pure **image holder**: `rounded-[24px] overflow-hidden border border-border bg-surface` frame containing `next/image` of `/landing/img-1.png` (722×530, `priority`, `h-auto w-full`). Asset copied from `context/Design/img-1.png` → `public/landing/img-1.png`. Verified: `tsc --noEmit` passes, page + `/landing/img-1.png` both return 200 (212,634 bytes), **0 console errors**.
 - **2026-07-13 — Phase 0 complete (`00` Route × Role × Precondition Matrix):** Built `docs/auth-matrix.md` (spec artifact) enumerating every route from `project-overview.md` Pages + `architecture.md` `app/api` routes + `actions/` Server Actions, with columns Route / Method / Role / Dept match? / State preconditions / RLS policy. Built `lib/auth-guard.ts` directly from the matrix: `requireRole(requiredRole, departmentId?, preconditionCheck?)` — resolves current `AuthUser` via `createInsforgeServer()` + `auth.getCurrentUser()` + `users`-table lookup, throws `AuthError` (401 unauthenticated / 403 forbidden_role / 403 forbidden_department), runs the caller-supplied `preconditionCheck`. Overloads give `AuthUser` for protected calls and `AuthUser | null` for `public`. Also created `lib/insforge-server.ts` (server client) and `types/index.ts` (Role / AuthUser / GuardContext / PreconditionCheck) as hard dependencies of the guard. `tsc --noEmit` passes. `requireRole` accepts `Role | Role[]` so dual-role surfaces (`/api/notifications/subscribe` = treasurer|adviser) work without a second call.
+- **2026-07-13 — `01 Landing + Auth Shell` complete (UI only):** Built the shared auth layout + 4 primitives and all 5 `app/(auth)/*` pages. Added `--shadow-card` token to `globals.css` (canonical card shadow; `AuthCard` uses `shadow-card`, the landing page still hardcodes its own `shadow-[...]` — left as-is, working code). Components: `components/auth/AuthShell.tsx` (split centered, `bg-surface-inverse` brand panel web-only + form side; `lg:hidden` logo on mobile), `AuthCard.tsx` (title/subtitle + `shadow-card` card), `AuthInput.tsx` (`"use client"`, controlled, supports `inputMode` for OTP, required `*` in `text-error`), `AuthButton.tsx` (`"use client"`, primary/secondary/ghost → exact `ui-rules.md` button tokens, `loading`/`disabled`), `AuthLink.tsx` (`next/link` wrapper, `text-accent`). Pages: `login` (email+password), `signup` (name/email/password + role select locked to `treasurer`/`adviser` per AGENTS, mock `DEPARTMENTS` const), `otp` (`inputMode=numeric` 6-digit, 60s resend countdown), `pending-approval` (static), `forgot-password` (email → inline mock success). All pages use `useState` **mock** submit handlers that `router.push` to the next step — **no InsForge calls yet**; real auth wiring is Phase 1 `03`/`04`. Verified: `tsc --noEmit` 0 errors; `next build` success (6 routes); `/login` `/signup` `/otp` all 200 with expected HTML. Registry + this tracker updated.
 
 ---
 

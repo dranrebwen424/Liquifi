@@ -79,15 +79,75 @@ Last updated: 2026-07-12 (redesigned from Figma; refined for Antigravity-style w
 
 ---
 
+### AuthShell
+
+File: components/auth/AuthShell.tsx
+Last updated: 2026-07-13
+
+- Shared layout for all `app/(auth)/*` pages (Login, Signup, OTP, Pending Approval, Forgot Password). Server Component (no `"use client"`).
+- Split centered layout, web only: left brand panel `w-1/2 hidden bg-surface-inverse text-text-inverse lg:flex` (logo + tagline + feature bullets + footer note); right form side `w-full lg:w-1/2 flex justify-center bg-background`, inner `max-w-sm`.
+- Left panel text tints use `text-text-inverse/70` and `/60` (alpha on token color, no hardcoded rgba). Mobile (below `lg`) hides the brand panel and shows a `lg:hidden` logo+wordmark at the top of the form side.
+- `subtitle` prop renders a `text-sm text-text-muted` line above the page's own card. Children = the page form/card.
+- Logo mark = inline monoline SVG (`currentColor`) reused; `text-accent` on mobile, `text-text-inverse` on the dark panel.
+
+### AuthCard
+
+File: components/auth/AuthCard.tsx
+Last updated: 2026-07-13
+
+| Property         | Class |
+| ---------------- | ----- |
+| Background       | `bg-surface` |
+| Border           | `border border-border` |
+| Border radius    | `rounded-lg` |
+| Text — primary   | `text-[28px] font-semibold leading-9 text-text-primary` (title) |
+| Text — secondary | `text-sm font-normal text-text-secondary` (subtitle) |
+| Spacing          | `flex flex-col gap-6 p-6` |
+| Shadow           | `shadow-card` (new `--shadow-card` token in `globals.css`) |
+
+**Pattern notes:** Wraps each auth form. `title` + optional `subtitle` + `children`. Uses the canonical card shadow now defined as a token (previously hardcoded as arbitrary `shadow-[...]` on the landing page).
+
+### AuthInput
+
+File: components/auth/AuthInput.tsx
+Last updated: 2026-07-13
+
+- `"use client"` (controlled `value`/`onChange`). Used by every auth form.
+- Label `text-sm font-medium text-text-secondary`, required marker `text-error` (` *`). Input: `w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-accent focus:ring-1 focus:ring-accent`.
+- Props: `id`, `label`, `type`, `value`, `onChange`, `placeholder`, `autoComplete`, `inputMode` (numeric/text/email/tel — used by OTP), `required`.
+- Gap to next field: `gap-3` (12px, per `ui-rules.md` form field gaps).
+
+### AuthButton
+
+File: components/auth/AuthButton.tsx
+Last updated: 2026-07-13
+
+- `"use client"`. Variants map 1:1 to `ui-rules.md` → Buttons.
+- Primary: `bg-accent text-accent-foreground rounded-full px-4 py-2 hover:bg-accent-hover`. Secondary: `bg-surface border border-border text-text-primary rounded-full px-4 py-2 hover:bg-surface-secondary hover:border-border-strong`. Ghost: `bg-transparent text-text-secondary rounded-md px-4 py-2 hover:bg-surface-secondary hover:text-text-primary`.
+- Shared: `w-full text-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-not-allowed disabled:opacity-50`. `loading` swaps label for "Please wait…" and forces disabled.
+- Used as `type="submit"` inside forms or `type="button"` with `onClick`.
+
+### AuthLink
+
+File: components/auth/AuthLink.tsx
+Last updated: 2026-07-13
+
+- Thin wrapper over `next/link`. Renders `text-sm font-medium text-accent hover:underline`. `className` appendable.
+- Used for "Forgot password?", "Create one" / "Sign in" toggles, "Back to sign in", and resend-style inline links.
+
+**Note (mock phase):** All five `app/(auth)/*` pages use `useState` mock submit handlers that `router.push` to the next step (signup→/otp→/pending-approval; forgot→inline success). No InsForge calls yet — real auth wiring lands in a later Phase 1 step. Signup role select is intentionally limited to `treasurer`/`adviser` (Admin excluded per `AGENTS.md`); department list is a hardcoded mock constant pending the `departments` table.
+
+---
+
 ### Auth & Landing (Phase 1)
 
 - [x] Landing Navbar
 - [x] Landing Hero / How-It-Works / Footer
-- [ ] Login Card
-- [ ] Signup Form (role selector, department picker)
-- [ ] OTP Verification Screen (6-digit input, resend countdown)
-- [ ] Pending Approval Screen
-- [ ] Forgot Password Flow
+- [x] Login Card
+- [x] Signup Form (role selector, department picker)
+- [x] OTP Verification Screen (6-digit input, resend countdown)
+- [x] Pending Approval Screen
+- [x] Forgot Password Flow
 
 ### Admin (Phase 2)
 
