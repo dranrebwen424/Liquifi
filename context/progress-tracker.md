@@ -7,8 +7,8 @@ Update this file after every completed feature. Any AI agent reading this should
 ## Current Status
 
 **Phase:** Phase 0 — Authorization Foundation
-**Last completed:** —  (build not yet started)
-**Next:** 00 Route × Role × Precondition Matrix
+**Last completed:** 00 Route × Role × Precondition Matrix
+**Next:** 01 Landing + Auth Shell
 
 ---
 
@@ -16,7 +16,7 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ### Phase 0 — Authorization Foundation
 
-- [ ] 00 Route × Role × Precondition Matrix
+- [x] 00 Route × Role × Precondition Matrix
 
 ### Phase 1 — Foundation
 
@@ -80,7 +80,7 @@ Update this file after every completed feature. Any AI agent reading this should
 - [ ] 28 Audit Log — Admin View
 - [ ] 29 Adviser & Admin Read-Only Event/Report Views
 
-**Total: 0 / 30 features complete**
+**Total: 1 / 30 features complete**
 
 ---
 
@@ -91,12 +91,16 @@ Update this file after every completed feature. Any AI agent reading this should
 - **2026-07-12 (redesign) — Landing page rebuilt from Figma:** Pulled Figma web (`#154:23`) + mobile (`#156:87`) via `figma_get_figma_data`; used as **structure/layout only** (not copy or exact styling). New section order: Navbar → Hero(+ product-visual dashboard mock) → Features(×3) → How it works(×3) → Final CTA → Footer. Mobile nav = native `<details>`/`<summary>` hamburger (no client JS). Replaced the `bg-accent` final CTA band with a white `bg-surface` card so every section is a white card per `ui-rules.md`. Hero visual = token-styled mock of an event budget dashboard (status/stat/budget-bar/entries). Figma used Montserrat → overridden to Poppins (system mandate). `tsc --noEmit` passes. `app/page.tsx` is the single landing source (RoleCard still dead code, confirmed no references).
 - **2026-07-12 (hierarchy/whitespace refinement) — Antigravity pattern, token-only:** Per user, adopted Antigravity's *structural pattern, whitespace, and visual hierarchy* — **not** its dark theme (stayed light/monochrome per `ui-tokens`). Every section now has a 3-tier hierarchy: uppercase `text-text-muted` eyebrow → `text-base` heading → `text-sm text-text-secondary` intro → content. Whitespace increased (sections `py-20 md:py-28`, hero `pt-20 md:pt-32`, grids `gap-8`); the hero product mock is the focal "product shot". No new sections, no dark bands, no card-color changes. **Deviation:** whitespace exceeds `ui-rules.md` 24/32px spacing caps (pre-approved for the airy Antigravity feel). Verified: `tsc --noEmit` passes, page renders 200, **0 console errors**, a11y tree shows eyebrow→heading→intro on every section.
 - **2026-07-12 (image holder) — hero visual now shows `img-1.png`:** The hero product-visual card (the former budget-dashboard mock) became a pure **image holder**: `rounded-[24px] overflow-hidden border border-border bg-surface` frame containing `next/image` of `/landing/img-1.png` (722×530, `priority`, `h-auto w-full`). Asset copied from `context/Design/img-1.png` → `public/landing/img-1.png`. Verified: `tsc --noEmit` passes, page + `/landing/img-1.png` both return 200 (212,634 bytes), **0 console errors**.
+- **2026-07-13 — Phase 0 complete (`00` Route × Role × Precondition Matrix):** Built `docs/auth-matrix.md` (spec artifact) enumerating every route from `project-overview.md` Pages + `architecture.md` `app/api` routes + `actions/` Server Actions, with columns Route / Method / Role / Dept match? / State preconditions / RLS policy. Built `lib/auth-guard.ts` directly from the matrix: `requireRole(requiredRole, departmentId?, preconditionCheck?)` — resolves current `AuthUser` via `createInsforgeServer()` + `auth.getCurrentUser()` + `users`-table lookup, throws `AuthError` (401 unauthenticated / 403 forbidden_role / 403 forbidden_department), runs the caller-supplied `preconditionCheck`. Overloads give `AuthUser` for protected calls and `AuthUser | null` for `public`. Also created `lib/insforge-server.ts` (server client) and `types/index.ts` (Role / AuthUser / GuardContext / PreconditionCheck) as hard dependencies of the guard. `tsc --noEmit` passes. `requireRole` accepts `Role | Role[]` so dual-role surfaces (`/api/notifications/subscribe` = treasurer|adviser) work without a second call.
 
 ---
 
 ## Notes
 
 *(Environment quirks, sandbox limitations, verification commands that passed/failed, and anything a future agent needs to know before touching this codebase again. Append, don't overwrite.)*
+
+- **SDK import correction (flagged):** `architecture.md` imports the server client as `from "@insforge/ssr"`. The installed package is `@insforge/sdk@1.4.4` (per AGENTS.md), which exposes the server client at the subpath `@insforge/sdk/ssr` (`createServerClient`). There is no standalone `@insforge/ssr` package installed. `lib/insforge-server.ts` uses `@insforge/sdk/ssr`. Corrected import path only — API matches the architecture's intent. If a future session adds `@insforge/ssr` separately, this should be reconciled.
+- `users`-table lookup in `getCurrentUser()` (auth-guard) requires the `users` table from Phase 1 / `02` to exist before runtime auth works. The guard compiles now and is structurally correct; it becomes live once schema + signup land.
 
 ---
 
