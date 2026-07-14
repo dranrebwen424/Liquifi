@@ -8,9 +8,9 @@ export default function AuthCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-6 rounded-lg border border-border bg-surface p-6 shadow-card">
+    <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-[28px] font-semibold leading-9 text-text-primary">{title}</h1>
+        <h1 className="text-[28px] font-bold leading-9 text-text-primary">{title}</h1>
         {subtitle && <p className="text-sm font-normal text-text-secondary">{subtitle}</p>}
       </div>
       {children}

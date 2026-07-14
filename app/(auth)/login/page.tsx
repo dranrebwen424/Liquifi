@@ -12,46 +12,54 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [submitted, setSubmitted] = useState(false);
 
   // ponytail: mock — real flow calls InsForge auth, then routes to the role home.
+  // Validate on submit: empty required fields turn red instead of greying the button.
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setSubmitted(true);
+    if (!email || !password) return;
     router.push("/");
   }
 
   return (
-    <AuthShell subtitle="Sign in to manage your council's liquidation.">
-      <AuthCard title="Sign in" subtitle="Welcome back.">
-        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+    <AuthShell>
+      <AuthCard title="WELCOME">
+        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
           <AuthInput
             id="email"
-            label="Email"
             type="email"
+            name="Email"
             autoComplete="email"
             value={email}
             onChange={setEmail}
-            placeholder="you@mabini.edu.ph"
+            placeholder="Enter your Email"
             required
+            error={submitted && !email}
           />
           <AuthInput
             id="password"
-            label="Password"
             type="password"
+            name="Password"
             autoComplete="current-password"
             value={password}
             onChange={setPassword}
-            placeholder="••••••••"
+            placeholder="Enter your Password"
             required
+            error={submitted && !password}
           />
-          <div className="flex items-center justify-end">
-            <AuthLink href="/forgot-password">Forgot password?</AuthLink>
-          </div>
-          <AuthButton type="submit" disabled={!email || !password}>
+          <AuthButton type="submit">
             Sign in
           </AuthButton>
-          <p className="text-center text-sm font-normal text-text-secondary">
-            No account? <AuthLink href="/signup">Create one</AuthLink>
-          </p>
+          <div className="flex justify-center">
+            <AuthLink href="/forgot-password" muted>
+              Forget Password?
+            </AuthLink>
+          </div>
+          <AuthButton variant="outline" type="button" onClick={() => router.push("/signup")}>
+            Create an account
+          </AuthButton>
         </form>
       </AuthCard>
     </AuthShell>

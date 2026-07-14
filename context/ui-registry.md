@@ -82,58 +82,64 @@ Last updated: 2026-07-12 (redesigned from Figma; refined for Antigravity-style w
 ### AuthShell
 
 File: components/auth/AuthShell.tsx
-Last updated: 2026-07-13
+Last updated: 2026-07-14 (Figma-matched restyle)
 
-- Shared layout for all `app/(auth)/*` pages (Login, Signup, OTP, Pending Approval, Forgot Password). Server Component (no `"use client"`).
-- Split centered layout, web only: left brand panel `w-1/2 hidden bg-surface-inverse text-text-inverse lg:flex` (logo + tagline + feature bullets + footer note); right form side `w-full lg:w-1/2 flex justify-center bg-background`, inner `max-w-sm`.
-- Left panel text tints use `text-text-inverse/70` and `/60` (alpha on token color, no hardcoded rgba). Mobile (below `lg`) hides the brand panel and shows a `lg:hidden` logo+wordmark at the top of the form side.
-- `subtitle` prop renders a `text-sm text-text-muted` line above the page's own card. Children = the page form/card.
-- Logo mark = inline monoline SVG (`currentColor`) reused; `text-accent` on mobile, `text-text-inverse` on the dark panel.
+- Shared layout for all `app/(auth)/*` pages. Server Component (no `"use client"`).
+- **Centered single-column** — no dark split brand panel (matches Figma `login-web` `#191:18`, which is a centered form on white with no side panel). `main` = `flex min-h-full items-center justify-center bg-background px-4 py-12`; inner `max-w-sm`.
+- Centered logo (mark `text-accent` + 20px/700 wordmark) at top, `mb-8`.
+- `subtitle` prop renders a centered `text-sm text-text-muted` line above the children. Children = the page form/card.
 
 ### AuthCard
 
 File: components/auth/AuthCard.tsx
-Last updated: 2026-07-13
+Last updated: 2026-07-14 (Figma-matched restyle)
 
 | Property         | Class |
 | ---------------- | ----- |
-| Background       | `bg-surface` |
-| Border           | `border border-border` |
-| Border radius    | `rounded-lg` |
-| Text — primary   | `text-[28px] font-semibold leading-9 text-text-primary` (title) |
+| Background       | (none — no card chrome; Figma has no bordered card) |
+| Border           | (none) |
+| Border radius    | (n/a) |
+| Text — primary   | `text-[28px] font-bold leading-9 text-text-primary` (title; Figma WELCOME is Poppins 700) |
 | Text — secondary | `text-sm font-normal text-text-secondary` (subtitle) |
-| Spacing          | `flex flex-col gap-6 p-6` |
-| Shadow           | `shadow-card` (new `--shadow-card` token in `globals.css`) |
+| Spacing          | `flex flex-col gap-6` |
 
-**Pattern notes:** Wraps each auth form. `title` + optional `subtitle` + `children`. Uses the canonical card shadow now defined as a token (previously hardcoded as arbitrary `shadow-[...]` on the landing page).
+**Pattern notes:** Wraps each auth form. `title` + optional `subtitle` + `children`. No border/shadow/bg — the Figma login frame sits directly on white.
 
 ### AuthInput
 
 File: components/auth/AuthInput.tsx
-Last updated: 2026-07-13
+Last updated: 2026-07-14 (Figma-matched restyle)
 
 - `"use client"` (controlled `value`/`onChange`). Used by every auth form.
-- Label `text-sm font-medium text-text-secondary`, required marker `text-error` (` *`). Input: `w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-accent focus:ring-1 focus:ring-accent`.
-- Props: `id`, `label`, `type`, `value`, `onChange`, `placeholder`, `autoComplete`, `inputMode` (numeric/text/email/tel — used by OTP), `required`.
-- Gap to next field: `gap-3` (12px, per `ui-rules.md` form field gaps).
+- `label` prop is now **optional** — login passes none and relies on the placeholder (Figma inputs show placeholder-only "Enter your Email" / "Enter your Password"); other pages keep labels.
+- Input: `w-full rounded-lg border border-border-strong bg-surface px-4 py-4 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-accent focus:ring-1 focus:ring-accent` (~52px tall, matches Figma 51.6px input height; `rounded-lg` ≈ Figma 16.7px radius).
+- Props: `id`, `label?`, `type`, `value`, `onChange`, `placeholder`, `autoComplete`, `inputMode` (numeric/text/email/tel — OTP), `required`, `error?`.
+- `error?: boolean` → `border-error` + `focus:ring-error` + `aria-invalid`. Wired to empty-submit validation: each auth form sets `noValidate` and a `submitted` flag, so pressing Enter on an empty field turns the required inputs red (instead of native validation bubbles). Red clears as soon as the field is filled.
+- On `error`, also renders a loud red circular `!` badge (white `!`, `rounded-full bg-error`) **inside the input at the far right** (`right-3`, input gets `pr-10` to make room), the field name in red (the resting `label` turns red, or — for placeholder-only fields like login — a `name` prop shows `Name` above the input), plus a `Please enter your <name>.` notice below. `name?` prop supplies the display name (defaults to `label`).
+- Gap to next field: `gap-2` (8px).
 
 ### AuthButton
 
 File: components/auth/AuthButton.tsx
-Last updated: 2026-07-13
+Last updated: 2026-07-14 (Figma-matched restyle)
 
-- `"use client"`. Variants map 1:1 to `ui-rules.md` → Buttons.
-- Primary: `bg-accent text-accent-foreground rounded-full px-4 py-2 hover:bg-accent-hover`. Secondary: `bg-surface border border-border text-text-primary rounded-full px-4 py-2 hover:bg-surface-secondary hover:border-border-strong`. Ghost: `bg-transparent text-text-secondary rounded-md px-4 py-2 hover:bg-surface-secondary hover:text-text-primary`.
+- `"use client"`. Four variants: `primary`, `secondary`, `outline`, `ghost`.
+- **Variant classes mirror the landing page CTAs (`app/page.tsx`) exactly** so auth and marketing share one button language:
+  - Primary: `bg-accent text-accent-foreground rounded-full px-6 py-3 hover:bg-accent-hover` (matches landing "Get started").
+  - Secondary: `bg-surface border border-border text-text-primary rounded-full px-6 py-3 hover:bg-surface-secondary hover:border-border-strong` (matches landing hero "Sign in").
+  - Outline (Figma "Create an account"): `bg-surface border border-accent text-accent rounded-full px-6 py-3 hover:bg-accent-muted` — ink-outline pill, added to match Figma's outlined CTA; same padding/radius as the others.
+  - Ghost: `bg-transparent text-text-secondary rounded-md px-4 py-2 hover:bg-surface-secondary hover:text-text-primary` (matches landing nav links).
 - Shared: `w-full text-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-not-allowed disabled:opacity-50`. `loading` swaps label for "Please wait…" and forces disabled.
-- Used as `type="submit"` inside forms or `type="button"` with `onClick`.
+- **Auth pages render their primary buttons always-enabled** (no `disabled` prop) so they are always the ink-black CTA — matching the landing page's "Get started" CTA, which is never greyed/disabled. The `disabled`/`loading` API still exists in the component for future real-validation use; it is simply not passed from the mock auth pages.
+- Padding `px-6 py-3` (not the `px-4 py-2` in `ui-rules.md` Buttons) to match the landing CTAs, which use the larger size; `w-full` spans the form width (landing buttons are auto-width).
 
 ### AuthLink
 
 File: components/auth/AuthLink.tsx
-Last updated: 2026-07-13
+Last updated: 2026-07-14 (Figma-matched restyle)
 
-- Thin wrapper over `next/link`. Renders `text-sm font-medium text-accent hover:underline`. `className` appendable.
-- Used for "Forgot password?", "Create one" / "Sign in" toggles, "Back to sign in", and resend-style inline links.
+- Thin wrapper over `next/link`. `muted` prop (default false): `muted` → `text-text-muted hover:text-text-secondary` (Figma "Forget Password?" is gray); default → `text-accent hover:underline`. `className` appendable.
+- Used for "Forget Password?" (muted), "Create one" / "Sign in" toggles, "Back to sign in", and resend-style inline links.
 
 **Note (mock phase):** All five `app/(auth)/*` pages use `useState` mock submit handlers that `router.push` to the next step (signup→/otp→/pending-approval; forgot→inline success). No InsForge calls yet — real auth wiring lands in a later Phase 1 step. Signup role select is intentionally limited to `treasurer`/`adviser` (Admin excluded per `AGENTS.md`); department list is a hardcoded mock constant pending the `departments` table.
 

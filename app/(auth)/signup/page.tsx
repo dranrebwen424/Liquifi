@@ -27,6 +27,7 @@ export default function SignupPage() {
     role: "treasurer",
     department: DEPARTMENTS[0].code,
   });
+  const [submitted, setSubmitted] = useState(false);
 
   function set(key: keyof typeof form, value: string) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -34,24 +35,26 @@ export default function SignupPage() {
 
   // ponytail: mock — real flow writes the users row (account_status = pending_approval)
   // then routes to OTP verification per the AGENTS.md signup flow.
+  // Validate on submit: empty required fields turn red instead of greying the button.
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setSubmitted(true);
+    const valid = form.firstName && form.lastName && form.email && form.password;
+    if (!valid) return;
     router.push("/otp");
   }
-
-  const valid = form.firstName && form.lastName && form.email && form.password;
 
   return (
     <AuthShell subtitle="Request an account for your council.">
       <AuthCard title="Create your account" subtitle="Advisers and treasurers sign up here.">
-        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
           <div className="grid grid-cols-2 gap-3">
-            <AuthInput id="firstName" label="First name" value={form.firstName} onChange={(v) => set("firstName", v)} required />
-            <AuthInput id="lastName" label="Last name" value={form.lastName} onChange={(v) => set("lastName", v)} required />
+            <AuthInput id="firstName" label="First name" value={form.firstName} onChange={(v) => set("firstName", v)} required error={submitted && !form.firstName} />
+            <AuthInput id="lastName" label="Last name" value={form.lastName} onChange={(v) => set("lastName", v)} required error={submitted && !form.lastName} />
           </div>
           <AuthInput id="middleName" label="Middle name (optional)" value={form.middleName} onChange={(v) => set("middleName", v)} />
-          <AuthInput id="email" label="Email" type="email" autoComplete="email" value={form.email} onChange={(v) => set("email", v)} placeholder="you@mabini.edu.ph" required />
-          <AuthInput id="password" label="Password" type="password" autoComplete="new-password" value={form.password} onChange={(v) => set("password", v)} placeholder="At least 8 characters" required />
+          <AuthInput id="email" label="Email" type="email" autoComplete="email" value={form.email} onChange={(v) => set("email", v)} placeholder="you@mabini.edu.ph" required error={submitted && !form.email} />
+          <AuthInput id="password" label="Password" type="password" autoComplete="new-password" value={form.password} onChange={(v) => set("password", v)} placeholder="At least 8 characters" required error={submitted && !form.password} />
 
           <div className="flex flex-col gap-3">
             <label htmlFor="role" className="text-sm font-medium text-text-secondary">Role</label>
@@ -59,7 +62,7 @@ export default function SignupPage() {
               id="role"
               value={form.role}
               onChange={(e) => set("role", e.target.value)}
-              className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+              className="w-full rounded-lg border border-border-strong bg-surface px-4 py-4 text-sm text-text-primary outline-none focus:border-accent focus:ring-1 focus:ring-accent"
             >
               <option value="treasurer">Treasurer</option>
               <option value="adviser">Adviser</option>
@@ -72,7 +75,7 @@ export default function SignupPage() {
               id="department"
               value={form.department}
               onChange={(e) => set("department", e.target.value)}
-              className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+              className="w-full rounded-lg border border-border-strong bg-surface px-4 py-4 text-sm text-text-primary outline-none focus:border-accent focus:ring-1 focus:ring-accent"
             >
               {DEPARTMENTS.map((d) => (
                 <option key={d.code} value={d.code}>{d.name} ({d.code})</option>
@@ -80,7 +83,7 @@ export default function SignupPage() {
             </select>
           </div>
 
-          <AuthButton type="submit" disabled={!valid}>Create account</AuthButton>
+          <AuthButton type="submit">Create account</AuthButton>
           <p className="text-center text-sm font-normal text-text-secondary">
             Already have an account? <AuthLink href="/login">Sign in</AuthLink>
           </p>

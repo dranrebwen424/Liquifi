@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 
-type Variant = "primary" | "secondary" | "ghost";
+type Variant = "primary" | "secondary" | "outline" | "ghost";
 
 type Props = {
   children: ReactNode;
@@ -14,11 +14,15 @@ type Props = {
   className?: string;
 };
 
+// ponytail: classes mirror the landing page CTAs exactly (app/page.tsx) so auth
+// and marketing share one button visual language.
 const VARIANTS: Record<Variant, string> = {
   primary:
-    "bg-accent text-accent-foreground rounded-full px-4 py-2 hover:bg-accent-hover",
+    "bg-accent text-accent-foreground rounded-full px-6 py-3 hover:bg-accent-hover",
   secondary:
-    "bg-surface border border-border text-text-primary rounded-full px-4 py-2 hover:bg-surface-secondary hover:border-border-strong",
+    "bg-surface border border-border text-text-primary rounded-full px-6 py-3 hover:bg-surface-secondary hover:border-border-strong",
+  outline:
+    "bg-surface border border-accent text-accent rounded-full px-6 py-3 hover:bg-accent-muted",
   ghost:
     "bg-transparent text-text-secondary rounded-md px-4 py-2 hover:bg-surface-secondary hover:text-text-primary",
 };

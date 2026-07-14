@@ -12,10 +12,14 @@ export default function ForgotPasswordPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   // ponytail: mock — real flow triggers the OTP-reset email via InsForge.
+  // Validate on submit: empty email turns red instead of greying the button.
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setSubmitted(true);
+    if (!email) return;
     setSent(true);
   }
 
@@ -33,7 +37,7 @@ export default function ForgotPasswordPage() {
             </div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+          <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
             <AuthInput
               id="email"
               label="Email"
@@ -43,8 +47,9 @@ export default function ForgotPasswordPage() {
               onChange={setEmail}
               placeholder="you@mabini.edu.ph"
               required
+              error={submitted && !email}
             />
-            <AuthButton type="submit" disabled={!email}>Send reset code</AuthButton>
+            <AuthButton type="submit">Send reset code</AuthButton>
             <p className="text-center text-sm font-normal text-text-secondary">
               Remembered it? <AuthLink href="/login">Sign in</AuthLink>
             </p>

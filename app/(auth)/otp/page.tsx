@@ -13,6 +13,7 @@ export default function OtpPage() {
   const router = useRouter();
   const [code, setCode] = useState("");
   const [secondsLeft, setSecondsLeft] = useState(RESEND_SECONDS);
+  const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
     if (secondsLeft <= 0) return;
@@ -21,15 +22,18 @@ export default function OtpPage() {
   }, [secondsLeft]);
 
   // ponytail: mock — real flow verifies the OTP via InsForge, then routes to /pending-approval.
+  // Validate on submit: empty code turns red instead of greying the button.
   function handleVerify(e: React.FormEvent) {
     e.preventDefault();
+    setSubmitted(true);
+    if (!code) return;
     router.push("/pending-approval");
   }
 
   return (
     <AuthShell subtitle="Enter the code we sent to your email.">
       <AuthCard title="Verify your email" subtitle="Check your inbox for a 6-digit code.">
-        <form onSubmit={handleVerify} className="flex flex-col gap-6">
+        <form onSubmit={handleVerify} noValidate className="flex flex-col gap-6">
           <AuthInput
             id="otp"
             label="Verification code"
@@ -39,13 +43,14 @@ export default function OtpPage() {
             onChange={(v) => setCode(v.replace(/\D/g, "").slice(0, 6))}
             placeholder="••••••"
             required
+            error={submitted && !code}
           />
-          <AuthButton type="submit" disabled={code.length !== 6}>Verify</AuthButton>
+          <AuthButton type="submit">Verify</AuthButton>
           <button
             type="button"
             onClick={() => setSecondsLeft(RESEND_SECONDS)}
             disabled={secondsLeft > 0}
-            className="text-center text-sm font-medium text-accent outline-none hover:underline disabled:cursor-not-allowed disabled:text-text-muted disabled:no-underline"
+            className="text-center text-sm font-medium text-text-muted outline-none hover:text-text-secondary disabled:cursor-not-allowed disabled:opacity-50"
           >
             {secondsLeft > 0 ? `Resend code in ${secondsLeft}s` : "Resend code"}
           </button>
