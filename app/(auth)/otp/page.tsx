@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import AuthShell from "@/components/auth/AuthShell";
 import AuthCard from "@/components/auth/AuthCard";
-import AuthInput from "@/components/auth/AuthInput";
+import AuthOtpInput from "@/components/auth/AuthOtpInput";
 import AuthButton from "@/components/auth/AuthButton";
 
 const RESEND_SECONDS = 60;
@@ -34,22 +34,17 @@ export default function OtpPage() {
     <AuthShell subtitle="Enter the code we sent to your email.">
       <AuthCard title="Verify your email" subtitle="Check your inbox for a 6-digit code.">
         <form onSubmit={handleVerify} noValidate className="flex flex-col gap-6">
-          <AuthInput
-            id="otp"
-            label="Verification code"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            value={code}
-            onChange={(v) => setCode(v.replace(/\D/g, "").slice(0, 6))}
-            required
-            error={submitted && !code}
-          />
+          <AuthOtpInput value={code} onChange={setCode} error={submitted && !code} />
           <AuthButton type="submit">Verify</AuthButton>
           <button
             type="button"
             onClick={() => setSecondsLeft(RESEND_SECONDS)}
             disabled={secondsLeft > 0}
-            className="text-center text-sm font-medium text-text-muted outline-none hover:text-text-secondary disabled:cursor-not-allowed disabled:opacity-50"
+            className={`text-center text-sm font-medium outline-none transition-colors ${
+              secondsLeft > 0
+                ? "text-text-muted disabled:cursor-not-allowed disabled:opacity-50"
+                : "text-accent hover:text-accent-hover"
+            }`}
           >
             {secondsLeft > 0 ? `Resend code in ${secondsLeft}s` : "Resend code"}
           </button>

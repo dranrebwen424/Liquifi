@@ -117,6 +117,16 @@ Last updated: 2026-07-14 (Figma-matched restyle)
 - `error?: boolean` → input `border-error` + `focus:ring-error` + `aria-invalid`; the floating label turns red; a red circular `!` badge (white `!`, `rounded-full bg-error`) renders **inside the input at the far right** (`right-3`, `pr-10` makes room); plus a `Please enter your <name>.` notice below. Each auth form sets `noValidate` + a `submitted` flag, so pressing Enter on an empty field triggers this (instead of native validation bubbles). Red clears as soon as the field is filled.
 - Gap to next field: `gap-2` (8px).
 
+### AuthOtpInput
+
+File: components/auth/AuthOtpInput.tsx
+Last updated: 2026-07-14 (6-digit OTP boxes)
+
+- `"use client"`. Six separate single-digit boxes for the OTP page (`h-14 w-12`, centered `text-xl font-semibold`, `rounded-lg`). Row uses `justify-between` so the first box's left edge and the last box's right edge line up with the full-width button below (both sides aligned).
+- Props: `value` (combined code string), `onChange(code)`, `length?` (default 6), `name?` (notice text, default "verification code"), `autoComplete?`, `error?`.
+- Behavior: typing a digit auto-advances focus to the next box; `Backspace` on an empty box moves back and clears the previous; arrow keys navigate; pasting/autofilling a multi-digit string distributes across boxes (all non-digits stripped).
+- `error?` → every box gets `border-error` + focus ring and a `Please enter your <name>.` notice shows below (no `!` badge — it threw the row off; boxes are `items-end` bottom-aligned).
+
 ### AuthButton
 
 File: components/auth/AuthButton.tsx
