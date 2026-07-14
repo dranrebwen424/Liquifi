@@ -25,11 +25,11 @@ export default function LoginPage() {
   }
 
   return (
-    <AuthShell>
-      <div className="mt-8">
+    <AuthShell hideLogo top>
+      <div>
         <LottiePlayer
           src="/Auth%20pages/Employee-content.json"
-          className="mx-auto mb-8 h-64 w-64"
+          className="mx-auto mb-0 h-82 w-82"
         />
         <AuthCard title="WELCOME" center>
           <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">

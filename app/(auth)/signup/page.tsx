@@ -47,7 +47,7 @@ export default function SignupPage() {
 
   return (
     <AuthShell subtitle="Request an account for your council.">
-      <AuthCard title="Create your account" subtitle="Advisers and treasurers sign up here.">
+      <AuthCard title="Get Started" subtitle="Advisers and treasurers sign up here.">
         <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
           <div className="grid grid-cols-2 gap-3">
             <AuthInput id="firstName" label="First name" value={form.firstName} onChange={(v) => set("firstName", v)} required error={submitted && !form.firstName} />
