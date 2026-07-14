@@ -41,7 +41,6 @@ export default function OtpPage() {
             autoComplete="one-time-code"
             value={code}
             onChange={(v) => setCode(v.replace(/\D/g, "").slice(0, 6))}
-            placeholder="••••••"
             required
             error={submitted && !code}
           />

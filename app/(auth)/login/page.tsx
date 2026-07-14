@@ -30,22 +30,20 @@ export default function LoginPage() {
           <AuthInput
             id="email"
             type="email"
-            name="Email"
+            label="Email"
             autoComplete="email"
             value={email}
             onChange={setEmail}
-            placeholder="Enter your Email"
             required
             error={submitted && !email}
           />
           <AuthInput
             id="password"
             type="password"
-            name="Password"
+            label="Password"
             autoComplete="current-password"
             value={password}
             onChange={setPassword}
-            placeholder="Enter your Password"
             required
             error={submitted && !password}
           />

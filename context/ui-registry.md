@@ -111,11 +111,10 @@ File: components/auth/AuthInput.tsx
 Last updated: 2026-07-14 (Figma-matched restyle)
 
 - `"use client"` (controlled `value`/`onChange`). Used by every auth form.
-- `label` prop is now **optional** — login passes none and relies on the placeholder (Figma inputs show placeholder-only "Enter your Email" / "Enter your Password"); other pages keep labels.
-- Input: `w-full rounded-lg border border-border-strong bg-surface px-4 py-4 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-accent focus:ring-1 focus:ring-accent` (~52px tall, matches Figma 51.6px input height; `rounded-lg` ≈ Figma 16.7px radius).
-- Props: `id`, `label?`, `type`, `value`, `onChange`, `placeholder`, `autoComplete`, `inputMode` (numeric/text/email/tel — OTP), `required`, `error?`.
-- `error?: boolean` → `border-error` + `focus:ring-error` + `aria-invalid`. Wired to empty-submit validation: each auth form sets `noValidate` and a `submitted` flag, so pressing Enter on an empty field turns the required inputs red (instead of native validation bubbles). Red clears as soon as the field is filled.
-- On `error`, also renders a loud red circular `!` badge (white `!`, `rounded-full bg-error`) **inside the input at the far right** (`right-3`, input gets `pr-10` to make room), the field name in red (the resting `label` turns red, or — for placeholder-only fields like login — a `name` prop shows `Name` above the input), plus a `Please enter your <name>.` notice below. `name?` prop supplies the display name (defaults to `label`).
+- `label` is **required** and is the **floating label**: sits centered *inside* the input at rest (`top-1/2 -translate-y-1/2`), then scales down (`scale-90 text-xs`) and slides to the top-left on focus or when filled (`peer-focus:` / `peer-[:not(:placeholder-shown)]:` → `top-2`). Facebook/Material style. No label is rendered above the box anymore.
+- Input padding `pt-6 pb-2 pl-4 pr-10` (room for the floated label + right-side badge); `rounded-lg border-border-strong bg-surface`, focus `border-accent ring-1 ring-accent`, ~52px tall.
+- Props: `id`, `label` (required, floating text), `name?` (notice display name, defaults to `label`), `type`, `value`, `onChange`, `autoComplete`, `inputMode` (numeric/text/email/tel — OTP), `required`, `error?`. (No `placeholder` — the floating label replaces it; input uses `placeholder=" "` for the `:placeholder-shown` trick.)
+- `error?: boolean` → input `border-error` + `focus:ring-error` + `aria-invalid`; the floating label turns red; a red circular `!` badge (white `!`, `rounded-full bg-error`) renders **inside the input at the far right** (`right-3`, `pr-10` makes room); plus a `Please enter your <name>.` notice below. Each auth form sets `noValidate` + a `submitted` flag, so pressing Enter on an empty field triggers this (instead of native validation bubbles). Red clears as soon as the field is filled.
 - Gap to next field: `gap-2` (8px).
 
 ### AuthButton

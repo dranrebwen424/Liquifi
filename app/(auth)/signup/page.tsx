@@ -53,8 +53,8 @@ export default function SignupPage() {
             <AuthInput id="lastName" label="Last name" value={form.lastName} onChange={(v) => set("lastName", v)} required error={submitted && !form.lastName} />
           </div>
           <AuthInput id="middleName" label="Middle name (optional)" value={form.middleName} onChange={(v) => set("middleName", v)} />
-          <AuthInput id="email" label="Email" type="email" autoComplete="email" value={form.email} onChange={(v) => set("email", v)} placeholder="you@mabini.edu.ph" required error={submitted && !form.email} />
-          <AuthInput id="password" label="Password" type="password" autoComplete="new-password" value={form.password} onChange={(v) => set("password", v)} placeholder="At least 8 characters" required error={submitted && !form.password} />
+          <AuthInput id="email" label="Email" type="email" autoComplete="email" value={form.email} onChange={(v) => set("email", v)} required error={submitted && !form.email} />
+          <AuthInput id="password" label="Password" type="password" autoComplete="new-password" value={form.password} onChange={(v) => set("password", v)} required error={submitted && !form.password} />
 
           <div className="flex flex-col gap-3">
             <label htmlFor="role" className="text-sm font-medium text-text-secondary">Role</label>

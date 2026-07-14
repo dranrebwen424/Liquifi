@@ -45,7 +45,6 @@ export default function ForgotPasswordPage() {
               autoComplete="email"
               value={email}
               onChange={setEmail}
-              placeholder="you@mabini.edu.ph"
               required
               error={submitted && !email}
             />
