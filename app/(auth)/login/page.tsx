@@ -7,6 +7,7 @@ import AuthCard from "@/components/auth/AuthCard";
 import AuthInput from "@/components/auth/AuthInput";
 import AuthButton from "@/components/auth/AuthButton";
 import AuthLink from "@/components/auth/AuthLink";
+import LottiePlayer from "@/components/LottiePlayer";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -25,8 +26,13 @@ export default function LoginPage() {
 
   return (
     <AuthShell>
-      <AuthCard title="WELCOME">
-        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
+      <div className="mt-8">
+        <LottiePlayer
+          src="/Auth%20pages/Employee-content.json"
+          className="mx-auto mb-8 h-64 w-64"
+        />
+        <AuthCard title="WELCOME" center>
+          <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
           <AuthInput
             id="email"
             type="email"
@@ -59,7 +65,8 @@ export default function LoginPage() {
             Create an account
           </AuthButton>
         </form>
-      </AuthCard>
+        </AuthCard>
+      </div>
     </AuthShell>
   );
 }

@@ -1,26 +1,37 @@
+"use client";
+
+import { useRouter } from "next/navigation";
 import AuthShell from "@/components/auth/AuthShell";
 import AuthCard from "@/components/auth/AuthCard";
-import AuthLink from "@/components/auth/AuthLink";
+import AuthButton from "@/components/auth/AuthButton";
+import LottiePlayer from "@/components/LottiePlayer";
 
 export default function PendingApprovalPage() {
+  const router = useRouter();
+
   return (
-    <AuthShell subtitle="Your account is awaiting approval.">
-      <AuthCard title="Pending approval">
-        <div className="flex flex-col gap-4">
-          <p className="text-sm font-normal text-text-secondary">
-            Thanks for signing up. Your account is pending approval from the right
-            authority — an administrator for advisers, or your department&rsquo;s
-            adviser for treasurers.
-          </p>
-          <p className="text-sm font-normal text-text-secondary">
-            You&rsquo;ll get an email once your account is approved. Until then,
-            this page is all you can see.
-          </p>
-          <div className="pt-2">
-            <AuthLink href="/login">Back to sign in</AuthLink>
+    <AuthShell>
+      <div className="mt-24">
+        <AuthCard
+          title="Awaiting Approval"
+          subtitle="You&rsquo;re all set! Your registration has been received and is awaiting approval. We&rsquo;ll email you as soon as your account is ready."
+        >
+          <div className="flex flex-col items-center">
+            <LottiePlayer
+              src="/Auth%20pages/loading-time.json"
+              className="mt-24 h-48 w-48"
+            />
+
+            <AuthButton
+              variant="primary"
+              onClick={() => router.push("/login")}
+              className="mt-24"
+            >
+              Back to login
+            </AuthButton>
           </div>
-        </div>
-      </AuthCard>
+        </AuthCard>
+      </div>
     </AuthShell>
   );
 }

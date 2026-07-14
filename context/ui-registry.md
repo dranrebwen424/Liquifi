@@ -103,7 +103,16 @@ Last updated: 2026-07-14 (Figma-matched restyle)
 | Text — secondary | `text-sm font-normal text-text-secondary` (subtitle) |
 | Spacing          | `flex flex-col gap-6` |
 
-**Pattern notes:** Wraps each auth form. `title` + optional `subtitle` + `children`. No border/shadow/bg — the Figma login frame sits directly on white.
+**Pattern notes:** Wraps each auth form. `title` + optional `subtitle` + `children`. No border/shadow/bg — the Figma login frame sits directly on white. Optional `center?: boolean` adds `text-center` to the root (used by `pending-approval` for a centered status layout; title + children all center).
+
+### LottiePlayer
+File: components/LottiePlayer.tsx
+Last updated: 2026-07-14 (Lottie animation renderer)
+
+- `"use client"`. Renders a Lottie JSON via `lottie-web` (dynamic `import()` inside `useEffect` so it stays out of the SSR bundle; `lottie-web` chosen over `lottie-react` to avoid React-19 peer-dep conflicts). Container `<div aria-hidden="true">` holds the injected SVG.
+- Props: `src` (URL to the `.json`, spaces encoded e.g. `/Auth%20pages/loading-time.json`), `className?` (sizing, e.g. `h-48 w-48`), `loop?` (default true), `autoplay?` (default true).
+- Cleanup destroys the animation on unmount / `src` change.
+- Used by `pending-approval` for the `loading-time.json` loading animation (big, centered).
 
 ### AuthInput
 
@@ -114,6 +123,7 @@ Last updated: 2026-07-14 (Figma-matched restyle)
 - `label` is **required** and is the **floating label**: sits centered *inside* the input at rest (`top-1/2 -translate-y-1/2`), then scales down (`scale-90 text-xs`) and slides to the top-left on focus or when filled (`peer-focus:` / `peer-[:not(:placeholder-shown)]:` → `top-2`). Facebook/Material style. No label is rendered above the box anymore.
 - Input padding `pt-6 pb-2 pl-4 pr-10` (room for the floated label + right-side badge); `rounded-lg border-border-strong bg-surface`, focus `border-accent ring-1 ring-accent`, ~52px tall.
 - Props: `id`, `label` (required, floating text), `name?` (notice display name, defaults to `label`), `type`, `value`, `onChange`, `autoComplete`, `inputMode` (numeric/text/email/tel — OTP), `required`, `error?`. (No `placeholder` — the floating label replaces it; input uses `placeholder=" "` for the `:placeholder-shown` trick.)
+- `type="password"` renders a **persistent eye toggle** at `right-3` (inline SVG, `text-text-muted` → `hover:text-text-primary`). Reveal/hide uses an internal `show` state that **survives blur** — this replaces the browser's native, focus-dependent reveal (which vanished on blur). When errored, the red `!` badge sits at `right-10` (left of the eye) and the input gets `pr-16`; otherwise password uses `pr-10`. Non-password fields use `pr-4` (or `pr-10` on error).
 - `error?: boolean` → input `border-error` + `focus:ring-error` + `aria-invalid`; the floating label turns red; a red circular `!` badge (white `!`, `rounded-full bg-error`) renders **inside the input at the far right** (`right-3`, `pr-10` makes room); plus a `Please enter your <name>.` notice below. Each auth form sets `noValidate` + a `submitted` flag, so pressing Enter on an empty field triggers this (instead of native validation bubbles). Red clears as soon as the field is filled.
 - Gap to next field: `gap-2` (8px).
 
@@ -126,6 +136,17 @@ Last updated: 2026-07-14 (6-digit OTP boxes)
 - Props: `value` (combined code string), `onChange(code)`, `length?` (default 6), `name?` (notice text, default "verification code"), `autoComplete?`, `error?`.
 - Behavior: typing a digit auto-advances focus to the next box; `Backspace` on an empty box moves back and clears the previous; arrow keys navigate; pasting/autofilling a multi-digit string distributes across boxes (all non-digits stripped).
 - `error?` → every box gets `border-error` + focus ring and a `Please enter your <name>.` notice shows below (no `!` badge — it threw the row off; boxes are `items-end` bottom-aligned).
+
+### AuthSelect
+File: components/auth/AuthSelect.tsx
+Last updated: 2026-07-14 (custom dropdown, replaces native `<select>`)
+
+- `"use client"`. Custom dropdown — **not** a native `<select>` (native arrow + popup look template-y). Renders a `<button>` control + token-themed popover `<ul role="listbox">`.
+- Control matches `AuthInput` exactly: `rounded-lg border bg-surface pb-2 pl-4 pr-10 pt-6`, floating `label` at `top-2` (always floated — selects always carry a value), custom chevron (ChevronDown SVG) at `right-3` that rotates `rotate-180` when open, `focus:border-accent focus:ring-1`. `error?` → `border-error` + red label + `Please enter your <name>.` notice.
+- Popover: `absolute z-30 mt-1 w-full rounded-lg border border-border-strong bg-surface py-1 shadow-card`. Option rows `px-4 py-2 text-sm`; selected → `bg-accent-muted font-medium text-accent`; keyboard/hovers `active` row → `bg-surface-secondary`. Closes on outside `mousedown`, `Escape`, or selection.
+- Keyboard: button opens on `ArrowDown`/`Enter`/`Space`; `Arrow` moves `active`; `Enter`/`Space` selects; `Escape` closes.
+- Props: `id`, `label` (required floating label), `value`, `onChange(value)`, `options: {value,label}[]`, `name?`, `required?`, `error?`.
+- Used by `signup` for Role + Department. Neither `AuthShell` nor `AuthCard` clips (no `overflow-hidden`), so the popover overlays fields below safely.
 
 ### AuthButton
 

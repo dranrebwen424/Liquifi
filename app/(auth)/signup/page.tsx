@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import AuthShell from "@/components/auth/AuthShell";
 import AuthCard from "@/components/auth/AuthCard";
 import AuthInput from "@/components/auth/AuthInput";
+import AuthSelect from "@/components/auth/AuthSelect";
 import AuthButton from "@/components/auth/AuthButton";
 import AuthLink from "@/components/auth/AuthLink";
 
@@ -56,32 +57,24 @@ export default function SignupPage() {
           <AuthInput id="email" label="Email" type="email" autoComplete="email" value={form.email} onChange={(v) => set("email", v)} required error={submitted && !form.email} />
           <AuthInput id="password" label="Password" type="password" autoComplete="new-password" value={form.password} onChange={(v) => set("password", v)} required error={submitted && !form.password} />
 
-          <div className="flex flex-col gap-3">
-            <label htmlFor="role" className="text-sm font-medium text-text-secondary">Role</label>
-            <select
-              id="role"
-              value={form.role}
-              onChange={(e) => set("role", e.target.value)}
-              className="w-full rounded-lg border border-border-strong bg-surface px-4 py-4 text-sm text-text-primary outline-none focus:border-accent focus:ring-1 focus:ring-accent"
-            >
-              <option value="treasurer">Treasurer</option>
-              <option value="adviser">Adviser</option>
-            </select>
-          </div>
+          <AuthSelect
+            id="role"
+            label="Role"
+            value={form.role}
+            onChange={(v) => set("role", v)}
+            options={[
+              { value: "treasurer", label: "Treasurer" },
+              { value: "adviser", label: "Adviser" },
+            ]}
+          />
 
-          <div className="flex flex-col gap-3">
-            <label htmlFor="department" className="text-sm font-medium text-text-secondary">Department</label>
-            <select
-              id="department"
-              value={form.department}
-              onChange={(e) => set("department", e.target.value)}
-              className="w-full rounded-lg border border-border-strong bg-surface px-4 py-4 text-sm text-text-primary outline-none focus:border-accent focus:ring-1 focus:ring-accent"
-            >
-              {DEPARTMENTS.map((d) => (
-                <option key={d.code} value={d.code}>{d.name} ({d.code})</option>
-              ))}
-            </select>
-          </div>
+          <AuthSelect
+            id="department"
+            label="Department"
+            value={form.department}
+            onChange={(v) => set("department", v)}
+            options={DEPARTMENTS.map((d) => ({ value: d.code, label: `${d.name} (${d.code})` }))}
+          />
 
           <AuthButton type="submit">Create account</AuthButton>
           <p className="text-center text-sm font-normal text-text-secondary">
