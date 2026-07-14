@@ -35,8 +35,10 @@
 │   ├── (auth)/
 │   │   ├── login/page.tsx
 │   │   ├── signup/page.tsx
+│   │   ├── otp/page.tsx                              → OTP verify (shared: signup + password reset)
 │   │   ├── pending-approval/page.tsx
-│   │   └── forgot-password/page.tsx
+│   │   ├── forgot-password/page.tsx
+│   │   └── change-password/page.tsx                  → Set new password (password reset only)
 │   ├── treasurer/
 │   │   ├── home/page.tsx                            → Events list
 │   │   ├── events/
@@ -85,9 +87,10 @@
 │       │   └── [reportId]/cancel/route.ts
 │       ├── events/
 │       │   ├── [eventId]/archive/route.ts             → Signed-document upload + AI completeness check
-│       ├── auth/
-│       │   ├── otp/send/route.ts
-│       │   └── otp/verify/route.ts
+│   ├── auth/
+│   │   ├── otp/send/route.ts                          → OTP send (signup + password-reset intents)
+│   │   ├── otp/verify/route.ts                         → OTP verify (signup + password-reset intents)
+│   │   └── change-password/route.ts                    → Password update after reset OTP verify
 │       ├── approvals/
 │       │   ├── adviser/route.ts                        → Admin approves/rejects adviser signups
 │       │   └── treasurer/route.ts                      → Adviser approves/rejects treasurer signups
@@ -231,6 +234,28 @@ Checks: fs_document_number match, signature marks per signatory, page count matc
         ↓
 All pass → signed_document_urls saved → Event.status = archived (terminal)
 ```
+
+### Password Reset (Forgot Password)
+
+```
+User enters email at /forgot-password
+        ↓
+app/api/auth/otp/send (intent = "reset") → InsForge sends reset OTP to email
+        ↓
+User enters 6-digit code at /otp?purpose=reset
+        ↓
+app/api/auth/otp/verify (intent = "reset") → same OTP rules as signup
+        ↓
+On success → /change-password
+        ↓
+User sets new password + confirm → app/api/auth/change-password
+        ↓
+InsForge updates the password → /login
+```
+
+- OTP rules identical to signup: 10 min expiry, resend after 60s (max 5/hour), 5 wrong attempts locks and forces resend.
+- The `/otp` screen is shared between signup verification and password reset — distinguished by `intent` / `purpose`.
+- UI screens are mock-first in Phase 1 (`01`); real OTP-send / verify / password-update wiring lands in Phase 1 (`03`).
 
 ---
 

@@ -47,7 +47,7 @@ Build the complete landing page and auth screen UI.
 - Signup page — first/middle/last name, email, password, role selector (Treasurer | Adviser only), department picker (mock list)
 - OTP verification screen — 6-digit input, resend link (disabled countdown), "Verify" button
 - Pending approval screen — holding message, "we'll notify you" copy
-- Forgot password screen — email input → OTP → new password
+  - Forgot password screen — email → OTP (reset purpose) → change-password (new password + confirm password) → login
 
 **Logic:**
 
@@ -83,7 +83,7 @@ Wire the auth shell to InsForge Auth + OTP.
 - Signup role = Adviser → notification/queue entry routed to `/admin/approvals`
 - Signup role = Treasurer → routed to that department's active adviser's `/adviser/approvals` ("Pending Users" tab)
 - No blocking at signup even if the department already has an active adviser/treasurer
-- Forgot password: OTP-based reset, same OTP rules as signup
+  - Forgot password: OTP-based reset (reuses `app/api/auth/otp/send` + `otp/verify` with a reset intent; same OTP rules as signup) → `/change-password` (new password + confirm) → `/login`
 - Admin accounts are never created via `/signup` — role selector excludes "Admin" in UI and server-side validation
 
 ---

@@ -11,7 +11,6 @@ import AuthLink from "@/components/auth/AuthLink";
 export default function ForgotPasswordPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
   // ponytail: mock — real flow triggers the OTP-reset email via InsForge.
@@ -20,40 +19,28 @@ export default function ForgotPasswordPage() {
     e.preventDefault();
     setSubmitted(true);
     if (!email) return;
-    setSent(true);
+    router.push(`/otp?purpose=reset&email=${encodeURIComponent(email)}`);
   }
 
   return (
-    <AuthShell subtitle="Reset your password.">
+    <AuthShell subtitle="Reset your password." backHref="/login">
       <AuthCard title="Forgot password" subtitle="We'll send a reset code to your email.">
-        {sent ? (
-          <div className="flex flex-col gap-4">
-            <p className="text-sm font-normal text-text-secondary">
-              If an account exists for <span className="font-medium text-text-primary">{email}</span>,
-              a reset code is on its way. (Mock: no email is actually sent.)
-            </p>
-            <div className="pt-2">
-              <AuthLink href="/login">Back to sign in</AuthLink>
-            </div>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
-            <AuthInput
-              id="email"
-              label="Email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={setEmail}
-              required
-              error={submitted && !email}
-            />
-            <AuthButton type="submit">Send reset code</AuthButton>
-            <p className="text-center text-sm font-normal text-text-secondary">
-              Remembered it? <AuthLink href="/login">Sign in</AuthLink>
-            </p>
-          </form>
-        )}
+        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
+          <AuthInput
+            id="email"
+            label="Email"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={setEmail}
+            required
+            error={submitted && !email}
+          />
+          <AuthButton type="submit">Send reset code</AuthButton>
+          <p className="text-center text-sm font-normal text-text-secondary">
+            Remembered it? <AuthLink href="/login">Sign in</AuthLink>
+          </p>
+        </form>
       </AuthCard>
     </AuthShell>
   );

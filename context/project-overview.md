@@ -37,6 +37,8 @@ Public
   /signup
   /pending-approval
   /forgot-password
+  /otp                            → OTP verify (signup verification + password reset)
+  /change-password                → Set new password (password reset only)
 
 Treasurer
   /treasurer/home                          → Events list
@@ -98,6 +100,15 @@ Sidebar (web) / Bottom nav (mobile) — icons, minimal:
 - No blocking at signup even if the department already has an active adviser/treasurer — applications queue up and the reviewer manually decides when to deactivate the current holder and approve a replacement. No cooldown on rejected signups; the applicant may sign up again immediately.
 - Approved → `/login` → redirected by role to their home page.
 - Admin accounts are never created via signup — pre-provisioned only.
+
+### Password Reset (Forgot Password)
+
+- User requests a reset at `/forgot-password` by entering their account email.
+- A reset OTP is sent (same OTP rules as signup: 10 min expiry, resend after 60s, max 5/hour, 5 wrong attempts locks and forces resend).
+- User verifies the code at `/otp?purpose=reset` → routed to `/change-password`.
+- At `/change-password`, the user sets a **new password** and **confirms** it (both required, must match).
+- On success → `/login`.
+- Part of Phase 1: UI screens built first with mock submit handlers (no InsForge calls), real OTP-send / verify / password-update wired in Phase 1 / `03`.
 
 ### Event & Budget
 
@@ -167,6 +178,7 @@ All `Entry`, `Event`, `Report`, and file assets belong to `department_id`, not t
 ## Features In Scope
 
 - Signup/login with email OTP, role + department selection
+- Forgot-password reset flow: email → OTP → set new password (Phase 1)
 - Admin approval of adviser signups; adviser approval of treasurer signups
 - One active adviser + one active treasurer per department, enforced at the DB level
 - Event creation with immutable-after-spend budget
