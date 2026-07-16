@@ -40,6 +40,9 @@ const STEPS = [
   { n: "03", title: "Report", body: "Generate the financial report, route it to your adviser, get it signed, then anchor and archive." },
 ];
 
+const cardClass =
+  "flex h-full flex-col rounded-lg border border-border bg-surface p-8 shadow-[0px_1px_2px_rgba(17,17,20,0.04),0px_1px_3px_rgba(17,17,20,0.06)]";
+
 export default function LandingPage() {
   return (
     <main className="flex min-h-full flex-col bg-background font-sans">
@@ -60,7 +63,7 @@ export default function LandingPage() {
             <a href="#features" className="rounded-md px-3 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary">Features</a>
             <a href="#how" className="rounded-md px-3 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary">How it works</a>
             <Link href="/login" className="ml-2 rounded-md px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary">Sign in</Link>
-            <Link href="/signup" className="ml-1 rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent-hover">Get started</Link>
+            <Link href="/signup" className="ml-1 rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent-hover">Get started</Link>
           </nav>
 
           {/* Mobile menu */}
@@ -82,18 +85,18 @@ export default function LandingPage() {
       </header>
 
       {/* Hero — eyebrow → headline → subcopy → CTAs */}
-      <section className="mx-auto w-full max-w-[1440px] px-4 pb-16 pt-20 text-center md:px-8 md:pb-24 md:pt-32">
-        <span className="mb-6 inline-flex items-center rounded-full bg-accent-light px-3 py-1 text-xs font-medium text-text-dark">
+      <section className="mx-auto w-full max-w-[1440px] px-4 pb-20 pt-24 text-center md:px-8 md:pb-28 md:pt-40">
+        <span className="mb-7 inline-flex items-center rounded-full bg-accent-light px-3.5 py-1.5 text-xs font-medium text-text-dark">
           For Mabini Colleges department councils
         </span>
-        <h1 className="mx-auto max-w-3xl text-[34px] font-bold leading-[1.1] tracking-tight text-text-primary sm:text-[48px] md:text-[56px]">
+        <h1 className="mx-auto max-w-3xl text-[34px] font-bold leading-[1.12] tracking-tight text-text-primary sm:text-[48px] md:text-[56px]">
           From receipt to signed report — all in one place.
         </h1>
-        <p className="mx-auto mt-6 max-w-xl text-base font-normal text-text-secondary md:text-lg">
+        <p className="mx-auto mt-7 max-w-xl text-base font-normal text-text-secondary md:text-lg">
           Log expenses, track your budget in real time, and hand your adviser a signed,
           verifiable report — without the paper trail.
         </p>
-        <div className="mt-10 flex items-center justify-center gap-3">
+        <div className="mt-12 flex items-center justify-center gap-3">
           <Link href="/signup" className="rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent-hover">Get started</Link>
           <Link href="/login" className="rounded-full border border-border bg-surface px-6 py-3 text-sm font-medium text-text-primary transition-colors hover:border-border-strong hover:bg-surface-secondary">Sign in</Link>
         </div>
@@ -114,47 +117,47 @@ export default function LandingPage() {
       </section>
 
       {/* Features — eyebrow → heading → intro → cards */}
-      <section id="features" className="mx-auto w-full max-w-[1440px] px-4 py-20 md:px-8 md:py-28">
-        <div className="mx-auto mb-14 max-w-2xl text-center">
+      <section id="features" className="mx-auto w-full max-w-[1440px] px-4 py-28 md:px-8 md:py-36">
+        <div className="mx-auto mb-16 max-w-2xl text-center">
           <p className="text-xs font-medium uppercase tracking-[0.08em] text-text-muted">Capabilities</p>
           <h2 className="mt-3 text-base font-semibold text-text-primary">Features</h2>
           <div className="mx-auto mt-3 h-0.5 w-12 rounded-full bg-accent" />
-          <p className="mx-auto mt-5 max-w-xl text-sm font-normal text-text-secondary">
+          <p className="mx-auto mt-6 max-w-xl text-sm font-normal text-text-secondary">
             Everything a department council needs to keep liquidation honest and effortless.
           </p>
         </div>
         <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
           {FEATURES.map((feature) => (
-            <div key={feature.title} className="rounded-lg border border-border bg-surface p-6 shadow-[0px_1px_2px_rgba(17,17,20,0.04),0px_1px_3px_rgba(17,17,20,0.06)]">
-              <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-accent-muted text-accent">{feature.icon}</span>
-              <h3 className="mt-5 text-base font-semibold text-text-primary">{feature.title}</h3>
-              <p className="mt-2 text-sm font-normal leading-5 text-text-secondary">{feature.body}</p>
+            <div key={feature.title} className={cardClass}>
+              <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-accent-muted text-accent">{feature.icon}</span>
+              <h3 className="mt-6 text-base font-semibold text-text-primary">{feature.title}</h3>
+              <p className="mt-3 text-sm font-normal leading-6 text-text-secondary">{feature.body}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* How it works — eyebrow → heading → cards */}
-      <section id="how" className="mx-auto w-full max-w-[1440px] px-4 pb-20 md:px-8 md:pb-28">
-        <div className="mx-auto mb-14 max-w-2xl text-center">
+      <section id="how" className="mx-auto w-full max-w-[1440px] px-4 pb-28 md:px-8 md:pb-36">
+        <div className="mx-auto mb-16 max-w-2xl text-center">
           <p className="text-xs font-medium uppercase tracking-[0.08em] text-text-muted">The process</p>
           <h2 className="mt-3 text-base font-semibold text-text-primary">How it works</h2>
           <div className="mx-auto mt-3 h-0.5 w-12 rounded-full bg-accent" />
         </div>
         <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
           {STEPS.map((step) => (
-            <div key={step.n} className="rounded-lg border border-border bg-surface p-6 shadow-[0px_1px_2px_rgba(17,17,20,0.04),0px_1px_3px_rgba(17,17,20,0.06)]">
+            <div key={step.n} className={cardClass}>
               <div className="text-sm font-semibold text-accent">{step.n}</div>
-              <h3 className="mt-3 text-base font-semibold text-text-primary">{step.title}</h3>
-              <p className="mt-2 text-sm font-normal leading-5 text-text-secondary">{step.body}</p>
+              <h3 className="mt-4 text-base font-semibold text-text-primary">{step.title}</h3>
+              <p className="mt-3 text-sm font-normal leading-6 text-text-secondary">{step.body}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* Final CTA — eyebrow → heading → subcopy → button */}
-      <section className="mx-auto w-full max-w-[1440px] px-4 pb-20 md:px-8">
-        <div className="rounded-lg border border-border bg-surface px-6 py-14 text-center shadow-[0px_1px_2px_rgba(17,17,20,0.04),0px_1px_3px_rgba(17,17,20,0.06)] md:px-10">
+      <section className="mx-auto w-full max-w-[1440px] px-4 pb-28 md:px-8">
+        <div className="rounded-lg border border-border bg-surface px-6 py-16 text-center shadow-[0px_1px_2px_rgba(17,17,20,0.04),0px_1px_3px_rgba(17,17,20,0.06)] md:px-10 md:py-20">
           <p className="text-xs font-medium uppercase tracking-[0.08em] text-text-muted">Get started</p>
           <h2 className="mx-auto mt-3 max-w-xl text-base font-semibold text-text-primary">
             Ready to get your council&rsquo;s liquidation in order?
@@ -162,7 +165,7 @@ export default function LandingPage() {
           <p className="mx-auto mt-4 max-w-md text-sm font-normal text-text-secondary">
             Create an event, invite your treasurer, and close the loop from first receipt to final signature.
           </p>
-          <div className="mt-8 flex items-center justify-center">
+          <div className="mt-9 flex items-center justify-center">
             <Link href="/signup" className="rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent-hover">Get started</Link>
           </div>
         </div>
@@ -170,7 +173,7 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="mt-auto border-t border-border bg-surface">
-        <div className="mx-auto flex max-w-[1440px] flex-col items-start justify-between gap-2 px-4 py-8 sm:flex-row sm:items-center md:px-8">
+        <div className="mx-auto flex max-w-[1440px] flex-col items-start justify-between gap-2 px-4 py-10 sm:flex-row sm:items-center md:px-8">
           <div className="flex items-center gap-2">
             <svg width="22" height="22" viewBox="0 0 32 32" fill="none" aria-hidden="true">
               <rect x="3" y="3" width="26" height="26" rx="7" stroke="var(--color-accent)" strokeWidth="2" />

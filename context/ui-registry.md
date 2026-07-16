@@ -59,9 +59,11 @@ Last updated: YYYY-MM-DD
 ### LandingPage
 
 File: app/page.tsx
-Last updated: 2026-07-12 (redesigned from Figma; refined for Antigravity-style whitespace + per-section visual hierarchy)
+Last updated: 2026-07-17 (GSAP animation removed; plain server component, more whitespace + consistent card sizing)
 
-- Public route (no auth). Server Component, no `"use client"` needed.
+- Public route (no auth). Server Component, no `"use client"` needed. (The earlier GSAP `LandingAnimations` wrapper was deleted 2026-07-17 — no animation library on the landing page.)
+- More whitespace: hero `pt-24 md:pt-40 pb-20 md:pb-28`; feature/how sections `py-28 md:py-36`; CTA `py-16 md:py-20`; intro block `mb-16`; hero CTA `mt-12`. Exceeds `ui-rules.md` 24/32px caps (pre-approved airy deviation, same as 2026-07-12).
+- Consistent card sizing: both feature + how grids use one shared `cardClass` (`flex h-full flex-col ... p-8`), grids `items-stretch` (default) so all cards match tallest in row; icon tiles `h-12 w-12`, title `mt-6`, body `leading-6` for even rhythm.
 - Structure mirrors Figma (web `#154:23` + mobile `#156:87`): sticky header (logo + nav), centered hero (eyebrow + H1 + subcopy + dual CTAs) followed by a product-visual panel, Features (×3), How it works (×3), final CTA card, footer.
 - Page max-width `max-w-[1440px]`, `px-4 md:px-8` (16px mobile / 32px desktop) per `ui-rules.md`.
 - Header: `sticky top-0` `bg-surface/90 backdrop-blur` `border-b border-border`, inner `h-16` flex. Logo = inline monoline SVG mark (`--color-accent`) + 20px/700 wordmark. Desktop nav (`md:flex`): ghost links "Features"/"How it works" (anchor `#features`/`#how`) + "Sign in" (`/login`) + "Get started" primary (`/signup`). Mobile (`md:hidden`): `<details>`/`<summary>` hamburger (3-line SVG, `list-none [&::-webkit-details-marker]:hidden`) → absolute dropdown with the same links + buttons; no client JS.
