@@ -7,8 +7,9 @@ Update this file after every completed feature. Any AI agent reading this should
 ## Current Status
 
 **Phase:** Phase 2 — Admin: Departments & Approvals
-**Last completed:** 05 Admin Departments Page — Full UI
-**Next:** 06 Admin Departments — Real Data + Mutations
+**Last completed:** 06.1 Admin Departments — Server Actions (create, toggle active, toggle user status)
+**Next:** 06.2 Admin Departments — Server Pages (departments list, department detail)
+**Status:** Step 06 complete — Server Actions (`actions/departments.ts`), Server Component pages (`page.tsx` × 2), Client wrapper (`DepartmentsListClient`, `DepartmentDetailClient`). Events/Reports/Audit tabs remain empty states until those phases land.
 
 ---
 
@@ -28,7 +29,7 @@ Update this file after every completed feature. Any AI agent reading this should
 ### Phase 2 — Admin: Departments & Approvals
 
 - [x] 05 Admin Departments Page — Full UI
-- [ ] 06 Admin Departments — Real Data + Mutations
+- [x] 06 Admin Departments — Real Data + Mutations
 - [ ] 07 Admin Approvals — Adviser Signups
 
 ### Phase 3 — Adviser: Approvals

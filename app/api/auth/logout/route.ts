@@ -35,6 +35,8 @@ export async function POST(_req: NextRequest) {
       const opts = pendingCookieOpts.get(name);
       response.cookies.set(name, value, opts as Parameters<typeof response.cookies.set>[2]);
     }
+    // Clear role cookie so the proxy stops redirecting to dashboards on next visit
+    response.cookies.set("user_role", "", { path: "/", maxAge: 0 });
     return response;
   } catch (err) {
     console.error("[auth/logout]", err);

@@ -320,13 +320,16 @@ Last updated: 2026-07-17 (visual hierarchy + mobile bottom-nav session)
 | Mobile bottom nav  | `fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-surface md:hidden` |
 | Mobile FAB         | `fixed bottom-24 right-5 h-14 w-14 rounded-full bg-accent text-accent-foreground shadow-lg md:hidden` |
 
+**Animation:** Cards stagger-entry on mount/filter change via `gsap.fromTo` (`{ opacity: 0, y: 12 }` → `{ opacity: 1, y: 0 }`, `stagger: 0.04`, `duration: 0.3`, `ease: "power2.out"`). Applied to `gridRef` (web grid children) and `mobileRef` (mobile stack children). Effect re-runs on `filtered` dependency so search filtering re-triggers the animation.
+
 **Pattern notes:**
 Folder cards establish clear visual hierarchy (primary name → secondary code → tertiary adviser/treasurer → supporting status) so nothing shouts. Name leads, folder tile shrunk to quiet 9×9 top-right corner. Web grid `gap-x-5 gap-y-8`; mobile stack `gap-4`. Search + tabs row render unconditionally (behind modals). Mobile drops the top-tab bar in favour of a bottom nav that mirrors the sidebar (Departments/Approvals/Profile). `pb-28` clears the bottom nav on mobile. Mock data only; `tsc --noEmit` passes.
 
 ### DepartmentDetailPage
 
-File: app/admin/departments/[departmentId]/page.tsx
-Last updated: 2026-07-17 (folder-grid events/reports + responsive tables session)
+File: app/admin/departments/[departmentId]/page.tsx (Server Component)
+File: components/admin/DepartmentDetailClient.tsx (Client wrapper)
+Last updated: 2026-07-18 (extracted client wrapper, real data + Server Actions)
 
 **Layout:** `mx-auto flex flex-col gap-8 pb-24 md:pb-0`. Compact header (flat, no card chrome): `text-xl font-semibold md:text-2xl` name + `text-xs uppercase tracking-wide text-text-muted` code, `StatusBadge` quiet on right. Tabs: bottom-border bar `border-b border-border`, nav `overflow-x-auto`, active `border-b-2 border-accent text-accent` / inactive `border-transparent text-text-secondary hover:text-text-primary` (scrollable on mobile). Two content styles by data type:
 - **Events & Reports** → folder-grid cards (same language as DepartmentsPage): web `hidden grid-cols-1 gap-x-5 gap-y-8 sm:grid md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4`, cards `h-[180px] max-w-[280px] mx-auto rounded-xl border border-border-strong bg-surface p-6`. Event folder tile color-coded: **open** `bg-success-light text-success` + `text-success` status + `border-success/40`; **archived** `bg-accent-light text-accent` + `text-text-muted` + `border-border-strong`. Mobile stack `flex flex-col gap-4 md:hidden`.
@@ -340,6 +343,8 @@ Last updated: 2026-07-17 (folder-grid events/reports + responsive tables session
 | Folder grid      | `hidden grid-cols-1 gap-x-5 gap-y-8 sm:grid md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4` |
 | Table (desktop)  | `hidden md:block rounded-xl border border-border-strong bg-surface`; `px-6 py-3` cells |
 | Mobile cards     | `flex flex-col gap-4 md:hidden` |
+
+**Animation:** Tab content staggers on switch via `gsap.fromTo` (`{ opacity: 0, y: 10 }` → `{ opacity: 1, y: 0 }`, `stagger: 0.04`, `duration: 0.3`, `ease: "power2.out"`). Applied to `tabContentRef` (wrapper `<div key={activeTab}>`) children. The `key={activeTab}` forces remount so the effect always fires.
 
 **Pattern notes:**
 Mirrors the departments list visual language — calm, scannable, nothing shouts. Events/reports use folder cards (events color-coded by open/archived); users/audit use tables on desktop, stacked cards on mobile. Users tab: name primary, email/role/status secondary, right-aligned Deactivate (destructive outline) / Reactivate (secondary outline). `formatPHP()` for currency. Mock data only; `tsc --noEmit` passes.

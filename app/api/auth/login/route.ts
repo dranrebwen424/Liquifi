@@ -118,6 +118,14 @@ export async function POST(req: NextRequest) {
 
     // 6. Build success response — apply auth cookies to it
     const response = NextResponse.json({ success: true, redirectTo });
+    // Store role in a cookie so the proxy can redirect logged-in users to the right dashboard
+    response.cookies.set("user_role", profile.role, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 2, // 2 days
+    });
     for (const { name, value } of pendingCookies) {
       const opts = pendingCookieOpts.get(name);
       response.cookies.set(name, value, opts as Parameters<typeof response.cookies.set>[2]);

@@ -81,36 +81,29 @@ npm install @insforge/sdk@latest
 
 ```typescript
 // lib/insforge-client.ts — Browser context only (Client Components, auth state, realtime subs)
-import { createBrowserClient } from "@insforge/ssr";
+import { createClient } from "@insforge/sdk";
 
-export const insforge = createBrowserClient(
-  process.env.NEXT_PUBLIC_INSFORGE_URL!,
-  process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
-);
+export const insforge = createClient({
+  baseUrl: process.env.NEXT_PUBLIC_INSFORGE_URL!,
+  anonKey: process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
+});
 ```
 
 ```typescript
 // lib/insforge-server.ts — Server context only (API routes, Server Actions, agent functions)
-import { createServerClient } from "@insforge/ssr";
+import { createServerClient } from "@insforge/sdk/ssr";
 import { cookies } from "next/headers";
 
-export const createInsforgeServer = async () => {
+export async function createInsforgeServer() {
   const cookieStore = await cookies();
-  return createServerClient(
-    process.env.NEXT_PUBLIC_INSFORGE_URL!,
-    process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => cookieStore.getAll(),
-        setAll: (cookiesToSet) => {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options),
-          );
-        },
-      },
+  return createServerClient({
+    baseUrl: process.env.NEXT_PUBLIC_INSFORGE_URL!,
+    anonKey: process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
+    cookies: {
+      get: (name: string) => cookieStore.get(name)?.value ?? null,
     },
-  );
-};
+  });
+}
 ```
 
 **Rules:**
@@ -135,7 +128,7 @@ export const createInsforgeServer = async () => {
 ```typescript
 // Server context — get current user
 const insforge = await createInsforgeServer();
-const { data: { user }, error } = await insforge.auth.getUser();
+const { data: { user }, error } = await insforge.auth.getCurrentUser();
 if (!user) redirect("/login");
 ```
 
@@ -143,7 +136,48 @@ SDK returns `{ data, error }` for all operations. Always handle the `error` retu
 
 ---
 
-## Database Queries
+## Session Refresh (Auto-Renewal of Expired Tokens)
+
+Access tokens expire after a set time (~1 hour). Without automatic refresh, the user gets logged out mid-session when the token expires — even while actively using the app.
+
+The SDK handles this with two mechanisms:
+
+### 1. Proxy-level refresh (every request)
+
+`proxy.ts` (Next.js 16) or `middleware.ts` (Next.js 15 and earlier) runs `updateSession()` on every non-public request. This reads the refresh token cookie, exchanges it for new tokens if the access token is expired, and sets fresh cookies on the response.
+
+```typescript
+// proxy.ts (Next.js 16)
+import { updateSession } from "@insforge/sdk/ssr/middleware";
+import { NextResponse, type NextRequest } from "next/server";
+
+export async function proxy(request: NextRequest) {
+  const response = NextResponse.next({ request });
+  await updateSession({
+    requestCookies: request.cookies,
+    responseCookies: response.cookies,
+  });
+  // ... redirect logic
+  return response;
+}
+```
+
+### 2. Client-side refresh route
+
+The browser client calls `POST /api/auth/refresh` when the access token is missing or near expiry. The SDK provides a one-liner to create this route:
+
+```typescript
+// app/api/auth/refresh/route.ts
+import { createRefreshAuthRouter } from "@insforge/sdk/ssr";
+export const { POST } = createRefreshAuthRouter();
+```
+
+**Rules:**
+- Always wire `updateSession` in `proxy.ts` — without it, server-side `getCurrentUser()` calls fail on expired tokens, causing redirects to `/login`
+- The refresh route must exist at `POST /api/auth/refresh` for the browser client's auto-refresh mechanism to work
+- `responseCookies.set` writes `Set-Cookie` headers on the HTTP response — these travel back to the browser and update the stored cookies
+
+---
 
 Always scope to the current user's `department_id` (admin is unrestricted) — never query without this filter.
 

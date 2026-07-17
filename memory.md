@@ -1,69 +1,41 @@
-# Memory — Phase 1 Auth Wiring + Phase 2 Step 05 UI + Logout Bug Fix
+# Memory — Admin Departments Real Data + Anim Fix
 
-Last updated: 2026-07-17
+Last updated: 2026-07-18
 
 ## What was built
 
-**Auth foundation (Phase 1):**
-- **5 API routes** wired to InsForge SDK:
-  - `POST /api/auth/signup` — `signUp()` + `users` row insert + department auto-seed + notification routing (adviser→admin, treasurer→department adviser)
-  - `POST /api/auth/otp/send` — `resendVerificationEmail()` / `sendResetPasswordEmail()` (anti-enumeration, always returns 200)
-  - `POST /api/auth/otp/verify` — `verifyEmail()` / `exchangeResetPasswordToken()` with `otp_verified_at` stamp
-  - `POST /api/auth/change-password` — `resetPassword()` with token from OTP exchange
-  - `POST /api/auth/login` — `signInWithPassword()` + `account_status` check (rejected/pending/active) + role-based redirect URL
-- **`lib/insforge-client.ts`** — browser SDK via `createClient()`
-- **Auth page wiring** — signup, OTP, forgot-password, change-password call real APIs
-- **`proxy.ts`** (Next.js 16) — middleware cookie-based redirect hinting
-- **`lib/layout-guard.ts`** — `requireLayoutRole(role)` for server-side role enforcement
-- **3 route group layouts** — `app/(treasurer|adviser|admin)/layout.tsx` using `requireLayoutRole`
-- **3 role home pages** — `/treasurer/home`, `/adviser/home`, `/admin/departments` (placeholders)
-- Fixed pre-existing type errors in `lib/auth-guard.ts`, `lib/storage.ts`
-
-**Admin UI (Phase 2 step 05):**
-- `components/ui/StatusBadge.tsx` — shared status badge with preset mappers
-- `components/ui/EmptyState.tsx` — reusable empty state component
-- `components/admin/AdminSidebar.tsx` — client component, fixed sidebar, 3 nav items + profile dropdown
-- `app/admin/departments/page.tsx` — mock departments table + inline new-dept form
-- `app/admin/departments/[departmentId]/page.tsx` — dept header + 4 tabs (Events/Reports/Audit Logs/Users)
-- `lib/format.ts` — `formatPHP()` helper
-
-**Logout bug fix (this session):**
-- `app/api/auth/logout/route.ts` — SSR route using `createAuthActions().signOut()` with `responseCookies` callback (same `pendingCookies` → `response.cookies.set()` pattern as login route). Initial version omitted `responseCookies` → SDK threw "requires a writable cookie store"; fixed to match login pattern.
-- `components/admin/AdminSidebar.tsx` — logout button now POSTs to `/api/auth/logout` before navigating
+- **`app/admin/departments/page.tsx`** — rewritten as Server Component: fetches departments + active adviser/treasurer users from InsForge, maps names, passes `initialDepartments` to client component
+- **`components/admin/DepartmentDetailClient.tsx`** (new) — client wrapper with tabs (Users/Events/Reports/Audit Logs), real user deactivate/reactivate via `setUserAccountStatus`, loading states, error banner, responsive table/cards, GSAP stagger-in. Events/Reports/Audit tabs show empty states until those phases land
+- **`app/admin/departments/[departmentId]/page.tsx`** — rewritten as Server Component: fetches department + users by ID, `notFound()` on missing department, renders `<DepartmentDetailClient>`
+- **`actions/departments.ts`** — three Server Actions (`createDepartment`, `setDepartmentActive`, `setUserAccountStatus`), all guarded by `requireRole("admin")` with audit logs
 
 ## Decisions made (locked)
 
-- **Anti-enumeration on OTP send** — always returns 200 regardless of whether email exists
-- **`proxy.ts` over `middleware.ts`** — Next.js 16 requires export named `proxy`, not `middleware`
-- **`createServerClient` takes 1 object arg** — `{ cookies: { get: (name) => value } }` from `@insforge/sdk/ssr`
-- **`insforge.database.from(...)`** — SDK scopes DB queries under `database` property
-- **Middleware does cookie-surface check only** — real auth+role enforcement is in route group layouts
-- **Logout is SSR-only** — uses `createAuthActions()` for proper cookie clearing via CookieStore
-- **Best-effort logout** — navigates to `/login` even if API call fails
+- **Server Actions return `{ success, department }`** — `createDepartment` returns the new department object so the client can optimistically append to local state without waiting for revalidation
+- **User status transitions: active ↔ deactivated only** — `pending_approval`/`rejected` users cannot be toggled from admin; the Server Action validates transitions server-side
+- **Has-active flags are derived at query time** — `has_active_adviser`/`has_active_treasurer` computed from users table, not stored on departments
 
 ## Problems solved
 
-- `createServerClient` cookies.get adaptation — Next.js cookies return `{ name, value }` objects, SDK expects `string | undefined`
-- `middleware.ts` → `proxy.ts` rename — required changing exported function name
-- SDK type for `insforge.database.from(...)` — operations are under `insforge.database.*`, not `insforge.*`
-- **Logout button did nothing** — just ran `router.push("/login")` without calling `signOut()`. Auth cookie remained, so `proxy.ts` redirected authenticated users away from `/login` and `/signup` back to landing — making buttons appear dead.
-- Missing logout API route — project had none, created one using `createAuthActions().signOut()`
+- **New department didn't appear after creation** — `createDepartment` now returns `{ success, department }`, client optimistically appends `result.department` to local state with `setDepartments(prev => [...prev, ...])` then calls `router.refresh()` in background for server consistency
+- **Cards re-animated on every keystroke/click** — `useEffect` depended on `[filtered]` (a new array reference every render), so every search keystroke triggered GSAP stagger-in. Fixed: `useRef` guard + `[]` dependency; stagger runs once on mount only
+- **Investigated: mobile auth failure on create department** — traced through `createServerClient` SSR source (`node_modules/@insforge/sdk/dist/ssr.mjs`). Our custom `cookies: { get: ... }` wrapper in `lib/insforge-server.ts` returns `string | null` which matches SDK's expected interface. Root cause not confirmed — may be unrelated to cookie shape
 
 ## Current state
 
-- Build passes: 0 type errors, 19 routes compiled (6 API routes + proxy + auth pages + 3 role pages + admin pages)
-- All auth flows wired end-to-end: signup → OTP → pending-approval; forgot-password → OTP → change-password → login
-- Login checks `account_status`: rejected (403), pending (403), active (OK + role redirect)
-- Middleware blocks unauthenticated access to role-group routes
-- Route group layouts enforce role server-side
-- Admin departments full UI built with mock data (tabbed detail, StatusBadge, EmptyState)
-- Logout properly clears session and cookies; buttons work normally after logout
-- 5/30 features complete (Phase 1 steps 00-04, Phase 2 step 05)
+- Build passes: `tsc --noEmit` clean
+- Admin departments list page: renders real data, create works with instant UI update, search filters client-side
+- Admin department detail page: renders real data, user deactivate/reactivate works, tabs wired (Events/Reports/Audit show empty states)
+- Animation: stagger-in runs once on mount only, no re-trigger on search/type/click
+- Mobile create: functional but still under investigation for auth failure on some devices
 
 ## Next session starts with
 
-**Phase 2 — Step 06: Admin Departments — Real Data + Mutations.** Wire the admin departments UI to real InsForge DB queries and Server Actions (create dept, toggle `is_active`, deactivate/reactivate users).
+**Resolve mobile auth failure on department create.** Two paths remaining:
+1. Verify whether `createServerClient` fails silently on expired tokens — `createServerClient` does not auto-refresh (unlike `createBrowserClient`). The `updateSession` in `proxy.ts` is supposed to handle this, but only runs on requests that pass through the proxy.
+2. Test whether Server Action POSTs always get intercepted by `proxy.ts` — if not, the server client gets a stale/expired access token and `getCurrentUser()` returns `{ user: null }`, causing `requireRole` to throw "Authentication required".
 
 ## Open questions
 
-- `.env.local` has placeholder InsForge values — need real credentials before runtime testing.
+- Does `proxy.ts` intercept all Server Action POST requests in Next.js 16? If not, expired tokens in Server Actions would bypass session refresh.
+- Does the mobile-specific failure correlate with iOS Safari cookie restrictions or a specific browser?
