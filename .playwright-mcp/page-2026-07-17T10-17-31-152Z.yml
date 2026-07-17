@@ -1,0 +1,51 @@
+- generic [active] [ref=f1e1]:
+  - main [ref=f1e2]:
+    - generic [ref=f1e3]:
+      - link "Go back" [ref=f1e4] [cursor=pointer]:
+        - /url: /login
+      - link "Liquifi home" [ref=f1e7] [cursor=pointer]:
+        - /url: /
+        - generic [ref=f1e12]: Liquifi
+      - paragraph [ref=f1e13]: Request an account for your council.
+      - generic [ref=f1e14]:
+        - generic [ref=f1e15]:
+          - heading "Get Started" [level=1] [ref=f1e16]
+          - paragraph [ref=f1e17]: Advisers and treasurers sign up here.
+        - generic [ref=f1e18]:
+          - generic [ref=f1e19]:
+            - generic [ref=f1e21]:
+              - textbox "First name *" [ref=f1e22]:
+                - /placeholder: " "
+              - generic: First name *
+            - generic [ref=f1e24]:
+              - textbox "Last name *" [ref=f1e25]:
+                - /placeholder: " "
+              - generic: Last name *
+          - generic [ref=f1e27]:
+            - textbox "Middle name (optional)" [ref=f1e28]:
+              - /placeholder: " "
+            - generic: Middle name (optional)
+          - generic [ref=f1e30]:
+            - textbox "Email *" [ref=f1e31]:
+              - /placeholder: " "
+            - generic: Email *
+          - generic [ref=f1e33]:
+            - textbox "Password *" [ref=f1e34]:
+              - /placeholder: " "
+            - generic: Password *
+            - button "Show password" [ref=f1e35]
+          - generic [ref=f1e42]:
+            - button "Role" [ref=f1e43]:
+              - generic [ref=f1e44]: Treasurer
+            - generic: Role
+          - generic [ref=f1e48]:
+            - button "Department" [ref=f1e49]:
+              - generic [ref=f1e50]: Computer Studies (CCS)
+            - generic: Department
+          - button "Create account" [ref=f1e53]
+          - paragraph [ref=f1e54]:
+            - text: Already have an account?
+            - link "Sign in" [ref=f1e55] [cursor=pointer]:
+              - /url: /login
+  - button "Open Next.js Dev Tools" [ref=f1e61] [cursor=pointer]
+  - alert [ref=f1e65]

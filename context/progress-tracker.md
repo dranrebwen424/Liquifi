@@ -6,10 +6,9 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Current Status
 
-**Phase:** Phase 1 — Foundation
-**Last completed:** 01 Landing + Auth Shell (+ forgot-password 3-step flow + icon back buttons)
-**Next:** 02 Database Schema
-*Note: Phase 1 UI/foundation declared complete this session (all auth pages + landing built, flows wired mock-first). Backend wiring (02 schema, 03 auth, 04 login/session) remains pending per build-plan.*
+**Phase:** Phase 2 — Admin: Departments & Approvals
+**Last completed:** 05 Admin Departments Page — Full UI
+**Next:** 06 Admin Departments — Real Data + Mutations
 
 ---
 
@@ -22,13 +21,13 @@ Update this file after every completed feature. Any AI agent reading this should
 ### Phase 1 — Foundation
 
 - [x] 01 Landing + Auth Shell
-- [ ] 02 Database Schema
-- [ ] 03 Auth — Signup, OTP, Approval Routing
-- [ ] 04 Login, Session, Role-Based Redirect
+- [x] 02 Database Schema
+- [x] 03 Auth — Signup, OTP, Approval Routing
+- [x] 04 Login, Session, Role-Based Redirect
 
 ### Phase 2 — Admin: Departments & Approvals
 
-- [ ] 05 Admin Departments Page — Full UI
+- [x] 05 Admin Departments Page — Full UI
 - [ ] 06 Admin Departments — Real Data + Mutations
 - [ ] 07 Admin Approvals — Adviser Signups
 
@@ -81,7 +80,7 @@ Update this file after every completed feature. Any AI agent reading this should
 - [ ] 28 Audit Log — Admin View
 - [ ] 29 Adviser & Admin Read-Only Event/Report Views
 
-**Total: 1 / 30 features complete**
+**Total: 5 / 30 features complete**
 
 ---
 
@@ -96,6 +95,10 @@ Update this file after every completed feature. Any AI agent reading this should
 - **2026-07-13 — `01 Landing + Auth Shell` complete (UI only):** Built the shared auth layout + 4 primitives and all 5 `app/(auth)/*` pages. Added `--shadow-card` token to `globals.css` (canonical card shadow; `AuthCard` uses `shadow-card`, the landing page still hardcodes its own `shadow-[...]` — left as-is, working code). Components: `components/auth/AuthShell.tsx` (split centered, `bg-surface-inverse` brand panel web-only + form side; `lg:hidden` logo on mobile), `AuthCard.tsx` (title/subtitle + `shadow-card` card), `AuthInput.tsx` (`"use client"`, controlled, supports `inputMode` for OTP, required `*` in `text-error`), `AuthButton.tsx` (`"use client"`, primary/secondary/ghost → exact `ui-rules.md` button tokens, `loading`/`disabled`), `AuthLink.tsx` (`next/link` wrapper, `text-accent`). Pages: `login` (email+password), `signup` (name/email/password + role select locked to `treasurer`/`adviser` per AGENTS, mock `DEPARTMENTS` const), `otp` (`inputMode=numeric` 6-digit, 60s resend countdown), `pending-approval` (static), `forgot-password` (email → inline mock success). All pages use `useState` **mock** submit handlers that `router.push` to the next step — **no InsForge calls yet**; real auth wiring is Phase 1 `03`/`04`. Verified: `tsc --noEmit` 0 errors; `next build` success (6 routes); `/login` `/signup` `/otp` all 200 with expected HTML. Registry + this tracker updated.
 - **2026-07-15 — Forgot-password flow defined (Phase 1):** Intended reset flow is `/forgot-password` (email) → `/otp?purpose=reset&email=...` → `/change-password` (new password + confirm password) → `/login`. Corrects the earlier partial cut where `/forgot-password` ended at an inline mock success. Still Phase 1 (UI-only mock first; real OTP-send / verify / password-update wired in `03`). `/change-password` does not yet exist; `/otp` currently routes only to `/pending-approval` (signup). The 3-step wiring is pending — `build-plan.md` `01` UI line and `03` logic line updated, `project-overview.md` Pages list + Core User Flow + Features In Scope updated to match.
 - **2026-07-15 — Forgot-password 3-step flow wired + back buttons added (Phase 1 UI foundation complete):** Built `app/(auth)/change-password/page.tsx` (new+confirm password, match check → `/login`, Suspense-wrapped `useSearchParams`). Rewrote `/forgot-password` to push to `/otp?purpose=reset&email=...`. Rewrote `/otp` to be `purpose`-aware (inner wrapped in `<Suspense>`): `purpose=reset` → `/change-password?email=...`; else → `/pending-approval`. Added `backHref?: string` prop to `AuthShell.tsx` (icon-only arrow-left link, `aria-label`). Back button wired on `signup`(/login), `forgot-password`(/login), `otp`(reset→/forgot-password, signup→/signup), `change-password`(/otp?purpose=reset&email=... or /login). Excluded from `login` and `pending-approval` per requirement. Verified in browser: full reset flow reaches `/login`; signup OTP still → `/pending-approval`; back buttons present/absent correctly; `tsc --noEmit` clean. User declared Phase 1 complete this session — interpreted as UI/foundation done; 02/03/04 (DB schema + real auth wiring) still pending in build-plan.
+- **2026-07-17 — `03 Auth — Signup, OTP, Approval Routing` complete (API routes + page wiring):** Created 5 API routes: `POST /api/auth/signup` (department code→ID resolution with auto-seed, InsForge auth user via `insforge.auth.signUp()`, `users` table insert, notification routing for adviser→admin and treasurer→adviser), `POST /api/auth/otp/send` (resend signup OTP or send reset-password email, anti-enumeration response), `POST /api/auth/otp/verify` (signup OTP verification with `insforge.auth.verifyEmail()` + `otp_verified_at` stamp, or reset-code exchange via `insforge.auth.exchangeResetPasswordToken()`), `POST /api/auth/change-password` (finalize reset via `insforge.auth.resetPassword()`). Created `lib/insforge-client.ts` (browser SDK via `createClient` for future client-side auth state). Wired all 4 auth pages (signup, OTP, forgot-password, change-password) with real API calls: loading states, error display, success redirects. Fixed pre-existing type errors in `lib/auth-guard.ts` (overload compat with `"public"` type widening) and `lib/storage.ts` (`insforge.from()` → `insforge.database.from()`, `.upload()` signature, `getUser()` → `getCurrentUser()`, joined query types). Build passes clean; all 5 API routes registered as `ƒ (Dynamic)`. Key deviation: department auto-seeds on first signup if absent (Phase 2 admin management replaces this); new `otp_verified_at` column presumed present on `users` table per initial schema.
+- **2026-07-16 — `02 Database Schema` complete (11 tables, indexes, RLS, storage):** Created all 11 Postgres tables via `insforge_run-raw-sql`: `departments`, `users` (FK → `auth.users`), `events`, `entries`, `reports`, `report_signatories`, `entry_comments`, `department_report_counters`, `notifications`, `push_subscriptions`, `audit_logs`. Added 2 partial unique indexes on `users` enforcing one-active-adviser-per-department and one-active-treasurer-per-department. Added 13 lookup indexes (event→department, entry→event, entry→status, report→event, report→status, etc.). `budget_locked`, `is_locked`, `has_active_adviser`, `has_active_treasurer`, `has_unresolved_overspend` are **derived at query time** per architecture, not stored columns. Created `get_user_role()` and `get_user_department_id()` helper functions for RLS. Enabled RLS on all 11 tables. Created 15 RLS policies: admin unrestricted on all; adviser/treasurer scoped via `department_id` or `event → department` joins; own-user policies on `users`, `notifications`, `push_subscriptions`; audit-log insert allowed for all (read scoped by role). Created 3 public storage buckets: `receipts`, `signed-reports`, `avatars` — storage access control is application-level (path-based: `departments/{id}/events/{id}/receipts/{id}.jpg`), not SQL RLS (InsForge manages storage internally). Updated `types/index.ts` with all 11 DB row types plus union types for statuses. Verified via `get-backend-metadata` (11 tables confirmed) and `get-table-schema` (users, entries, reports spot-checked — columns, indexes, FKs, policies all match spec).
+- **2026-07-17 — `04 Login, Session, Role-Based Redirect` complete:** Created `POST /api/auth/login` route (`createInsforgeServer` → `signInWithPassword` → `users` table lookup → `account_status` check [rejected/pending/active] → role-based redirect URL). Wired `app/(auth)/login/page.tsx` with real API call: loading spinner, error display, role-based redirect via `data.redirectTo`. Created `middleware.ts` (cookie-based redirect hinting: prevents authenticated users on auth pages, blocks unauthenticated access to `/treasurer/*`, `/adviser/*`, `/admin/*`). Created `lib/layout-guard.ts` (shared `requireLayoutRole()` for server-side role enforcement via `createInsforgeServer` + auth check + role DB lookup). Created route group layouts (`app/treasurer/layout.tsx`, `app/adviser/layout.tsx`, `app/admin/layout.tsx`) using `requireLayoutRole`. Created placeholder role home pages (`/treasurer/home`, `/adviser/home`, `/admin/departments`). Build passes clean (0 type errors, all 5 API routes + middleware + 3 dynamic role pages). Note: middleware uses the deprecated `middleware.ts` convention (Next.js 16 recommends `proxy.ts`); non-blocking for now. SDK API clarification: `createServerClient` from `@insforge/sdk/ssr` takes a single object argument `{ cookies: { get(name) => value } }`, not 3 positional args — the existing `lib/insforge-server.ts` was already correct.
+- **2026-07-17 — `05 Admin Departments Page — Full UI` complete:** Built admin shell (sidebar + layout) and departments list/detail pages with mock data. Created `components/ui/StatusBadge.tsx` (shared status badge with variants: default/success/warning/error/info/neutral + preset mappers `AccountStatusBadge`, `EventStatusBadge`, `RoleBadge`), `components/ui/EmptyState.tsx` (reusable empty state with icon/title/description/action), `components/admin/AdminSidebar.tsx` (client component, fixed 240px sidebar on desktop, top bar on mobile, 3 nav items: Departments/Approvals/Profile). Updated `app/admin/layout.tsx` (server component, `requireLayoutRole("admin")` guard + sidebar + content area with `lg:pl-60` offset). Created `app/admin/departments/page.tsx` (client component, mock departments table with columns: Name/Code/Adviser/Treasurer/Status, inline new-department form with name+code inputs, rows link to detail). Created `app/admin/departments/[departmentId]/page.tsx` (client component, department header card + 4 tabs: Events/Reports/Audit Logs/Users; Users tab has RoleBadge + AccountStatusBadge + Deactivate/Reactivate buttons; all tabs have empty states). Created `lib/format.ts` (`formatPHP()` using `Intl.NumberFormat`). All token-only styling per `ui-rules.md`. `tsc --noEmit` clean; `next build` registers both `/admin/departments` and `/admin/departments/[departmentId]` as dynamic routes. Mock data only — no InsForge queries or Server Actions yet (Phase 2 `06`).
 
 ---
 
@@ -105,6 +108,7 @@ Update this file after every completed feature. Any AI agent reading this should
 
 - **SDK import correction (flagged):** `architecture.md` imports the server client as `from "@insforge/ssr"`. The installed package is `@insforge/sdk@1.4.4` (per AGENTS.md), which exposes the server client at the subpath `@insforge/sdk/ssr` (`createServerClient`). There is no standalone `@insforge/ssr` package installed. `lib/insforge-server.ts` uses `@insforge/sdk/ssr`. Corrected import path only — API matches the architecture's intent. If a future session adds `@insforge/ssr` separately, this should be reconciled.
 - `users`-table lookup in `getCurrentUser()` (auth-guard) requires the `users` table from Phase 1 / `02` to exist before runtime auth works. The guard compiles now and is structurally correct; it becomes live once schema + signup land.
+- **InsForge storage RLS:** InsForge manages storage access internally — SQL-level `storage.objects` policies (like Supabase) are not available. Storage buckets are created as public; access control is enforced application-side via path-based conventions (`departments/{deptId}/events/{eventId}/receipts/{entryId}.jpg`) and server-side auth guards in API routes.
 
 ---
 

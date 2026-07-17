@@ -13,12 +13,17 @@ const RESEND_SECONDS = 60;
 function OtpPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const isReset = searchParams.get("purpose") === "reset";
+  // intent=signup | reset — accept both `intent` (new) and `purpose` (legacy compat)
+  const intentParam = searchParams.get("intent") || searchParams.get("purpose") || "signup";
+  const isReset = intentParam === "reset";
   const email = searchParams.get("email") ?? "";
 
   const [code, setCode] = useState("");
   const [secondsLeft, setSecondsLeft] = useState(RESEND_SECONDS);
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState("");
+  const [resetToken, setResetToken] = useState("");
 
   useEffect(() => {
     if (secondsLeft <= 0) return;
@@ -26,16 +31,51 @@ function OtpPageInner() {
     return () => clearTimeout(t);
   }, [secondsLeft]);
 
-  // ponytail: mock — real flow verifies the OTP via InsForge.
-  // purpose=reset → /change-password; signup → /pending-approval.
-  function handleVerify(e: React.FormEvent) {
+  async function handleVerify(e: React.FormEvent) {
     e.preventDefault();
     setSubmitted(true);
+    setApiError("");
     if (!code) return;
-    if (isReset) {
-      router.push(`/change-password?email=${encodeURIComponent(email)}`);
-    } else {
-      router.push("/pending-approval");
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/otp/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code, intent: intentParam }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setApiError(data.error || "Verification failed.");
+        return;
+      }
+      if (isReset && data.token) {
+        setResetToken(data.token);
+        router.push(`/change-password?email=${encodeURIComponent(email)}&token=${encodeURIComponent(data.token)}`);
+      } else {
+        router.push("/pending-approval");
+      }
+    } catch {
+      setApiError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleResend() {
+    setSecondsLeft(RESEND_SECONDS);
+    setApiError("");
+    try {
+      const res = await fetch("/api/auth/otp/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, intent: intentParam }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setApiError(data.error || "Failed to resend code.");
+      }
+    } catch {
+      setApiError("Something went wrong.");
     }
   }
 
@@ -53,11 +93,14 @@ function OtpPageInner() {
         }
       >
         <form onSubmit={handleVerify} noValidate className="flex flex-col gap-6">
-          <AuthOtpInput value={code} onChange={setCode} error={submitted && !code} />
-          <AuthButton type="submit">Verify</AuthButton>
+          <AuthOtpInput value={code} onChange={(v) => { setCode(v); if (apiError) setApiError(""); }} error={submitted && !code} />
+          {apiError && (
+            <p className="text-sm text-red-500 text-center">{apiError}</p>
+          )}
+          <AuthButton type="submit" loading={loading}>Verify</AuthButton>
           <button
             type="button"
-            onClick={() => setSecondsLeft(RESEND_SECONDS)}
+            onClick={handleResend}
             disabled={secondsLeft > 0}
             className={`text-center text-sm font-medium outline-none transition-colors ${
               secondsLeft > 0

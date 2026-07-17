@@ -29,20 +29,47 @@ export default function SignupPage() {
     department: DEPARTMENTS[0].code,
   });
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState("");
 
   function set(key: keyof typeof form, value: string) {
     setForm((prev) => ({ ...prev, [key]: value }));
+    if (apiError) setApiError("");
   }
 
-  // ponytail: mock — real flow writes the users row (account_status = pending_approval)
-  // then routes to OTP verification per the AGENTS.md signup flow.
-  // Validate on submit: empty required fields turn red instead of greying the button.
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitted(true);
+    setApiError("");
     const valid = form.firstName && form.lastName && form.email && form.password;
     if (!valid) return;
-    router.push("/otp");
+
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: form.firstName,
+          middleName: form.middleName,
+          lastName: form.lastName,
+          email: form.email,
+          password: form.password,
+          role: form.role,
+          departmentCode: form.department,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setApiError(data.error || "Signup failed. Please try again.");
+        return;
+      }
+      router.push(`/otp?email=${encodeURIComponent(form.email)}&intent=signup`);
+    } catch {
+      setApiError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -76,7 +103,10 @@ export default function SignupPage() {
             options={DEPARTMENTS.map((d) => ({ value: d.code, label: `${d.name} (${d.code})` }))}
           />
 
-          <AuthButton type="submit">Create account</AuthButton>
+          {apiError && (
+            <p className="text-sm text-red-500 text-center">{apiError}</p>
+          )}
+          <AuthButton type="submit" loading={loading}>Create account</AuthButton>
           <p className="text-center text-sm font-normal text-text-secondary">
             Already have an account? <AuthLink href="/login">Sign in</AuthLink>
           </p>

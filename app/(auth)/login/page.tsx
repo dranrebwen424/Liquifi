@@ -14,14 +14,32 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState("");
 
-  // ponytail: mock — real flow calls InsForge auth, then routes to the role home.
-  // Validate on submit: empty required fields turn red instead of greying the button.
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitted(true);
+    setApiError("");
     if (!email || !password) return;
-    router.push("/");
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setApiError(data.error || "Invalid email or password.");
+        return;
+      }
+      router.push(data.redirectTo);
+    } catch {
+      setApiError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -53,7 +71,10 @@ export default function LoginPage() {
             required
             error={submitted && !password}
           />
-          <AuthButton type="submit">
+          {apiError && (
+            <p className="text-sm text-red-500 text-center">{apiError}</p>
+          )}
+          <AuthButton type="submit" loading={loading}>
             Sign in
           </AuthButton>
           <div className="flex justify-center">

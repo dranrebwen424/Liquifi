@@ -252,37 +252,35 @@ See `architecture.md` for full schema: `report_signatories`, `entry_comments`, `
 
 ## Storage
 
+Three buckets: `receipts` (private), `signed-reports` (private), `avatars` (public).
+
 Keyed by ID, not name — stable across renames:
 
 ```
-storage/
-  departments/{department_id}/
-    events/{event_id}/
-      receipts/{entry_id}.jpg
-      reports/{report_id}.pdf
-      signed/{report_id}/page-{n}.jpg
+receipts/{department_id}/events/{event_id}/receipts/{entry_id}.jpg
+signed-reports/{department_id}/reports/{report_id}/page-{n}.jpg
+avatars/{user_id}.jpg
 ```
 
-```typescript
-// Upload
-const { data, error } = await insforge.storage
-  .from("departments")
-  .upload(`${departmentId}/events/${eventId}/receipts/${entryId}.jpg`, fileBuffer, {
-    contentType: "image/jpeg",
-    upsert: false,
-  });
+**All storage access goes through `lib/storage.ts` helpers** — never call SDK storage directly. Helpers handle auth, ownership verification, and presigned URLs.
 
-// Get public URL
-const { data } = insforge.storage
-  .from("departments")
-  .getPublicUrl(`${departmentId}/events/${eventId}/receipts/${entryId}.jpg`);
+```typescript
+// Upload receipt (treasurer only, ownership verified via event)
+import { uploadReceipt, getReceiptUrl } from "@/lib/storage";
+
+const { url, key } = await uploadReceipt(eventId, entryId, file);
+
+// Get presigned URL (treasurer/adviser, ownership verified via entry)
+const presignedUrl = await getReceiptUrl(eventId, entryId);
 ```
 
 **Rules:**
 - `upsert: false` everywhere — never overwrite existing files
-- Always save the public URL back to the DB after upload
-- Signed pages keyed by `{report_id}`, not event — prevents collision across rejection/regeneration cycles
+- Private buckets use presigned URLs (expire ~1hr) — never cache long-term
+- Ownership verified via DB joins: `entries → event → department_id`
+- `deptId` never passed as parameter — derived from authenticated user
 - Never write files to disk — always upload buffer directly to storage
+- `avatars` stays public — profile pics are non-sensitive
 
 ---
 

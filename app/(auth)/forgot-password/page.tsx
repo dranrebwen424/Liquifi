@@ -12,14 +12,32 @@ export default function ForgotPasswordPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState("");
 
-  // ponytail: mock — real flow triggers the OTP-reset email via InsForge.
-  // Validate on submit: empty email turns red instead of greying the button.
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitted(true);
+    setApiError("");
     if (!email) return;
-    router.push(`/otp?purpose=reset&email=${encodeURIComponent(email)}`);
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/otp/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, intent: "reset" }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setApiError(data.error || "Failed to send reset code.");
+        return;
+      }
+      router.push(`/otp?email=${encodeURIComponent(email)}&intent=reset`);
+    } catch {
+      setApiError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -36,7 +54,10 @@ export default function ForgotPasswordPage() {
             required
             error={submitted && !email}
           />
-          <AuthButton type="submit">Send reset code</AuthButton>
+          {apiError && (
+            <p className="text-sm text-red-500 text-center">{apiError}</p>
+          )}
+          <AuthButton type="submit" loading={loading}>Send reset code</AuthButton>
           <p className="text-center text-sm font-normal text-text-secondary">
             Remembered it? <AuthLink href="/login">Sign in</AuthLink>
           </p>

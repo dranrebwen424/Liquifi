@@ -189,10 +189,10 @@ Last updated: 2026-07-14 (Figma-matched restyle)
 
 ### Admin (Phase 2)
 
-- [ ] Departments List (with active adviser/treasurer indicators)
-- [ ] New Department Form
-- [ ] Department Detail Tabs (Events / Reports / Audit Logs / Users)
-- [ ] Users Tab Row (deactivate/reactivate action)
+- [x] Departments List (folder-grid cards + visual hierarchy + mobile bottom-nav) — 2026-07-17
+- [x] New Department Form
+- [x] Department Detail Tabs (Events / Reports folder-grid; Users / Audit responsive tables) — 2026-07-17
+- [x] Users Tab Row (deactivate/reactivate action)
 - [ ] Admin Approvals List (adviser signups)
 
 ### Adviser (Phase 3)
@@ -240,6 +240,128 @@ Last updated: 2026-07-14 (Figma-matched restyle)
 ### Audit (Phase 11)
 
 - [ ] Audit Log Table (expandable metadata)
+
+---
+
+### StatusBadge
+
+File: components/ui/StatusBadge.tsx
+Last updated: 2026-07-17
+
+| Property         | Class |
+| ---------------- | ----- |
+| Background       | variant-dependent (see table below) |
+| Border           | none |
+| Border radius    | `rounded-full` |
+| Text — primary   | variant-dependent |
+| Spacing          | `px-2 py-0.5` |
+| Hover state      | none |
+| Shadow           | none |
+| Accent usage     | none |
+
+**Pattern notes:**
+Single shared component driving every state-machine field. Variants: `default` (bg-accent-light text-accent), `success` (bg-success-lightest text-success-foreground), `warning` (bg-warning-lightest text-warning-foreground), `error` (bg-error-lightest text-error-foreground), `info` (bg-info-lightest text-info-foreground), `neutral` (bg-neutral-light text-text-muted). Also exports preset mappers: `AccountStatusBadge`, `EventStatusBadge`, `RoleBadge`. Used across departments list, department detail, and all future state-display surfaces.
+
+### EmptyState
+
+File: components/ui/EmptyState.tsx
+Last updated: 2026-07-17
+
+| Property         | Class |
+| ---------------- | ----- |
+| Background       | (none — no card chrome) |
+| Border           | (none) |
+| Border radius    | (n/a) |
+| Text — primary   | `text-sm font-medium text-text-primary` (title) |
+| Text — secondary | `text-sm text-text-muted` (description) |
+| Spacing          | `py-12` vertical, `gap-2` between elements |
+| Hover state      | none |
+| Shadow           | none |
+| Accent usage     | none |
+
+**Pattern notes:**
+Reusable empty state for any section that can be empty. Props: `icon?`, `title`, `description?`, `action?` (ReactNode for CTA button). Used in departments list (empty), department detail tabs (empty users/events/reports/audit logs). Follows `ui-rules.md` Empty States spec.
+
+### AdminSidebar
+
+File: components/admin/AdminSidebar.tsx
+Last updated: 2026-07-17
+
+| Property         | Class |
+| ---------------- | ----- |
+| Background       | `bg-surface` |
+| Border           | `border-r border-border` |
+| Border radius    | (none) |
+| Text — primary   | `text-sm font-medium` nav items |
+| Text — secondary | `text-text-secondary` inactive items |
+| Spacing          | `px-3 py-4` nav, `gap-1` items |
+| Hover state      | `hover:bg-surface-secondary hover:text-text-primary` |
+| Shadow           | none |
+| Accent usage     | active item: `bg-accent-light text-accent`; profile avatar: `bg-accent-light text-accent` |
+
+**Pattern notes:**
+Admin-only sidebar. Hidden on mobile (`hidden lg:flex`), fixed left 240px (`lg:w-60`). Visual hierarchy: **Logo** (`h-16`, mark `text-accent` + 20px/700 wordmark) → **Nav** (`flex-1 px-4 py-6`) with a small uppercase `Menu` section label (`text-xs font-medium uppercase tracking-[0.08em] text-text-muted`, `mb-3 px-3`) above the items, items spaced `gap-1.5` with `py-2.5` → **user profile block** at bottom (`relative border-t border-border p-3`). The profile row is a `button` (`aria-haspopup="menu"`) with a circular avatar tile (`h-9 w-9 rounded-full bg-accent-light text-accent`, monoline user SVG), name (`text-sm font-medium text-text-primary`, truncate) + role (`text-xs text-text-muted`), and a `ChevronUp` that rotates 180° when open. Clicking toggles a popover (`absolute bottom-16 left-3 right-3 rounded-lg border border-border bg-surface shadow-card`) with two `role="menuitem"` rows: "Profile" (`Link` to `/admin/profile`, `User` icon) and "Log out" (`text-error`, `LogOut` icon, `router.push("/login")` mock). Popover closes on outside `mousedown` or `Escape`. Balances the left side visually. Nav items: **Departments, Approvals only** — Profile was removed from the nav list (it lives in the bottom profile popover for visual balance, per 2026-07-17). Active detection via `usePathname()`. Mobile gets a top bar with logo + "Admin" pill instead. Server Component wrapped in layout; sidebar itself is `"use client"` for active-state detection. The "+ New Department" action lives on the departments page next to the search bar, not in the sidebar.
+
+### DepartmentsPage
+
+File: app/admin/departments/page.tsx
+Last updated: 2026-07-17 (visual hierarchy + mobile bottom-nav session)
+
+**Layout:** Centered column `mx-auto max-w-7xl flex flex-col gap-8 pb-28 md:pb-0`. Compact header (no eyebrow/rule): `text-xl font-semibold md:text-2xl` name + `text-xs text-text-muted` subline "Manage department accounts". Search row `flex items-center gap-3` (desktop: `hidden md:flex`; mobile: `flex md:hidden`) **outside the grid** so it stays visible behind modals/sheets. "New Department" primary button only on desktop; mobile uses a FAB → bottom sheet. **New Department** desktop modal (`fixed inset-0` + `bg-overlay-alpha`, centered `max-w-md p-8 shadow-card`) and mobile bottom sheet (`fixed inset-0 md:hidden`, `absolute inset-x-0 bottom-0 rounded-t-2xl`). Driven by `createView` (`null | "modal" | "sheet"`). Mobile bottom nav (`fixed inset-x-0 bottom-0 z-40 md:hidden`, 3 items: Departments active `text-accent` / Approvals / Profile→`/login`, each `flex-col items-center gap-1 py-2.5` icon+`text-[11px]`). FAB `fixed bottom-24 right-5 h-14 w-14 rounded-full bg-accent shadow-lg md:hidden`.
+
+| Property           | Class |
+| ------------------ | ----- |
+| Page container     | `mx-auto flex max-w-7xl flex-col gap-8 pb-28 md:pb-0` |
+| Header            | `text-xl font-semibold text-text-primary md:text-2xl` + `text-xs text-text-muted` subline |
+| Search input       | `rounded-full border border-accent bg-surface py-3 pl-11 pr-4` + focus `border-accent ring-1 ring-accent`; paired with "New Department" primary (`rounded-full bg-accent px-4 py-3`) in `flex items-center gap-3` |
+| Folder card (web)  | `h-[200px] w-full max-w-[280px] mx-auto rounded-xl border border-border-strong bg-surface p-6` — name `text-lg font-semibold line-clamp-2` primary, code `text-xs uppercase tracking-wide text-text-muted` secondary, roles `text-[11px] text-text-muted` tertiary, `StatusBadge` supporting; folder tile `h-9 w-9 rounded-lg bg-accent-light text-accent` top-right |
+| Folder grid (web)  | `hidden grid-cols-1 gap-x-5 gap-y-8 sm:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5` |
+| Card stack (mobile) | `flex flex-col gap-4 md:hidden` each `flex items-start justify-between gap-3 rounded-xl border border-border-strong bg-surface p-4` — name primary, code secondary, roles tertiary; `MoreVertical` menu + `StatusBadge` on right |
+| Mobile bottom nav  | `fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-surface md:hidden` |
+| Mobile FAB         | `fixed bottom-24 right-5 h-14 w-14 rounded-full bg-accent text-accent-foreground shadow-lg md:hidden` |
+
+**Pattern notes:**
+Folder cards establish clear visual hierarchy (primary name → secondary code → tertiary adviser/treasurer → supporting status) so nothing shouts. Name leads, folder tile shrunk to quiet 9×9 top-right corner. Web grid `gap-x-5 gap-y-8`; mobile stack `gap-4`. Search + tabs row render unconditionally (behind modals). Mobile drops the top-tab bar in favour of a bottom nav that mirrors the sidebar (Departments/Approvals/Profile). `pb-28` clears the bottom nav on mobile. Mock data only; `tsc --noEmit` passes.
+
+### DepartmentDetailPage
+
+File: app/admin/departments/[departmentId]/page.tsx
+Last updated: 2026-07-17 (folder-grid events/reports + responsive tables session)
+
+**Layout:** `mx-auto flex flex-col gap-8 pb-24 md:pb-0`. Compact header (flat, no card chrome): `text-xl font-semibold md:text-2xl` name + `text-xs uppercase tracking-wide text-text-muted` code, `StatusBadge` quiet on right. Tabs: bottom-border bar `border-b border-border`, nav `overflow-x-auto`, active `border-b-2 border-accent text-accent` / inactive `border-transparent text-text-secondary hover:text-text-primary` (scrollable on mobile). Two content styles by data type:
+- **Events & Reports** → folder-grid cards (same language as DepartmentsPage): web `hidden grid-cols-1 gap-x-5 gap-y-8 sm:grid md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4`, cards `h-[180px] max-w-[280px] mx-auto rounded-xl border border-border-strong bg-surface p-6`. Event folder tile color-coded: **open** `bg-success-light text-success` + `text-success` status + `border-success/40`; **archived** `bg-accent-light text-accent` + `text-text-muted` + `border-border-strong`. Mobile stack `flex flex-col gap-4 md:hidden`.
+- **Users & Audit Logs** → real `<table>` (desktop only, `hidden md:block`) with `rounded-xl border border-border-strong bg-surface`, header row `border-b border-border text-xs uppercase tracking-wide text-text-muted`, rows `border-b border-border last:border-0`, cells `px-6 py-3`; **mobile** renders a `flex flex-col gap-4 md:hidden` card stack instead (no horizontal scroll).
+
+| Property         | Class |
+| ---------------- | ----- |
+| Header           | flat: `text-xl font-semibold md:text-2xl` name + `text-xs uppercase tracking-wide text-text-muted` code |
+| Tabs             | `border-b border-border`; active `border-b-2 border-accent text-accent`; `overflow-x-auto` |
+| Folder card      | `h-[180px] max-w-[280px] mx-auto rounded-xl border border-border-strong bg-surface p-6` |
+| Folder grid      | `hidden grid-cols-1 gap-x-5 gap-y-8 sm:grid md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4` |
+| Table (desktop)  | `hidden md:block rounded-xl border border-border-strong bg-surface`; `px-6 py-3` cells |
+| Mobile cards     | `flex flex-col gap-4 md:hidden` |
+
+**Pattern notes:**
+Mirrors the departments list visual language — calm, scannable, nothing shouts. Events/reports use folder cards (events color-coded by open/archived); users/audit use tables on desktop, stacked cards on mobile. Users tab: name primary, email/role/status secondary, right-aligned Deactivate (destructive outline) / Reactivate (secondary outline). `formatPHP()` for currency. Mock data only; `tsc --noEmit` passes.
+
+### AdminLayout
+
+File: app/admin/layout.tsx
+Last updated: 2026-07-17
+
+| Property         | Class |
+| ---------------- | ----- |
+| Background       | `bg-background` |
+| Border           | sidebar: `border-r border-border` |
+| Border radius    | (none) |
+| Text — primary   | logo: `text-lg font-bold` |
+| Spacing          | main: `px-4 py-6 md:px-8 md:py-8` |
+| Hover state      | (n/a) |
+| Shadow           | (none) |
+| Accent usage     | logo mark: `text-accent`, "Admin" pill: `bg-accent-light text-accent` |
+
+**Pattern notes:**
+Server Component with `requireLayoutRole("admin")` guard. Renders `AdminSidebar` + main content area (`lg:pl-60` to offset sidebar). Mobile gets a top bar (logo + "Admin" badge) instead of sidebar. Content wrapped in `max-w-[1440px]` centered container per `ui-rules.md`.
 
 ---
 

@@ -1,45 +1,69 @@
-# Memory — Liquifi Auth UI Foundation
+# Memory — Phase 1 Auth Wiring + Phase 2 Step 05 UI + Logout Bug Fix
 
-Last updated: 2026-07-15
+Last updated: 2026-07-17
 
 ## What was built
 
-- **Phase 1 UI/foundation complete (mock-first, no InsForge wiring):**
-  - `app/(auth)/forgot-password/page.tsx` — rewrote from inline mock-success to hand off to OTP: valid email → `router.push('/otp?purpose=reset&email=...')`.
-  - `app/(auth)/otp/page.tsx` — made purpose-aware via `useSearchParams` (inner wrapped in `<Suspense>`): `purpose=reset` → `/change-password?email=...`; else (signup) → `/pending-approval`. Reset variant shows reset subtitle + "Sign in" link.
-  - `app/(auth)/change-password/page.tsx` — NEW page: new password + confirm password (`AuthInput type="password"` with eye), match validation (`Passwords don't match.`), on success → `/login`. Mock-only.
-  - `components/auth/AuthShell.tsx` — added optional `backHref?: string` prop rendering an icon-only (arrow-left) back button at top-left of the form column.
-  - Back button wired on: `signup` (/login), `forgot-password` (/login), `otp` (reset→/forgot-password, signup→/signup), `change-password` (/otp?purpose=reset&email=... or /login). Absent on `login` and `pending-approval` (both excluded per requirement).
-- **Docs updated to match the flow (this session):** `build-plan.md` (01 UI + 03 logic lines), `project-overview.md` (Pages list, new "Password Reset" subsection in Core User Flow, Features In Scope), `architecture.md` (folder-structure pages + `app/api/auth/change-password` route, new "Password Reset" Data Flow diagram), `progress-tracker.md` (decision notes).
-- Inherited from prior session: landing page, all 5 original auth pages, Auth primitives, `lib/auth-guard.ts`, `docs/auth-matrix.md`, `lib/insforge-server.ts`, `types/index.ts`.
+**Auth foundation (Phase 1):**
+- **5 API routes** wired to InsForge SDK:
+  - `POST /api/auth/signup` — `signUp()` + `users` row insert + department auto-seed + notification routing (adviser→admin, treasurer→department adviser)
+  - `POST /api/auth/otp/send` — `resendVerificationEmail()` / `sendResetPasswordEmail()` (anti-enumeration, always returns 200)
+  - `POST /api/auth/otp/verify` — `verifyEmail()` / `exchangeResetPasswordToken()` with `otp_verified_at` stamp
+  - `POST /api/auth/change-password` — `resetPassword()` with token from OTP exchange
+  - `POST /api/auth/login` — `signInWithPassword()` + `account_status` check (rejected/pending/active) + role-based redirect URL
+- **`lib/insforge-client.ts`** — browser SDK via `createClient()`
+- **Auth page wiring** — signup, OTP, forgot-password, change-password call real APIs
+- **`proxy.ts`** (Next.js 16) — middleware cookie-based redirect hinting
+- **`lib/layout-guard.ts`** — `requireLayoutRole(role)` for server-side role enforcement
+- **3 route group layouts** — `app/(treasurer|adviser|admin)/layout.tsx` using `requireLayoutRole`
+- **3 role home pages** — `/treasurer/home`, `/adviser/home`, `/admin/departments` (placeholders)
+- Fixed pre-existing type errors in `lib/auth-guard.ts`, `lib/storage.ts`
+
+**Admin UI (Phase 2 step 05):**
+- `components/ui/StatusBadge.tsx` — shared status badge with preset mappers
+- `components/ui/EmptyState.tsx` — reusable empty state component
+- `components/admin/AdminSidebar.tsx` — client component, fixed sidebar, 3 nav items + profile dropdown
+- `app/admin/departments/page.tsx` — mock departments table + inline new-dept form
+- `app/admin/departments/[departmentId]/page.tsx` — dept header + 4 tabs (Events/Reports/Audit Logs/Users)
+- `lib/format.ts` — `formatPHP()` helper
+
+**Logout bug fix (this session):**
+- `app/api/auth/logout/route.ts` — SSR route using `createAuthActions().signOut()` with `responseCookies` callback (same `pendingCookies` → `response.cookies.set()` pattern as login route). Initial version omitted `responseCookies` → SDK threw "requires a writable cookie store"; fixed to match login pattern.
+- `components/admin/AdminSidebar.tsx` — logout button now POSTs to `/api/auth/logout` before navigating
 
 ## Decisions made (locked)
 
-- Forgot-password flow is **forgot-password → OTP (reset purpose) → change-password (new + confirm) → login**, all mock-first in Phase 1; real OTP-send / verify / password-update wiring lands in Phase 1 / 03 (InsForge `app/api/auth/otp/send`, `otp/verify`, new `change-password` route).
-- `/otp` screen is shared between signup verification and password reset, distinguished by `purpose` query param.
-- Back button is icon-only (arrow-left), placed by `AuthShell` via `backHref` prop — no text label.
-- InsForge SDK import path is `@insforge/sdk/ssr` (not `@insforge/ssr` as `architecture.md` states) — already corrected in `lib/insforge-server.ts`.
+- **Anti-enumeration on OTP send** — always returns 200 regardless of whether email exists
+- **`proxy.ts` over `middleware.ts`** — Next.js 16 requires export named `proxy`, not `middleware`
+- **`createServerClient` takes 1 object arg** — `{ cookies: { get: (name) => value } }` from `@insforge/sdk/ssr`
+- **`insforge.database.from(...)`** — SDK scopes DB queries under `database` property
+- **Middleware does cookie-surface check only** — real auth+role enforcement is in route group layouts
+- **Logout is SSR-only** — uses `createAuthActions()` for proper cookie clearing via CookieStore
+- **Best-effort logout** — navigates to `/login` even if API call fails
 
 ## Problems solved
 
-- `useSearchParams` in the client OTP / change-password pages required a `<Suspense>` boundary (fallback={null}) to avoid the Next.js prerender error — both pages wrap their inner component in `<Suspense>`.
-- Edit tool occasionally reports "success" for edits that didn't apply (and vice versa). Always re-read the file after editing to confirm the change landed (e.g., signup `AuthShell` subtitle mismatch caused a no-op edit that falsely reported success).
-- `/pending-approval` redirects to `/login` when unauthenticated (auth middleware) — expected; it remains excluded from the back-button requirement.
+- `createServerClient` cookies.get adaptation — Next.js cookies return `{ name, value }` objects, SDK expects `string | undefined`
+- `middleware.ts` → `proxy.ts` rename — required changing exported function name
+- SDK type for `insforge.database.from(...)` — operations are under `insforge.database.*`, not `insforge.*`
+- **Logout button did nothing** — just ran `router.push("/login")` without calling `signOut()`. Auth cookie remained, so `proxy.ts` redirected authenticated users away from `/login` and `/signup` back to landing — making buttons appear dead.
+- Missing logout API route — project had none, created one using `createAuthActions().signOut()`
 
 ## Current state
 
-- `tsc --noEmit` passes. Dev server running on `:3000` (a second `npm run dev` instance also started on `:3001` this session — harmless, ignore or kill).
-- Full reset flow verified end-to-end in browser: forgot-password (empty→red, valid→otp) → otp reset (6-digit→change-password) → change-password (mismatch→error, match→/login). Signup OTP path still → /pending-approval (no regression).
-- All auth pages render with 0 console errors; back button present on the 4 required pages, absent on login/pending-approval.
-- Auth remains mock-only: no InsForge calls anywhere yet.
+- Build passes: 0 type errors, 19 routes compiled (6 API routes + proxy + auth pages + 3 role pages + admin pages)
+- All auth flows wired end-to-end: signup → OTP → pending-approval; forgot-password → OTP → change-password → login
+- Login checks `account_status`: rejected (403), pending (403), active (OK + role redirect)
+- Middleware blocks unauthenticated access to role-group routes
+- Route group layouts enforce role server-side
+- Admin departments full UI built with mock data (tabbed detail, StatusBadge, EmptyState)
+- Logout properly clears session and cookies; buttons work normally after logout
+- 5/30 features complete (Phase 1 steps 00-04, Phase 2 step 05)
 
 ## Next session starts with
 
-**Phase 1 / 02 Database Schema.** Create all InsForge tables per `architecture.md`: `departments`, `users`, `events`, `entries`, `reports`, `report_signatories`, `entry_comments`, `department_report_counters`, `notifications`, `push_subscriptions`, `audit_logs` — plus partial unique indexes, `departments` storage bucket with the `storage/departments/{id}/events/{id}/...` layout, department-scoped RLS policies, realtime channel scoping. Then wire 03 (real signup/OTP/approval + forgot-password reset against InsForge) and 04 (login/session/role-based redirect).
+**Phase 2 — Step 06: Admin Departments — Real Data + Mutations.** Wire the admin departments UI to real InsForge DB queries and Server Actions (create dept, toggle `is_active`, deactivate/reactivate users).
 
 ## Open questions
 
-- The user declared "Phase 1 is complete" this session — interpreted as the UI/foundation (all pages + flows) being done; the build-plan still lists 02/03/04 (DB schema + real auth wiring) as pending. Confirm whether those backend steps are now considered "Phase 2+" or remain Phase 1 before starting them.
-- `app/(auth)/signup` uses a hardcoded mock `DEPARTMENTS` constant — replace once `departments` table exists.
-- `.env.local` InsForge credentials not verified this session — confirm backend URL + anon key valid before 03 wiring.
-- A stray dev server may be running on `:3001` (started this session); kill if it causes port confusion.
+- `.env.local` has placeholder InsForge values — need real credentials before runtime testing.

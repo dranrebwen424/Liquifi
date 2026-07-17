@@ -49,7 +49,7 @@ export async function requireRole(
   preconditionCheck?: PreconditionCheck,
 ): Promise<AuthUser>;
 export async function requireRole(
-  requiredRole: Role | Role[],
+  requiredRole: Role | "public" | (Role | "public")[],
   departmentId?: string,
   preconditionCheck?: PreconditionCheck,
 ): Promise<AuthUser | null> {

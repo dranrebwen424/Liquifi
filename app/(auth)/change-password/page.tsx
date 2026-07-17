@@ -11,19 +11,41 @@ import AuthLink from "@/components/auth/AuthLink";
 function ChangePasswordPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  // ponytail: email is carried through so the future real flow can target the right account.
   const email = searchParams.get("email") ?? "";
+  const token = searchParams.get("token") ?? "";
   const [newPassword, setNewPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState("");
 
-  // ponytail: mock — real flow hits app/api/auth/change-password.
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitted(true);
+    setApiError("");
     if (!newPassword || !confirm) return;
-    if (newPassword !== confirm) return;
-    router.push("/login");
+    if (newPassword !== confirm) {
+      setApiError("Passwords don't match.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, token, newPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setApiError(data.error || "Password reset failed.");
+        return;
+      }
+      router.push("/login");
+    } catch {
+      setApiError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   const mismatch = submitted && newPassword !== confirm;
@@ -31,7 +53,7 @@ function ChangePasswordPageInner() {
   return (
     <AuthShell
       subtitle="Reset your password."
-      backHref={email ? `/otp?purpose=reset&email=${encodeURIComponent(email)}` : "/login"}
+      backHref={email ? `/otp?intent=reset&email=${encodeURIComponent(email)}` : "/login"}
     >
       <AuthCard title="Set a new password" subtitle="Choose a password you don't reuse elsewhere.">
         <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
@@ -55,10 +77,10 @@ function ChangePasswordPageInner() {
             required
             error={submitted && !confirm}
           />
-          {mismatch && (
-            <p className="text-sm font-normal text-error">Passwords don't match.</p>
+          {apiError && (
+            <p className="text-sm text-red-500 text-center">{apiError}</p>
           )}
-          <AuthButton type="submit">Reset password</AuthButton>
+          <AuthButton type="submit" loading={loading}>Reset password</AuthButton>
           <p className="text-center text-sm font-normal text-text-secondary">
             Remembered it? <AuthLink href="/login">Sign in</AuthLink>
           </p>

@@ -3,12 +3,12 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: #fafafa;
+  --background: #ffffff; /* page background — always white (per request) */
   --foreground: #111114;
   --card: #ffffff;
   --card-foreground: #111114;
   --primary: #111114;
-  --primary-foreground: #ffffff;
+  --primary-foreground: #f9f9fb;
   --secondary: #f5f5f6;
   --secondary-foreground: #111114;
   --muted: #f0f0f2;
@@ -29,8 +29,8 @@
 }
 
 .dark {
-  --background: #111114;
-  --foreground: #f5f5f6;
+  --background: #ffffff; /* page background — forced white (per request) */
+  --foreground: #111114;
   --card: #1a1a1e;
   --card-foreground: #f5f5f6;
   --primary: #f5f5f6;
