@@ -52,6 +52,25 @@ function OtpPageInner() {
         setResetToken(data.token);
         router.push(`/change-password?email=${encodeURIComponent(email)}&token=${encodeURIComponent(data.token)}`);
       } else {
+        // For signup: create the users table row now that the user is verified
+        const pending = sessionStorage.getItem("pending_signup");
+        if (pending && data.userId) {
+          try {
+            const signupData = JSON.parse(pending);
+            await fetch("/api/auth/create-profile", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                userId: data.userId,
+                ...signupData,
+              }),
+            });
+          } catch (e) {
+            console.error("[otp] create-profile call failed:", e);
+            // Non-fatal — user will see pending-approval, admin can still find them
+          }
+          sessionStorage.removeItem("pending_signup");
+        }
         router.push("/pending-approval");
       }
     } catch {

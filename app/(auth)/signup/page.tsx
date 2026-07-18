@@ -64,6 +64,15 @@ export default function SignupPage() {
         setApiError(data.error || "Signup failed. Please try again.");
         return;
       }
+      // Store signup data so the OTP page can create the users row after verification
+      sessionStorage.setItem("pending_signup", JSON.stringify({
+        firstName: form.firstName,
+        middleName: form.middleName,
+        lastName: form.lastName,
+        email: form.email,
+        role: form.role,
+        departmentCode: form.department,
+      }));
       router.push(`/otp?email=${encodeURIComponent(form.email)}&intent=signup`);
     } catch {
       setApiError("Something went wrong. Please try again.");

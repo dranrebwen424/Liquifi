@@ -70,38 +70,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const authUserId = signupData?.user?.id;
-    if (!authUserId) {
-      return NextResponse.json(
-        { success: false, error: "Account creation failed. Please try again." },
-        { status: 500 },
-      );
-    }
-
-    // 2. Write the users table row with profile, role, department
-    const { error: userInsertError } = await insforge.database
-      .from("users")
-      .insert({
-        id: authUserId,
-        first_name: firstName,
-        middle_name: middleName || null,
-        last_name: lastName,
-        email,
-        role,
-        department_id: departmentId,
-        account_status: "pending_approval",
-      });
-
-    if (userInsertError) {
-      console.error("[auth/signup] users insert failed:", userInsertError);
-      // Clean up the auth user on failure
-      // ponytail: no SDK method to delete auth user — row will sit orphaned if insert fails.
-      // The signup flow will fail, user retries. Acceptable for now.
-      return NextResponse.json(
-        { success: false, error: "Account setup failed. Please try again." },
-        { status: 500 },
-      );
-    }
+    // Note: The InsForge API may not return user.id in the signUp response,
+    // but the auth user is still created and OTP email sent. The users table
+    // row is deferred to POST /api/auth/create-profile after OTP verification.
 
     // 3. Create notification for the appropriate approver
     // ponytail: notification insert failures are non-fatal — the approval UI can surface pending users from the users table directly.
@@ -122,7 +93,7 @@ export async function POST(req: NextRequest) {
                 user_id: a.id,
                 type: "adviser_signup_pending",
                 payload_json: {
-                  applicant_id: authUserId,
+                  applicant_email: email,
                   applicant_name: name,
                   department_id: departmentId,
                 },
@@ -145,7 +116,7 @@ export async function POST(req: NextRequest) {
             user_id: adviser.id,
             type: "treasurer_signup_pending",
             payload_json: {
-              applicant_id: authUserId,
+              applicant_email: email,
               applicant_name: name,
               department_id: departmentId,
             },

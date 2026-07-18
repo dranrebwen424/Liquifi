@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { createInsforgeServer } from "@/lib/insforge-server";
 
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest) {
 
     if (intent === "signup") {
       // Verify the signup OTP
-      const { error } = await insforge.auth.verifyEmail({ email, otp: code });
+      const { data, error } = await insforge.auth.verifyEmail({ email, otp: code });
       if (error) {
         console.error("[auth/otp/verify] verifyEmail failed:", error);
         // Distinguish wrong code from expired/locked
@@ -35,13 +36,38 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: message }, { status: 400 });
       }
 
-      // Stamp otp_verified_at on the users row
-      await insforge.database
-        .from("users")
-        .update({ otp_verified_at: new Date().toISOString() })
-        .eq("email", email);
+      // Note: otp_verified_at is stamped by POST /api/auth/create-profile
+      // after this route succeeds, not here (RLS blocks unauthenticated updates).
 
-      return NextResponse.json({ success: true });
+      // Persist session cookies — verifyEmail() on the SSR class doesn't write
+      // cookies in server mode (known SDK gap). We write them manually so
+      // subsequent calls (create-profile, status polling) are authenticated.
+      if (data?.accessToken) {
+        const cookieStore = await cookies();
+        cookieStore.set("insforge_access_token", data.accessToken, {
+          httpOnly: false,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          path: "/",
+          maxAge: 3600,
+        });
+        // ponytail: refreshToken is optional in the SDK return type but always
+        // present when accessToken is set; only persist cookies once we have it.
+        if (data.refreshToken) {
+          cookieStore.set("insforge_refresh_token", data.refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            path: "/",
+            maxAge: 60 * 60 * 24 * 30,
+          });
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        userId: data?.user?.id ?? null,
+      });
     } else {
       // Exchange reset code for a reset token
       const { data, error } = await insforge.auth.exchangeResetPasswordToken({ email, code });
