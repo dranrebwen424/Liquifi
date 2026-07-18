@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Folder, Loader2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   StatusBadge,
   AccountStatusBadge,
@@ -13,7 +14,6 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { formatPHP } from "@/lib/format";
 import { setUserAccountStatus } from "@/actions/departments";
 import type { AccountStatus } from "@/types";
-import gsap from "gsap";
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -103,20 +103,21 @@ export function DepartmentDetailClient({
     setTogglingId(null);
   }, [users, department.id, router]);
 
-  // ─── Micro-interaction: tab content stagger ───────────────────────
-  const tabContentRef = useRef<HTMLDivElement>(null);
+  // ─── Animation variants ───────────────────────────────────────────
+  const staggerContainer = {
+    hidden: {},
+    show: {
+      transition: { staggerChildren: 0.04, delayChildren: 0.05 },
+    },
+  };
 
-  useEffect(() => {
-    if (!tabContentRef.current) return;
-    const items = tabContentRef.current.children;
-    if (items.length > 0) {
-      gsap.fromTo(
-        items,
-        { opacity: 0, y: 10 },
-        { opacity: 1, y: 0, stagger: 0.04, duration: 0.3, ease: "power2.out" },
-      );
-    }
-  }, [activeTab]);
+  const fadeUpItem = {
+    hidden: { opacity: 0, y: 12 },
+    show: {
+      opacity: 1, y: 0,
+      transition: { type: "spring" as const, stiffness: 100, damping: 20, duration: 0.2 },
+    },
+  };
 
   return (
     <div className="flex flex-col gap-8 pb-24 md:pb-0">
@@ -169,24 +170,32 @@ export function DepartmentDetailClient({
       </div>
 
       {/* Tab content */}
-      <div key={activeTab} ref={tabContentRef}>
-        {activeTab === "Users" && (
-          <UsersTab
-            users={users}
-            onToggleStatus={handleToggleStatus}
-            togglingId={togglingId}
-          />
-        )}
-        {activeTab === "Events" && (
-          <EventsTab events={mockEvents} />
-        )}
-        {activeTab === "Reports" && (
-          <ReportsTab reports={mockReports} />
-        )}
-        {activeTab === "Audit Logs" && (
-          <AuditTab logs={mockAuditLogs} />
-        )}
-      </div>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeTab}
+          variants={staggerContainer}
+          initial="hidden"
+          animate="show"
+          exit={{ opacity: 0, y: -4, transition: { duration: 0.1 } }}
+        >
+          {activeTab === "Users" && (
+            <UsersTab
+              users={users}
+              onToggleStatus={handleToggleStatus}
+              togglingId={togglingId}
+            />
+          )}
+          {activeTab === "Events" && (
+            <EventsTab events={mockEvents} />
+          )}
+          {activeTab === "Reports" && (
+            <ReportsTab reports={mockReports} />
+          )}
+          {activeTab === "Audit Logs" && (
+            <AuditTab logs={mockAuditLogs} />
+          )}
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 }

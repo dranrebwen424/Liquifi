@@ -1,13 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Plus, MoreVertical, Folder, LayoutGrid, CheckCircle2, User, Loader2 } from "lucide-react";
+import { motion } from "framer-motion";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { createDepartment } from "@/actions/departments";
-import gsap from "gsap";
+
+// ─── Animation variants ───────────────────────────────────────────────
+const staggerContainer = {
+  hidden: {},
+  show: {
+    transition: { staggerChildren: 0.04, delayChildren: 0.05 },
+  },
+};
+
+const fadeUpItem = {
+  hidden: { opacity: 0, y: 12 },
+  show: {
+    opacity: 1, y: 0,
+    transition: { type: "spring" as const, stiffness: 100, damping: 20, duration: 0.2 },
+  },
+};
 
 export type DepartmentWithUsers = {
   id: string;
@@ -34,7 +50,6 @@ export function DepartmentsListClient({ initialDepartments }: Props) {
   const [createError, setCreateError] = useState("");
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [toggling, setToggling] = useState<string | null>(null);
-  const hasAnimated = useRef(false);
 
   const filtered = departments.filter(
     (d) =>
@@ -66,32 +81,6 @@ export function DepartmentsListClient({ initialDepartments }: Props) {
     }
     setCreating(false);
   }, [newName, newCode, router]);
-
-  // ─── Micro-interactions ───────────────────────────────────────────
-  const gridRef = useRef<HTMLDivElement>(null);
-  const mobileRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (hasAnimated.current) return;
-    hasAnimated.current = true;
-
-    const cards = gridRef.current?.children;
-    if (cards && cards.length > 0) {
-      gsap.fromTo(
-        cards,
-        { opacity: 0, y: 12 },
-        { opacity: 1, y: 0, stagger: 0.04, duration: 0.3, ease: "power2.out" },
-      );
-    }
-    const mobileCards = mobileRef.current?.children;
-    if (mobileCards && mobileCards.length > 0) {
-      gsap.fromTo(
-        mobileCards,
-        { opacity: 0, y: 12 },
-        { opacity: 1, y: 0, stagger: 0.04, duration: 0.3, ease: "power2.out" },
-      );
-    }
-  }, []);
 
   const newDepartmentForm = (
     <div className="flex flex-col gap-4 sm:flex-row">
@@ -250,13 +239,18 @@ export function DepartmentsListClient({ initialDepartments }: Props) {
       ) : (
         <>
           {/* Web: folder cards */}
-          <div ref={gridRef} className="hidden grid-cols-1 gap-x-5 gap-y-8 sm:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+          <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            animate="show"
+            className="hidden grid-cols-1 gap-x-5 gap-y-8 sm:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
+          >
             {filtered.map((dept) => (
-              <Link
-                key={dept.id}
-                href={`/admin/departments/${dept.id}`}
-                className="mx-auto flex h-[200px] w-full max-w-[280px] flex-col rounded-xl border border-border-strong bg-surface p-6 transition-all duration-200 hover:border-accent hover:shadow-lg hover:scale-[1.02]"
-              >
+              <motion.div key={dept.id} variants={fadeUpItem}>
+                <Link
+                  href={`/admin/departments/${dept.id}`}
+                  className="mx-auto flex h-[200px] w-full max-w-[280px] flex-col rounded-xl border border-border-strong bg-surface p-6 transition-all duration-200 hover:border-accent hover:shadow-lg hover:scale-[1.02]"
+                >
                 <div className="flex items-start justify-between gap-3">
                   <h3 className="min-w-0 text-lg font-semibold leading-6 text-text-primary line-clamp-2">
                     {dept.name}
@@ -278,13 +272,19 @@ export function DepartmentsListClient({ initialDepartments }: Props) {
                   </StatusBadge>
                 </div>
               </Link>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
 
           {/* Mobile: folder card stack */}
-          <div ref={mobileRef} className="flex flex-col gap-4 md:hidden">
+          <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            animate="show"
+            className="flex flex-col gap-4 md:hidden"
+          >
             {filtered.map((dept) => (
-              <div key={dept.id} className="relative flex items-start justify-between gap-3 rounded-xl border border-border-strong bg-surface p-4">
+              <motion.div key={dept.id} variants={fadeUpItem} className="relative flex items-start justify-between gap-3 rounded-xl border border-border-strong bg-surface p-4">
                 <Link href={`/admin/departments/${dept.id}`} className="min-w-0 flex-1">
                   <p className="truncate text-base font-semibold text-text-primary">
                     {dept.name}
@@ -319,9 +319,9 @@ export function DepartmentsListClient({ initialDepartments }: Props) {
                     </Link>
                   </div>
                 )}
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </>
       )}
 
@@ -329,7 +329,7 @@ export function DepartmentsListClient({ initialDepartments }: Props) {
       {!createView && (
         <button
           onClick={() => setCreateView("sheet")}
-          className="fixed bottom-24 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-lg transition-transform hover:scale-105 active:scale-95 md:hidden"
+          className="fixed bottom-24 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-lg transition-transform hover:scale-[1.02] active:scale-95 md:hidden"
           aria-label="New department"
         >
           <Plus className="h-6 w-6" />

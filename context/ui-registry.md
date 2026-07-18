@@ -320,7 +320,7 @@ Last updated: 2026-07-17 (visual hierarchy + mobile bottom-nav session)
 | Mobile bottom nav  | `fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-surface md:hidden` |
 | Mobile FAB         | `fixed bottom-24 right-5 h-14 w-14 rounded-full bg-accent text-accent-foreground shadow-lg md:hidden` |
 
-**Animation:** Cards stagger-entry on mount/filter change via `gsap.fromTo` (`{ opacity: 0, y: 12 }` → `{ opacity: 1, y: 0 }`, `stagger: 0.04`, `duration: 0.3`, `ease: "power2.out"`). Applied to `gridRef` (web grid children) and `mobileRef` (mobile stack children). Effect re-runs on `filtered` dependency so search filtering re-triggers the animation.
+**Animation:** Cards stagger-entry on mount/filter change via framer-motion `motion.div` stagger container (see `ui-rules.md` → Animation Standards). Each card is a `motion.div` with `fadeUpItem` variants (`opacity: 0, y: 12` → `opacity: 1, y: 0`, spring easing, 200ms). Container uses `staggerChildren: 0.04, delayChildren: 0.05`. Applied to both web grid and mobile stack render branches. Re-triggers on `filtered` dependency change via `key` on the container. **Migrated from GSAP 2026-07-18.**
 
 **Pattern notes:**
 Folder cards establish clear visual hierarchy (primary name → secondary code → tertiary adviser/treasurer → supporting status) so nothing shouts. Name leads, folder tile shrunk to quiet 9×9 top-right corner. Web grid `gap-x-5 gap-y-8`; mobile stack `gap-4`. Search + tabs row render unconditionally (behind modals). Mobile drops the top-tab bar in favour of a bottom nav that mirrors the sidebar (Departments/Approvals/Profile). `pb-28` clears the bottom nav on mobile. Mock data only; `tsc --noEmit` passes.
@@ -344,7 +344,7 @@ Last updated: 2026-07-18 (extracted client wrapper, real data + Server Actions)
 | Table (desktop)  | `hidden md:block rounded-xl border border-border-strong bg-surface`; `px-6 py-3` cells |
 | Mobile cards     | `flex flex-col gap-4 md:hidden` |
 
-**Animation:** Tab content staggers on switch via `gsap.fromTo` (`{ opacity: 0, y: 10 }` → `{ opacity: 1, y: 0 }`, `stagger: 0.04`, `duration: 0.3`, `ease: "power2.out"`). Applied to `tabContentRef` (wrapper `<div key={activeTab}>`) children. The `key={activeTab}` forces remount so the effect always fires.
+**Animation:** Tab content staggers on switch via framer-motion `AnimatePresence mode="wait"` + `motion.div` stagger container (see `ui-rules.md` → Animation Standards). Tab panel `key={activeTab}` drives the remount. Uses same `fadeUpItem` variants as DepartmentsPage (spring, 200ms, y: 12). Exit animation: `opacity: 0, y: -4, duration: 0.1`. **Migrated from GSAP 2026-07-18.**
 
 **Pattern notes:**
 Mirrors the departments list visual language — calm, scannable, nothing shouts. Events/reports use folder cards (events color-coded by open/archived); users/audit use tables on desktop, stacked cards on mobile. Users tab: name primary, email/role/status secondary, right-aligned Deactivate (destructive outline) / Reactivate (secondary outline). `formatPHP()` for currency. Mock data only; `tsc --noEmit` passes.

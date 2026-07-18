@@ -368,6 +368,114 @@ Every section that can be empty must have an empty state. Keep it minimal:
 
 ---
 
+## Animation Standards
+
+See `code-standards.md` → Animation Library Selection for the tool selection rules (CSS → framer-motion → GSAP). This section defines the *what* and *how* — the visual standards every animation must meet.
+
+### 5 Animation Rules
+
+**1. Animate only when meaning changes.** If the user can't answer "what just happened", the animation is noise. Animations communicate state transitions — they are not decoration.
+
+**2. Keep durations short.**
+
+| Element | Duration |
+|---|---|
+| Hover / focus | 120–180 ms |
+| Buttons | 150–200 ms |
+| Cards | 180–250 ms |
+| Dialogs / sheets | 250–350 ms |
+| Page transitions | 250–400 ms |
+
+When in doubt, use the lower end of the range.
+
+**3. Prefer spring motion** over linear easing. Springs feel natural and make the UI feel responsive.
+
+```
+// framer-motion
+transition={{ type: "spring", stiffness: 100, damping: 20, duration: 0.2 }}
+
+// CSS approximation
+transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+```
+
+Reserve fixed-duration `power` eases for GSAP presentation animations only (ScrollTrigger reveals, hero sequences).
+
+**4. Use subtle movement.**
+
+| Parameter | Range | Example |
+|---|---|---|
+| Slide / translate | 8–24 px | `y: 12` for card stagger |
+| Scale | 0.98 ↔ 1.02 | `scale: 1.02` on hover |
+| Opacity | 0 → 1 | Gentle fades only |
+| Blur | 0 → 4 px max | Dialog backdrops |
+
+No dramatic 100+ px slides, no large bounces, no jarring transforms.
+
+**5. Every animation must have a purpose.** Is the user waiting? → communicate progress. Did a new element appear? → fade it in so their peripheral vision catches it. Are we listing entries? → a micro-stagger cues "these are related items."
+
+If the answer to "what information does this communicate?" is "none" — remove it.
+
+### framer-motion vs GSAP Boundary
+
+| Use framer-motion for | Use GSAP for |
+|---|---|
+| List stagger-ins | ScrollTrigger parallax |
+| Modal/sheet mount/unmount | SVG path drawing (`DrawSVG`) |
+| Page transitions | Timeline sequences (>5 steps) |
+| Tab content crossfade | Canvas/WebGL integrations |
+| Layout animations (`layoutId`) | Animation that needs progress-based scrub |
+
+### Stagger Pattern (Standard)
+
+```tsx
+"use client";
+import { motion } from "framer-motion";
+
+const staggerContainer = {
+  hidden: {},
+  show: {
+    transition: { staggerChildren: 0.04, delayChildren: 0.05 },
+  },
+};
+
+const fadeUpItem = {
+  hidden: { opacity: 0, y: 12 },
+  show: {
+    opacity: 1, y: 0,
+    transition: { type: "spring", stiffness: 100, damping: 20, duration: 0.2 },
+  },
+};
+
+// Usage
+<motion.div variants={staggerContainer} initial="hidden" animate="show">
+  {items.map(item => (
+    <motion.div key={item.id} variants={fadeUpItem}>
+      {item.content}
+    </motion.div>
+  ))}
+</motion.div>
+```
+
+### AnimatePresence Pattern (Standard)
+
+```tsx
+"use client";
+import { motion, AnimatePresence } from "framer-motion";
+
+<AnimatePresence mode="wait">
+  <motion.div
+    key={activeTab}
+    initial={{ opacity: 0, y: 8 }}
+    animate={{ opacity: 1, y: 0, transition: { type: "spring", stiffness: 100, damping: 20 } }}
+    exit={{ opacity: 0, y: -4, transition: { duration: 0.1 } }}
+  >
+    {content}
+  </motion.div>
+</AnimatePresence>
+```
+
+---
+
 ## Tailwind v4 Note
 
 This project uses Tailwind v4. Tokens are defined with `@theme` in `globals.css` — no `tailwind.config.ts` needed. Never define colors in a config file. Always use `@theme` for new tokens.

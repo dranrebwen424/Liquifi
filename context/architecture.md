@@ -11,6 +11,10 @@
 | PDF generation               | @react-pdf/renderer                         | Financial Report PDF rendering                       |
 | Immutability                 | Polygon (hash-anchoring only)               | Tamper-evidence for approved reports                 |
 | Styling                      | Tailwind CSS + shadcn/ui                    | UI components and styling                            |
+| Icons                        | lucide-react                               | All iconography                                    |
+| Animation (micro)            | framer-motion                              | Mount/unmount, stagger, spring, layout transitions |
+| Animation (heavy/timeline)   | GSAP                                       | ScrollTrigger, SVG animation, complex sequences    |
+| Animation (loading)          | lottie-web                                 | Lottie JSON rendering (loading states only)        |
 | Language                     | TypeScript (strict)                         | Throughout                                           |
 
 ---

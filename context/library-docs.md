@@ -678,3 +678,166 @@ After wiring, use via Tailwind utility class `font-sans` — which resolves to `
 - Do not load Poppins in individual page layouts — load once in the root layout only
 - See `ui-tokens.md` for the font token definition
 - See `ui-rules.md` for font usage rules (headings, body, etc.)
+
+---
+
+## framer-motion
+
+**Check first:** Use only when CSS can't handle the animation — see `code-standards.md` → Animation Library Selection (Tier 2). Use GSAP for heavy/timeline animation (Tier 3).
+
+**Reserved for:** mount/unmount, spring physics, staggered lists, layout animations, page transitions.
+
+### Import Pattern
+
+```typescript
+"use client";
+import { motion, AnimatePresence } from "framer-motion";
+```
+
+- Must be in a `"use client"` component — framer-motion uses React context and hooks
+- Only import what you use (`motion`, `AnimatePresence`, `useAnimation`, etc.)
+- Never `export * from "framer-motion"` — import directly per-component
+
+### Standard Variants
+
+**Stagger container (card grids, list items):**
+
+```typescript
+const staggerContainer = {
+  hidden: {},
+  show: {
+    transition: { staggerChildren: 0.04, delayChildren: 0.05 },
+  },
+};
+
+const fadeUpItem = {
+  hidden: { opacity: 0, y: 12 },
+  show: {
+    opacity: 1, y: 0,
+    transition: { type: "spring", stiffness: 100, damping: 20, duration: 0.2 },
+  },
+};
+```
+
+**Dialog/sheet mount/unmount:**
+
+```typescript
+const dialogOverlay = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1 },
+};
+
+const dialogContent = {
+  hidden: { opacity: 0, scale: 0.95, y: 8 },
+  show: {
+    opacity: 1, scale: 1, y: 0,
+    transition: { type: "spring", stiffness: 100, damping: 20, duration: 0.3 },
+  },
+  exit: { opacity: 0, scale: 0.95, transition: { duration: 0.15 } },
+};
+```
+
+### AnimatePresence Rules
+
+- Always use `mode="wait"` when switching between distinct views (tabs, steps) to avoid overlapping enter/exit
+- Always set a unique `key` on the animated child — `AnimatePresence` uses keys to track added/removed elements
+- Wrap the outermost element of conditional content, not individual children
+- Only use `AnimatePresence` for elements that leave the React tree (conditional render, ternary, `null`)
+
+### Layout Animation
+
+- Use `layoutId` only for shared layout animations (sidebar collapse, list reorder)
+- Never use `layoutId` between unrelated elements — it will animate from one to the other
+
+### Rules
+
+- Spring type for interactive animations, `tween` for non-interactive (presentation) only
+- Per-card stagger: 40ms between items, 50ms initial delay
+- Duration: 200ms for individual card animations (180–250ms range)
+- Slide distance: y=12 (8–24px range)
+- Every `AnimatePresence` must have unique keys
+- See `ui-rules.md` for full timing standards
+
+---
+
+## GSAP (GreenSock Animation Platform)
+
+**Check first:** Is framer-motion sufficient? GSAP is Tier 3 — only use when framer-motion's declarative model can't express the animation (ScrollTrigger timeline, SVG morphing, canvas sync).
+
+**Reserved for:** ScrollTrigger parallax, SVG animation (DrawSVG, MorphSVG), complex multi-step timelines, progress-based scrub animations.
+
+### Import Pattern
+
+```typescript
+"use client";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { DrawSVGPlugin } from "gsap/DrawSVGPlugin";
+```
+
+- Must be in a `"use client"` component — GSAP uses DOM querying
+- Register plugins: `gsap.registerPlugin(ScrollTrigger)`
+- Never import barrel — import only what you need
+- Use CDN-only plugins sparingly; prefer ESM imports
+
+### Cleanup Pattern (Required)
+
+```typescript
+useEffect(() => {
+  const ctx = gsap.context(() => {
+    gsap.fromTo(ref.current, { opacity: 0 }, { opacity: 1, duration: 0.3 });
+  });
+  return () => ctx.revert(); // kills all tweens in context
+}, []);
+```
+
+All GSAP code must use `gsap.context()` and call `ctx.revert()` in the cleanup function. No exceptions — without it, animations leak on unmount and cause memory issues.
+
+### Rules
+
+- Always use `gsap.context()` + `ctx.revert()` cleanup — bare `gsap.to()`/`gsap.fromTo()` calls are forbidden
+- Never animate during SSR / server render — wrap in `useEffect`
+- Use `{ paused: true }` + `.play()` for triggered animations (instead of inline autoplay)
+- `ScrollTrigger` must be registered in the component — not in a shared module (tree-shaking issue)
+- No GSAP animation exceeds 400ms for UI-reactive animations (scroll-triggered reveals can be longer since they track scroll position, not time)
+- Prefer `scroll-behavior: smooth` CSS over ScrollTrigger for simple anchor-link scrolls
+
+---
+
+## @base-ui/react
+
+**Check first:** Does shadcn/ui have this primitive? If yes, use shadcn/ui. `@base-ui/react` is the **second** choice — only use when shadcn/ui doesn't cover the primitive (e.g. `NumberField`, `Toolbar`, `Separator`) and you'd otherwise hand-roll complex keyboard/ARIA logic.
+
+**Reserved for:** Advanced headless primitives that shadcn/ui doesn't wrap.
+
+### Import Pattern
+
+```typescript
+import { NumberField } from "@base-ui/react/number-field";
+import { Toolbar } from "@base-ui/react/toolbar";
+```
+
+- Import from the individual subpath — never `import * from "@base-ui/react"`
+- `@base-ui/react` is headless — it provides zero default styles. All visual styling uses `@theme` tokens and Tailwind utility classes.
+
+### Styling Pattern
+
+```tsx
+<NumberField.Root className="flex items-center gap-2">
+  <NumberField.Decrement className="w-8 h-8 rounded-full bg-surface text-text-primary text-lg">
+    −
+  </NumberField.Decrement>
+  <NumberField.Input className="w-20 text-center bg-surface border border-border rounded-radius-md px-3 py-1.5 text-text-primary" />
+  <NumberField.Increment className="w-8 h-8 rounded-full bg-surface text-text-primary text-lg">
+    +
+  </NumberField.Increment>
+</NumberField.Root>
+```
+
+### Rules
+
+- Last resort — only use when shadcn/ui doesn't have the primitive AND the component needs complex keyboard/ARIA that's painful to hand-roll
+- Every `@base-ui/react` import must use selector-focused imports from the subpath
+- All styling must use `@theme` tokens via Tailwind classes — no inline styles, no raw colors
+- Wrap in a shared component if used in more than one place (e.g. `components/ui/number-field.tsx`)
+- Add the component to `ui-registry.md` when introducing it
