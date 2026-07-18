@@ -7,6 +7,7 @@ type Props = {
   className?: string;
   loop?: boolean;
   autoplay?: boolean;
+  onComplete?: () => void;
 };
 
 // ponytail: lottie-web is framework-agnostic (no React peer-dep conflicts with
@@ -16,11 +17,18 @@ export default function LottiePlayer({
   className,
   loop = true,
   autoplay = true,
+  onComplete,
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   useEffect(() => {
-    let anim: { destroy: () => void } | null = null;
+    // ponytail: lottie-web types are loose; use any for event listener methods
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let anim: any = null;
     let cancelled = false;
     (async () => {
       const lottie = (await import("lottie-web")).default;
@@ -31,11 +39,22 @@ export default function LottiePlayer({
         loop,
         autoplay,
         path: src,
-      }) as unknown as { destroy: () => void };
+      });
+
+      if (!loop && onCompleteRef.current) {
+        const handler = () => onCompleteRef.current?.();
+        anim.addEventListener("complete", handler);
+        anim.__liquifiHandler = handler;
+      }
     })();
     return () => {
       cancelled = true;
-      anim?.destroy();
+      if (anim) {
+        if (anim.__liquifiHandler) {
+          anim.removeEventListener("complete", anim.__liquifiHandler);
+        }
+        anim.destroy();
+      }
     };
   }, [src, loop, autoplay]);
 

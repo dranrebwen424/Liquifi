@@ -6,10 +6,10 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Current Status
 
-**Phase:** Phase 2 — Admin: Departments & Approvals
-**Last completed:** 06.1 Admin Departments — Server Actions (create, toggle active, toggle user status)
-**Next:** 06.2 Admin Departments — Server Pages (departments list, department detail)
-**Status:** Step 06 complete — Server Actions (`actions/departments.ts`), Server Component pages (`page.tsx` × 2), Client wrapper (`DepartmentsListClient`, `DepartmentDetailClient`). Events/Reports/Audit tabs remain empty states until those phases land.
+**Phase:** Phase 5 — Treasurer: Logging Entries
+**Last completed:** 10 + 11 + 12 Treasurer Events & Budget — Full UI + Real Data & Mutations
+**Next:** 13 Entry Logging — Full UI
+**Status:** Steps 10-12 complete — Treasurer layout (sidebar + mobile bottom nav), events list with real data from InsForge, event creation wired to Server Action (createEvent), event dashboard with full entry list, BudgetSummary, LockedBanner, EntryRow/EntryList components. Query layer (lib/queries/events.ts) computes total_spent, budget_locked, and is_locked at query time. Build passes clean.
 
 ---
 
@@ -30,18 +30,18 @@ Update this file after every completed feature. Any AI agent reading this should
 
 - [x] 05 Admin Departments Page — Full UI
 - [x] 06 Admin Departments — Real Data + Mutations
-- [ ] 07 Admin Approvals — Adviser Signups
+- [x] 07 Admin Approvals — Adviser Signups
 
 ### Phase 3 — Adviser: Approvals
 
-- [ ] 08 Adviser Approvals Page — Full UI
-- [ ] 09 Adviser Approvals — Real Data + Mutations
+- [x] 08 Adviser Approvals Page — Full UI
+- [x] 09 Adviser Approvals — Real Data + Mutations
 
 ### Phase 4 — Treasurer: Events & Budget
 
-- [ ] 10 Treasurer Home + Event Creation — Full UI
-- [ ] 11 Event Creation + Budget Lock — Real Data
-- [ ] 12 Event Dashboard — Full UI
+- [x] 10 Treasurer Home + Event Creation — Full UI
+- [x] 11 Event Creation + Budget Lock — Real Data
+- [x] 12 Event Dashboard — Full UI
 
 ### Phase 5 — Treasurer: Logging Entries
 
@@ -81,7 +81,7 @@ Update this file after every completed feature. Any AI agent reading this should
 - [ ] 28 Audit Log — Admin View
 - [ ] 29 Adviser & Admin Read-Only Event/Report Views
 
-**Total: 5 / 30 features complete**
+**Total: 10 / 30 features complete**
 
 ---
 
@@ -104,6 +104,8 @@ Update this file after every completed feature. Any AI agent reading this should
 - **2026-07-18 — Signup bug fix (signUp user.id not returned by SSR client):** Original `POST /api/auth/signup` route treated missing `data.user.id` as a 500 failure, even though the auth user was created (the SDK's SSR `signUp` returns an optional `user` field). Removed the `if (!authUserId)` check — `users` row creation deferred to `POST /api/auth/create-profile` after OTP. Also discovered `createInsforgeServer()` uses the SSR `InsForgeClient` class directly, NOT the `createAuthActions` wrapper — meaning `verifyEmail()` class method doesn't persist session cookies in server mode. That was a latent bug with no impact until we needed authenticated downstream calls. See next entry.
 - **2026-07-18 — Auto-redirect + welcome email for approved signups:** Added `GET /api/auth/status` polling endpoint (reads `users.account_status`). Updated `app/(auth)/pending-approval/page.tsx` with 10s `setInterval` polling `/api/auth/status` — on `"active"` redirects to `/login`, on `"rejected"` shows rejection banner, on `"unauthenticated"` shows session-expired hint. Created `lib/email.ts` with nodemailer transporter (Gmail SMTP, port 587, app password). Added `sendWelcomeEmail` call to `approveAdviserSignup()` server action in `actions/approvals.ts`. Added `sendRejectionEmail` function (not yet wired to `rejectAdviserSignup()`).
 - **2026-07-18 — Fixed session cookie gap in OTP verify route:** The SSR client's `verifyEmail()` method calls `saveSessionFromResponse()` which in server mode only sets tokens on the internal HTTP client instance — it never writes cookies to the HTTP response. Fixed `app/api/auth/otp/verify/route.ts` to manually persist `insforge_access_token` and `insforge_refresh_token` cookies via `cookieStore.set()` using the same options the SDK's own `setAuthCookies` would use (httpOnly≈false access / true refresh, secure in production, sameSite lax, path /). Also: added `requireTLS: true` + `transporter.verify()` to `lib/email.ts` (nodemailer), and added session-lost UX hint on `pending-approval/page.tsx` when status is `"unauthenticated"`. Verified: build passes clean.
+- **2026-07-18 — Phase 3 complete (08+09 Adviser Approvals):** Built full adviser nav infrastructure — `AdviserSidebar.tsx` (desktop), `AdviserMobileBottomNav.tsx` (mobile), wired in `app/adviser/layout.tsx`. Approvals page with 2 tabs (Pending Expenses + Pending Users) in `AdviserApprovalsClient.tsx`. Server page `app/adviser/approvals/page.tsx` fetches pending treasurers (same dept) + manual entries (via two-phase: events→dept→entries). 4 server actions in `actions/approvals.ts`: `approveTreasurerSignup`, `rejectTreasurerSignup`, `batchApproveEntries`, `rejectEntry` — all with full precondition chains (role, dept match, event-not-archived, status guards). Missing shadcn init sidestepped — wrote native `components/ui/button.tsx` (5 variants, 4 sizes) and `components/ui/checkbox.tsx` (native input, SVG checkmark). Noted: InsForge `events` join returns array not object — access via `eventsArr?.[0]` pattern. `tsc --noEmit` passes clean. Next in build-plan: Phase 4 — Treasurer Events & Budget (step 10).
+- **2026-07-18 — Phase 4 complete (10+11+12 Treasurer Events & Budget):** Built full treasurer nav infrastructure — `TreasurerSidebar.tsx` (desktop, 4 items: Home/Reports/Notifications/Profile), `TreasurerMobileBottomNav.tsx` (matches sidebar). Wired in `app/treasurer/layout.tsx`. Events list (`app/treasurer/home/`) is a server→client split: server page fetches via `getDepartmentEvents()`, client `TreasurerHomeClient.tsx` handles filter tabs + framer-motion stagger grid. Event creation (`app/treasurer/events/new/`) passes `createEvent` Server Action as `onSubmit` to `EventForm`. Event dashboard (`app/treasurer/events/[eventId]/`) is a server component fetching via `getEventDashboard()`. Created `lib/queries/events.ts` — shared query layer that computes `total_spent` (SUM of deducted entries), `budget_locked` (any deducted entry exists), and `is_locked` (any report in pending/approved status) at query time, never persisted. Created `actions/events.ts` — `createEvent` Server Action with role guard, department scoping, audit log. Created `components/entries/EntryRow.tsx` (type badge, amount, status badge, void attribution) and `EntryList.tsx` (stagger-animated list with header + empty state). `BudgetSummary.tsx` (total/spent/remaining bar with progress fill) and `LockedBanner.tsx` (info/neutral variant for locked/archived states). Key pattern: `getDepartmentEvents()` batch-fetches spending per event in one query and uses Set for O(1) `is_locked` lookups. Build passes clean. Next in build-plan: Phase 5 — Entry Logging (step 13).
 
 ---
 

@@ -64,9 +64,23 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      // Fallback: SDK verifyEmail() may not return user.id in server mode.
+      // Decode the userId from the access token JWT's `sub` claim instead.
+      let userId: string | null = data?.user?.id ?? null;
+      if (!userId && data?.accessToken) {
+        try {
+          const payload = JSON.parse(
+            Buffer.from(data.accessToken.split(".")[1], "base64").toString(),
+          );
+          userId = payload?.sub ?? null;
+        } catch {
+          // Non-fatal — token is well-formed by the SDK, this is a belt-and-suspenders parse.
+        }
+      }
+
       return NextResponse.json({
         success: true,
-        userId: data?.user?.id ?? null,
+        userId,
       });
     } else {
       // Exchange reset code for a reset token

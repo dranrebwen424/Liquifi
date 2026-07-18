@@ -57,7 +57,7 @@ function OtpPageInner() {
         if (pending && data.userId) {
           try {
             const signupData = JSON.parse(pending);
-            await fetch("/api/auth/create-profile", {
+            const res = await fetch("/api/auth/create-profile", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -65,11 +65,17 @@ function OtpPageInner() {
                 ...signupData,
               }),
             });
+            const profileData = await res.json();
+            if (res.ok && profileData.success) {
+              sessionStorage.removeItem("pending_signup");
+            } else {
+              // ponytail: keep sessionStorage so pending-approval can retry
+              console.error("[otp] create-profile rejected:", profileData.error);
+            }
           } catch (e) {
+            // ponytail: keep sessionStorage so pending-approval can retry
             console.error("[otp] create-profile call failed:", e);
-            // Non-fatal — user will see pending-approval, admin can still find them
           }
-          sessionStorage.removeItem("pending_signup");
         }
         router.push("/pending-approval");
       }

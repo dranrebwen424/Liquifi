@@ -7,6 +7,7 @@ import AuthCard from "@/components/auth/AuthCard";
 import AuthInput from "@/components/auth/AuthInput";
 import AuthButton from "@/components/auth/AuthButton";
 import AuthLink from "@/components/auth/AuthLink";
+import LottiePlayer from "@/components/LottiePlayer";
 
 function ChangePasswordPageInner() {
   const router = useRouter();
@@ -18,6 +19,7 @@ function ChangePasswordPageInner() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState("");
+  const [success, setSuccess] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -40,7 +42,7 @@ function ChangePasswordPageInner() {
         setApiError(data.error || "Password reset failed.");
         return;
       }
-      router.push("/login");
+      setSuccess(true);
     } catch {
       setApiError("Something went wrong. Please try again.");
     } finally {
@@ -55,8 +57,20 @@ function ChangePasswordPageInner() {
       subtitle="Reset your password."
       backHref={email ? `/otp?intent=reset&email=${encodeURIComponent(email)}` : "/login"}
     >
-      <AuthCard title="Set a new password" subtitle="Choose a password you don't reuse elsewhere.">
-        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
+      {success ? (
+        <AuthCard title="Password Changed!" center>
+          <div className="flex flex-col items-center mt-8">
+            <LottiePlayer
+              src="/Auth%20pages/success.json"
+              className="h-48 w-48"
+              loop={false}
+              onComplete={() => router.push("/login")}
+            />
+          </div>
+        </AuthCard>
+      ) : (
+        <AuthCard title="Set a new password" subtitle="Choose a password you don't reuse elsewhere.">
+          <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
           <AuthInput
             id="new-password"
             label="New password"
@@ -86,6 +100,7 @@ function ChangePasswordPageInner() {
           </p>
         </form>
       </AuthCard>
+      )}
     </AuthShell>
   );
 }

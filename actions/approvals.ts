@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createInsforgeServer } from "@/lib/insforge-server";
 import { requireRole } from "@/lib/auth-guard";
-import { sendWelcomeEmail } from "@/lib/email";
+import { sendWelcomeEmail, sendRejectionEmail } from "@/lib/email";
 
 // ─── Approve Adviser Signup ──────────────────────────────────────────
 
@@ -148,6 +148,13 @@ export async function rejectAdviserSignup(userId: string) {
       return { success: false as const, error: "Failed to reject user." };
     }
 
+    // Rejection email — best-effort
+    try {
+      await sendRejectionEmail(applicant.email, applicant.first_name);
+    } catch (emailErr) {
+      console.error("[actions/approvals] rejection email failed:", emailErr);
+    }
+
     // Audit log
     await insforge.database.from("audit_logs").insert([{
       actor_id: user.id,
@@ -183,6 +190,390 @@ export async function rejectAdviserSignup(userId: string) {
       return { success: false as const, error: error.message };
     }
     console.error("[actions/approvals] rejectAdviserSignup:", error);
+    return { success: false as const, error: "Something went wrong." };
+  }
+}
+
+// ─── Approve Treasurer Signup (Adviser action) ──────────────────────
+
+export async function approveTreasurerSignup(userId: string) {
+  try {
+    if (!userId) {
+      return { success: false as const, error: "User ID is required." };
+    }
+
+    const actor = await requireRole("adviser");
+    const insforge = await createInsforgeServer();
+
+    // Fetch applicant — must be pending_approval + treasurer + same dept
+    const { data: applicant, error: fetchErr } = await insforge.database
+      .from("users")
+      .select("id, first_name, last_name, email, role, account_status, department_id")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (fetchErr || !applicant) {
+      return { success: false as const, error: "User not found." };
+    }
+
+    if (applicant.role !== "treasurer") {
+      return { success: false as const, error: "Only treasurer accounts can be approved from this page." };
+    }
+
+    if (applicant.account_status !== "pending_approval") {
+      return { success: false as const, error: "User is no longer pending approval." };
+    }
+
+    if (applicant.department_id !== actor.departmentId) {
+      return { success: false as const, error: "This applicant does not belong to your department." };
+    }
+
+    // Attempt to update via SECURITY DEFINER RPC (bypasses RLS — advisers
+    // only have own-row update permission on the users table)
+    const now = new Date().toISOString();
+    const { error: updateErr } = await insforge.database.rpc("update_user_account_status", {
+      p_id: userId,
+      p_account_status: "active",
+      p_approved_by: actor.id,
+      p_approved_at: now,
+    });
+
+    if (updateErr) {
+      // RPC returns a Postgres error if the unique constraint is violated
+      if ("code" in updateErr && updateErr.code === "23505") {
+        return {
+          success: false as const,
+          error:
+            "This department already has an active treasurer. Deactivate the current treasurer from the department's Users tab first.",
+        };
+      }
+      console.error("[actions/approvals] approveTreasurer failed:", updateErr);
+      return { success: false as const, error: "Failed to approve user." };
+    }
+
+    // Audit log
+    await insforge.database.from("audit_logs").insert([{
+      actor_id: actor.id,
+      department_id: applicant.department_id,
+      action: "user.approved",
+      target_type: "user",
+      target_id: userId,
+      metadata_json: {
+        email: applicant.email,
+        name: `${applicant.first_name} ${applicant.last_name}`,
+      },
+    }]);
+
+    // Notification — best-effort
+    try {
+      await insforge.database.from("notifications").insert({
+        user_id: userId,
+        type: "signup_approved",
+        payload_json: {
+          applicant_name: `${applicant.first_name} ${applicant.last_name}`,
+          department_id: applicant.department_id,
+        },
+        read: false,
+      });
+    } catch (notifErr) {
+      console.error("[actions/approvals] signup_approved notification failed:", notifErr);
+    }
+
+    // Welcome email — best-effort
+    try {
+      await sendWelcomeEmail(applicant.email, applicant.first_name);
+    } catch (emailErr) {
+      console.error("[actions/approvals] welcome email failed:", emailErr);
+    }
+
+    revalidatePath("/adviser/approvals");
+    if (applicant.department_id) {
+      revalidatePath(`/admin/departments/${applicant.department_id}`);
+    }
+
+    return { success: true as const };
+  } catch (error) {
+    if (error instanceof Error && "code" in error) {
+      return { success: false as const, error: error.message };
+    }
+    console.error("[actions/approvals] approveTreasurerSignup:", error);
+    return { success: false as const, error: "Something went wrong." };
+  }
+}
+
+// ─── Reject Treasurer Signup (Adviser action) ───────────────────────
+
+export async function rejectTreasurerSignup(userId: string) {
+  try {
+    if (!userId) {
+      return { success: false as const, error: "User ID is required." };
+    }
+
+    const actor = await requireRole("adviser");
+    const insforge = await createInsforgeServer();
+
+    const { data: applicant, error: fetchErr } = await insforge.database
+      .from("users")
+      .select("id, first_name, last_name, email, role, account_status, department_id")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (fetchErr || !applicant) {
+      return { success: false as const, error: "User not found." };
+    }
+
+    if (applicant.role !== "treasurer") {
+      return { success: false as const, error: "Only treasurer accounts can be rejected from this page." };
+    }
+
+    if (applicant.account_status !== "pending_approval") {
+      return { success: false as const, error: "User is no longer pending approval." };
+    }
+
+    if (applicant.department_id !== actor.departmentId) {
+      return { success: false as const, error: "This applicant does not belong to your department." };
+    }
+
+    const { error: updateErr } = await insforge.database.rpc("update_user_account_status", {
+      p_id: userId,
+      p_account_status: "rejected",
+    });
+
+    if (updateErr) {
+      console.error("[actions/approvals] rejectTreasurer failed:", updateErr);
+      return { success: false as const, error: "Failed to reject user." };
+    }
+
+    // Rejection email — best-effort
+    try {
+      await sendRejectionEmail(applicant.email, applicant.first_name);
+    } catch (emailErr) {
+      console.error("[actions/approvals] rejection email failed:", emailErr);
+    }
+
+    // Audit log
+    await insforge.database.from("audit_logs").insert([{
+      actor_id: actor.id,
+      department_id: applicant.department_id,
+      action: "user.rejected",
+      target_type: "user",
+      target_id: userId,
+      metadata_json: {
+        email: applicant.email,
+        name: `${applicant.first_name} ${applicant.last_name}`,
+      },
+    }]);
+
+    // Notification — best-effort
+    try {
+      await insforge.database.from("notifications").insert({
+        user_id: userId,
+        type: "signup_rejected",
+        payload_json: {
+          applicant_name: `${applicant.first_name} ${applicant.last_name}`,
+          department_id: applicant.department_id,
+        },
+        read: false,
+      });
+    } catch (notifErr) {
+      console.error("[actions/approvals] signup_rejected notification failed:", notifErr);
+    }
+
+    revalidatePath("/adviser/approvals");
+    return { success: true as const };
+  } catch (error) {
+    if (error instanceof Error && "code" in error) {
+      return { success: false as const, error: error.message };
+    }
+    console.error("[actions/approvals] rejectTreasurerSignup:", error);
+    return { success: false as const, error: "Something went wrong." };
+  }
+}
+
+// ─── Batch Approve Manual Entries (Adviser action) ──────────────────
+
+export async function batchApproveEntries(entryIds: string[]) {
+  try {
+    if (!entryIds || entryIds.length === 0) {
+      return { success: false as const, error: "No entries selected." };
+    }
+
+    const actor = await requireRole("adviser");
+    const insforge = await createInsforgeServer();
+
+    // Fetch all entries with their events to verify department + state
+    const { data: entries, error: fetchErr } = await insforge.database
+      .from("entries")
+      .select("id, event_id, status, type, amount, events(department_id, status)")
+      .in("id", entryIds);
+
+    if (fetchErr || !entries || entries.length === 0) {
+      return { success: false as const, error: "Entries not found." };
+    }
+
+    // Validate every entry
+    for (const entry of entries) {
+      const eventsArr = entry.events as Array<{ department_id: string; status: string }> | null;
+      const ev = eventsArr?.[0];
+      if (!ev) {
+        return { success: false as const, error: `Entry ${entry.id} has no event.` };
+      }
+      if (ev.department_id !== actor.departmentId) {
+        return { success: false as const, error: "One or more entries do not belong to your department." };
+      }
+      if (ev.status === "archived") {
+        return { success: false as const, error: "Cannot approve entries for an archived event." };
+      }
+      if (entry.status !== "pending_approval") {
+        return { success: false as const, error: `Entry ${entry.id} is not pending approval.` };
+      }
+      if (entry.type !== "manual") {
+        return { success: false as const, error: "Only manual entries can be approved from this page." };
+      }
+    }
+
+    // Transition each entry to deducted with individual audit trail
+    const now = new Date().toISOString();
+    const { error: updateErr } = await insforge.database
+      .from("entries")
+      .update({
+        status: "deducted",
+        approved_by: actor.id,
+        approved_at: now,
+      })
+      .in("id", entryIds);
+
+    if (updateErr) {
+      console.error("[actions/approvals] batchApprove failed:", updateErr);
+      return { success: false as const, error: "Failed to approve entries." };
+    }
+
+    // Audit log per entry — best-effort
+    for (const entry of entries) {
+      try {
+        await insforge.database.from("audit_logs").insert([{
+          actor_id: actor.id,
+          department_id: actor.departmentId,
+          action: "entry.approved",
+          target_type: "entry",
+          target_id: entry.id,
+          metadata_json: { entry_event_id: entry.event_id, amount: entry.amount },
+        }]);
+      } catch (logErr) {
+        console.error("[actions/approvals] entry approval audit log failed:", logErr);
+      }
+    }
+
+    // Revalidate — best-effort across affected events
+    const affectedEventIds = new Set(entries.map((e) => e.event_id));
+    revalidatePath("/adviser/approvals");
+    for (const eventId of affectedEventIds) {
+      revalidatePath(`/treasurer/events/${eventId}`);
+    }
+
+    return { success: true as const };
+  } catch (error) {
+    if (error instanceof Error && "code" in error) {
+      return { success: false as const, error: error.message };
+    }
+    console.error("[actions/approvals] batchApproveEntries:", error);
+    return { success: false as const, error: "Something went wrong." };
+  }
+}
+
+// ─── Reject Single Manual Entry (Adviser action) ────────────────────
+
+export async function rejectEntry(entryId: string, rejectionReason: string) {
+  try {
+    if (!entryId) {
+      return { success: false as const, error: "Entry ID is required." };
+    }
+    if (!rejectionReason || rejectionReason.trim().length === 0) {
+      return { success: false as const, error: "Rejection reason is required." };
+    }
+
+    const actor = await requireRole("adviser");
+    const insforge = await createInsforgeServer();
+
+    const { data: entry, error: fetchErr } = await insforge.database
+      .from("entries")
+      .select("id, event_id, created_by, status, type, events(department_id, status)")
+      .eq("id", entryId)
+      .maybeSingle();
+
+    if (fetchErr || !entry) {
+      return { success: false as const, error: "Entry not found." };
+    }
+
+    const eventsArr = entry.events as Array<{ department_id: string; status: string }> | null;
+    const ev = eventsArr?.[0];
+    if (!ev) {
+      return { success: false as const, error: "Entry has no event." };
+    }
+    if (ev.department_id !== actor.departmentId) {
+      return { success: false as const, error: "This entry does not belong to your department." };
+    }
+    if (ev.status === "archived") {
+      return { success: false as const, error: "Cannot reject entries for an archived event." };
+    }
+    if (entry.status !== "pending_approval") {
+      return { success: false as const, error: "Entry is not pending approval." };
+    }
+    if (entry.type !== "manual") {
+      return { success: false as const, error: "Only manual entries can be rejected from this page." };
+    }
+
+    const { error: updateErr } = await insforge.database
+      .from("entries")
+      .update({
+        status: "rejected",
+        rejection_reason: rejectionReason.trim(),
+      })
+      .eq("id", entryId);
+
+    if (updateErr) {
+      console.error("[actions/approvals] rejectEntry failed:", updateErr);
+      return { success: false as const, error: "Failed to reject entry." };
+    }
+
+    // Audit log
+    await insforge.database.from("audit_logs").insert([{
+      actor_id: actor.id,
+      department_id: actor.departmentId,
+      action: "entry.rejected",
+      target_type: "entry",
+      target_id: entryId,
+      metadata_json: {
+        entry_event_id: entry.event_id,
+        reason: rejectionReason.trim(),
+      },
+    }]);
+
+    // Notification to entry creator — best-effort
+    try {
+      await insforge.database.from("notifications").insert({
+        user_id: entry.created_by,
+        type: "entry_rejected",
+        payload_json: {
+          entry_id: entryId,
+          event_id: entry.event_id,
+          reason: rejectionReason.trim(),
+        },
+        read: false,
+      });
+    } catch (notifErr) {
+      console.error("[actions/approvals] entry_rejected notification failed:", notifErr);
+    }
+
+    revalidatePath("/adviser/approvals");
+    revalidatePath(`/treasurer/events/${entry.event_id}`);
+
+    return { success: true as const };
+  } catch (error) {
+    if (error instanceof Error && "code" in error) {
+      return { success: false as const, error: error.message };
+    }
+    console.error("[actions/approvals] rejectEntry:", error);
     return { success: false as const, error: "Something went wrong." };
   }
 }

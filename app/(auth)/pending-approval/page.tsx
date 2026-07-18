@@ -11,6 +11,7 @@ export default function PendingApprovalPage() {
   const router = useRouter();
   const [rejected, setRejected] = useState(false);
   const [sessionLost, setSessionLost] = useState(false);
+  const [approved, setApproved] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -20,7 +21,7 @@ export default function PendingApprovalPage() {
         const data = await res.json();
         if (data.status === "active") {
           intervalRef.current && clearInterval(intervalRef.current);
-          router.push("/login");
+          setApproved(true);
         } else if (data.status === "rejected") {
           intervalRef.current && clearInterval(intervalRef.current);
           setRejected(true);
@@ -40,48 +41,61 @@ export default function PendingApprovalPage() {
 
   return (
     <AuthShell>
-      <div className="mt-24">
-        <AuthCard
-          title="Awaiting Approval"
-          subtitle="You&rsquo;re all set! Your registration has been received and is awaiting approval. We&rsquo;ll email you as soon as your account is ready."
-        >
-          <div className="flex flex-col items-center">
-            {rejected && (
-              <div className="mb-6 w-full rounded-lg border border-error bg-error-lightest px-4 py-3 text-center text-sm text-error">
-                Your registration request was not approved. Please contact your
-                department for more information.
-              </div>
-            )}
-
-            {sessionLost && (
-              <div className="mb-6 w-full rounded-lg border border-warning bg-warning-lightest px-4 py-3 text-center text-sm text-warning">
-                Your session has expired.{" "}
-                <button
-                  type="button"
-                  onClick={() => router.push("/login")}
-                  className="font-medium underline underline-offset-2 hover:no-underline"
-                >
-                  Sign in again
-                </button>{" "}
-                to continue.
-              </div>
-            )}
-
+      {approved ? (
+        <AuthCard title="Account Approved!" center>
+          <div className="flex flex-col items-center mt-8">
             <LottiePlayer
-              src="/Auth%20pages/loading-time.json"
-              className="mt-24 h-48 w-48"
+              src="/Auth%20pages/success.json"
+              className="h-48 w-48"
+              loop={false}
+              onComplete={() => router.push("/login")}
             />
-
-            <AuthButton
-              variant="primary"
-              onClick={() => router.push("/login")}
-              className="mt-24"
-            >
-              Back to login
-            </AuthButton>
           </div>
         </AuthCard>
-      </div>
+      ) : (
+        <div className="mt-24">
+          <AuthCard
+            title="Awaiting Approval"
+            subtitle="You&rsquo;re all set! Your registration has been received and is awaiting approval. We&rsquo;ll email you as soon as your account is ready."
+          >
+            <div className="flex flex-col items-center">
+              {rejected && (
+                <div className="mb-6 w-full rounded-lg border border-error bg-error-lightest px-4 py-3 text-center text-sm text-error">
+                  Your registration request was not approved. Please contact your
+                  department for more information.
+                </div>
+              )}
+
+              {sessionLost && (
+                <div className="mb-6 w-full rounded-lg border border-warning bg-warning-lightest px-4 py-3 text-center text-sm text-warning">
+                  Your session has expired.{" "}
+                  <button
+                    type="button"
+                    onClick={() => router.push("/login")}
+                    className="font-medium underline underline-offset-2 hover:no-underline"
+                  >
+                    Sign in again
+                  </button>{" "}
+                  to continue.
+                </div>
+              )}
+
+              <LottiePlayer
+                src="/Auth%20pages/loading-time.json"
+                className="mt-24 h-48 w-48"
+              />
+
+              <AuthButton
+                variant="primary"
+                onClick={() => router.push("/login")}
+                className="mt-24"
+              >
+                Back to login
+              </AuthButton>
+            </div>
+          </AuthCard>
+        </div>
+      )}
     </AuthShell>
   );
 }

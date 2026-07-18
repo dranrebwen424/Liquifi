@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import AuthShell from "@/components/auth/AuthShell";
 import AuthCard from "@/components/auth/AuthCard";
@@ -9,8 +9,7 @@ import AuthSelect from "@/components/auth/AuthSelect";
 import AuthButton from "@/components/auth/AuthButton";
 import AuthLink from "@/components/auth/AuthLink";
 
-// ponytail: mock department list — replaced by InsForge `departments` query later.
-const DEPARTMENTS = [
+const FALLBACK_DEPARTMENTS = [
   { code: "CCS", name: "Computer Studies" },
   { code: "COE", name: "Engineering" },
   { code: "CAS", name: "Arts & Sciences" },
@@ -19,6 +18,7 @@ const DEPARTMENTS = [
 
 export default function SignupPage() {
   const router = useRouter();
+  const [departments, setDepartments] = useState(FALLBACK_DEPARTMENTS);
   const [form, setForm] = useState({
     firstName: "",
     middleName: "",
@@ -26,8 +26,22 @@ export default function SignupPage() {
     email: "",
     password: "",
     role: "treasurer",
-    department: DEPARTMENTS[0].code,
+    department: "",
   });
+
+  useEffect(() => {
+    fetch("/api/departments")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success && data.departments.length > 0) {
+          setDepartments(data.departments);
+          setForm((prev) => ({ ...prev, department: data.departments[0].code }));
+        }
+      })
+      .catch(() => {
+        // ponytail: fallback to hardcoded list on network error
+      });
+  }, []);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState("");
@@ -109,7 +123,7 @@ export default function SignupPage() {
             label="Department"
             value={form.department}
             onChange={(v) => set("department", v)}
-            options={DEPARTMENTS.map((d) => ({ value: d.code, label: `${d.name} (${d.code})` }))}
+            options={departments.map((d) => ({ value: d.code, label: `${d.name} (${d.code})` }))}
           />
 
           {apiError && (

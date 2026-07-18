@@ -1,45 +1,42 @@
-# Memory — Signup Bugfix + Approval Flow (Auto-Redirect, Welcome Email)
+# Memory — Bug Fixes: Signup Flow & Adviser Approvals
 
 Last updated: 2026-07-18
 
 ## What was built
 
-- **`lib/email.ts`** — nodemailer transporter (Gmail SMTP, port 587, app password) with `requireTLS`, `transporter.verify()` on init, `sendWelcomeEmail()` and `sendRejectionEmail()` helpers
-- **`app/api/auth/status/route.ts`** — `GET` endpoint, calls `getCurrentUser()`, queries `users.account_status`, returns `{ status: "active" | "rejected" | "pending_approval" | "unauthenticated" }`
-- **`app/(auth)/pending-approval/page.tsx`** — 10s polling via `setInterval` to `/api/auth/status`, redirects to `/login` on `"active"`, shows rejection banner on `"rejected"`, shows session-expired hint on `"unauthenticated"`
+### Bug fix: userId null in OTP verify
+- **`app/api/auth/otp/verify/route.ts`** — Added JWT fallback: when the SDK's `verifyEmail()` returns `null` for `data.user.id`, decode the `sub` claim from the access token JWT via `Buffer.from(token, 'base64')`. The access token is always present on successful verification.
 
-## What was fixed
+### Bug fix: create-profile response not checked
+- **`app/(auth)/otp/page.tsx`** — Previously the create-profile `fetch` response was never checked (`res.ok`/`data.success`), and `sessionStorage.removeItem("pending_signup")` ran regardless of success. Now checks the response, only clears `sessionStorage` on success. On failure, keeps the data for retry.
 
-- **Signup bug (signUp doesn't return user.id):** `POST /api/auth/signup` treated missing `data.user.id` as 500 even though auth user was created. Removed the `if (!authUserId)` check — `users` row creation deferred to `POST /api/auth/create-profile` after OTP.
-- **Session cookie gap in OTP verify:** `createServerClient()` uses the `InsForgeClient` class directly, NOT the `createAuthActions` wrapper. The `verifyEmail()` class method calls `saveSessionFromResponse()` which in server mode only sets tokens on the internal HTTP client — it **never writes cookies**. Added manual `cookieStore.set()` for `insforge_access_token` and `insforge_refresh_token` after `verifyEmail()` succeeds.
-- **SMTP hardening:** Added `requireTLS: true`, `tls.rejectUnauthorized: false`, and `transporter.verify()` with console log. Made `getTransporter()` async.
+### Bug fix: Adviser Approve does nothing / RLS silent failure
+- **New DB function** — `update_user_account_status(p_id, p_account_status, p_approved_by, p_approved_at)` — SECURITY DEFINER function (runs as `project_admin`) that bypasses RLS on the `users` table. Created via `insforge_run-raw-sql`.
+- **`actions/approvals.ts`** — `approveTreasurerSignup` and `rejectTreasurerSignup` changed from `insforge.database.from("users").update(...)` to `insforge.database.rpc("update_user_account_status", {...})`. The direct update was silently affecting zero rows because the `users_update_own` RLS policy only allows `UPDATE WHERE id = auth.uid()`.
+- **`components/adviser/AdviserApprovalsClient.tsx`** — Added local `useState` for `pendingUsers` (renamed prop to `initialUsers`). On successful approve/reject, immediately removes the user from local state via `setPendingUsers(prev => prev.filter(...))` before calling `router.refresh()`.
 
 ## Decisions made (locked)
 
-- **Session cookies written manually after OTP verify** — not relying on SDK's `createAuthActions` wrapper. Cookie names/options match SDK defaults exactly (`insforge_access_token`, httpOnly: false, secure in production, sameSite: lax, path: /, maxAge: 3600; `insforge_refresh_token`, httpOnly: true, sameSite: lax, maxAge: 30d).
-- **Email sending is best-effort** — wrapped in try/catch in `approveAdviserSignup()`, approval succeeds regardless of email delivery. Error logged to server console only (no frontend feedback).
+- **SECURITY DEFINER RPC for user status updates** — The `users_update_own` RLS policy is correct (users should only edit their own row), but approval/rejection is a privileged operation that must bypass RLS for non-admin roles. The `create_user_profile` pattern (SECURITY DEFINER RPC) is extended to status changes.
+- **JWT decode fallback over extra DB call** — Decoding the `sub` claim from the access token JWT is cheaper and more reliable than making a second DB query to look up the user.
 
 ## Problems solved
 
-- **OTP verify didn't set cookies on browser** — traced through `node_modules/@insforge/sdk/dist/ssr.js` line 1039-1056: `saveSessionFromResponse()` in server mode skips `tokenManager.saveSession()` and never writes cookies. Fix: manually set cookies from `verifyEmail` response.
-- **Pending-approval polling silently stopped on "unauthenticated"** — added `setSessionLost(true)` and a yellow warning banner with link back to login.
-- **Welcome email not arriving** — Gmail SMTP works but emails land in spam (normal for new sender reputation with app password).
+- **SSR `verifyEmail()` returns null `user.id`** — The InsForge SSR SDK `verifyEmail()` may not return `data.user.id` in server mode, causing the create-profile call to be silently skipped. Fixed by decoding userId from the JWT access token's `sub` claim.
+- **Adviser approve returns success but does nothing** — The `users_update_own` RLS policy silently filtered out the `UPDATE` (adviser can only update their own row), so `updateErr` was null but zero rows changed. Fixed by using a SECURITY DEFINER RPC function that runs as `project_admin`.
+- **approveTreasurerSignup takes 3.3s then UI doesn't update** — The server action succeeded (from the server's perspective, zero rows affected is not an error), but the DB wasn't changed and the UI relied on unreliable `router.refresh()` propagation. Fixed both: RPC for the actual DB update, and local state for immediate UI feedback.
 
 ## Current state
 
-- Build passes (`tsc --noEmit`, `next build`), all 22 routes compile
-- Signup → OTP → create-profile → pending-approval flow works end to end
-- Session cookies persist after OTP, `/api/auth/status` returns correct status
-- Auto-redirect on approval works (pending-approval page polls → detects "active" → redirects to /login)
-- Welcome email sent on approval (lands in spam — user confirmed receipt)
-- `sendRejectionEmail` exists in `lib/email.ts` but NOT yet wired to `rejectAdviserSignup()`
+- Build passes clean (`tsc --noEmit`)
+- Adviser can approve/reject treasurer signups — DB actually updates, user disappears from list immediately, approved user can login
+- OTP verification always returns a userId (JWT fallback), so create-profile always runs
+- If create-profile fails, sessionStorage data is preserved for retry
 
 ## Next session starts with
 
-1. **Wire `sendRejectionEmail` to `rejectAdviserSignup()`** in `actions/approvals.ts` — currently only `sendWelcomeEmail` is called on approval; rejection email function exists but is unused.
-2. **Consider email deliverability** — if spam placement is a problem, switch from Gmail SMTP to Gmail API or a transactional service (SendGrid, Resend) for better inbox delivery.
-3. **Continue Phase 3 — Adviser Approvals** — `08 Adviser Approvals Page — Full UI` is the next unchecked item in `build-plan.md`.
+Phase 5 — Step 13: Entry Logging UI (`/treasurer/events/[eventId]/entries/new` with receipt upload + manual entry forms, mock data). Next unchecked item in `build-plan.md`.
 
 ## Open questions
 
-- None currently. This session resolved the blocker on the signup→approval→redirect→email flow.
+- None currently.

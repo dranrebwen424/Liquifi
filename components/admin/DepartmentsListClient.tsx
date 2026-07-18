@@ -8,6 +8,7 @@ import { motion } from "framer-motion";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { createDepartment } from "@/actions/departments";
+import { MobileBottomNav } from "@/components/admin/MobileBottomNav";
 
 // ─── Animation variants ───────────────────────────────────────────────
 const staggerContainer = {
@@ -115,7 +116,7 @@ export function DepartmentsListClient({ initialDepartments }: Props) {
   );
 
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-8 pb-28 md:pb-0">
+    <div className="mx-auto flex max-w-7xl flex-col gap-8">
       {/* Header */}
       <div>
         <h1 className="text-xl font-semibold text-text-primary md:text-2xl">Departments</h1>
@@ -336,31 +337,7 @@ export function DepartmentsListClient({ initialDepartments }: Props) {
         </button>
       )}
 
-      {/* Mobile bottom nav */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-surface md:hidden">
-        <Link
-          href="/admin/departments"
-          aria-current="page"
-          className="flex flex-1 flex-col items-center gap-1 py-2.5 text-accent"
-        >
-          <LayoutGrid className="h-5 w-5" />
-          <span className="text-[11px] font-medium">Departments</span>
-        </Link>
-        <Link
-          href="/admin/approvals"
-          className="flex flex-1 flex-col items-center gap-1 py-2.5 text-text-muted"
-        >
-          <CheckCircle2 className="h-5 w-5" />
-          <span className="text-[11px] font-medium">Approvals</span>
-        </Link>
-        <Link
-          href="/login"
-          className="flex flex-1 flex-col items-center gap-1 py-2.5 text-text-muted"
-        >
-          <User className="h-5 w-5" />
-          <span className="text-[11px] font-medium">Profile</span>
-        </Link>
-      </nav>
+      <MobileBottomNav />
     </div>
   );
 }

@@ -197,16 +197,16 @@ Last updated: 2026-07-14 (Figma-matched restyle)
 
 ### Adviser (Phase 3)
 
-- [ ] Adviser Approvals Tabs (Pending Expenses / Pending Users)
-- [ ] Multi-select Batch Approve Table
-- [ ] Single Reject Row (with required reason)
+- [x] Adviser Approvals Tabs (Pending Expenses / Pending Users)
+- [x] Multi-select Batch Approve Table
+- [x] Single Reject Row (with required reason)
 
 ### Treasurer — Events & Budget (Phase 4)
 
-- [ ] Events List Card (status badge + Total/Spent/Remaining preview)
-- [ ] New Event Form
-- [ ] Event Dashboard Summary Bar
-- [ ] Locked/Archived Banner
+- [x] Events List Card (status badge + Total/Spent/Remaining preview)
+- [x] New Event Form
+- [x] Event Dashboard Summary Bar
+- [x] Locked/Archived Banner
 
 ### Treasurer — Entries (Phase 5)
 
@@ -367,6 +367,121 @@ Last updated: 2026-07-17
 
 **Pattern notes:**
 Server Component with `requireLayoutRole("admin")` guard. Renders `AdminSidebar` + main content area (`lg:pl-60` to offset sidebar). Mobile gets a top bar (logo + "Admin" badge) instead of sidebar. Content wrapped in `max-w-[1440px]` centered container per `ui-rules.md`.
+
+### TreasurerSidebar
+
+File: components/treasurer/TreasurerSidebar.tsx
+Last updated: 2026-07-18
+
+| Property         | Class |
+| ---------------- | ----- |
+| Background       | `bg-surface` |
+| Border           | `border-r border-border` |
+| Nav spacing      | `px-3 py-4`, `gap-1.5` items |
+| Active item      | `bg-accent-light text-accent` |
+| Inactive item    | `text-text-secondary hover:bg-surface-secondary hover:text-text-primary` |
+| Profile avatar   | `h-9 w-9 rounded-full bg-accent-light text-accent` |
+
+**Pattern notes:** Mirrors AdminSidebar pattern exactly; 4 nav items (Home, Reports, Notifications, Profile). Same fixed 240px sidebar, mobile hidden, same bottom profile popover. Nav detection via `usePathname()`. Label order different from admin: Home is first (not Departments).
+
+### TreasurerMobileBottomNav
+
+File: components/treasurer/TreasurerMobileBottomNav.tsx
+Last updated: 2026-07-18
+
+| Property     | Class |
+| ------------ | ----- |
+| Background   | `bg-surface border-t border-border` |
+| Position     | `fixed inset-x-0 bottom-0 z-40 md:hidden` |
+| Item spacing | `flex-1 flex flex-col items-center gap-1 py-2` |
+| Active item  | `text-accent` (icon + `text-[11px]` label) |
+| Inactive     | `text-text-muted` |
+
+**Pattern notes:** 4 items, matches sidebar. Same visual language as admin mobile bottom nav.
+
+### EventCard
+
+File: components/events/EventCard.tsx
+Last updated: 2026-07-18
+
+| Property         | Class |
+| ---------------- | ----- |
+| Background       | `bg-surface` |
+| Border           | `border border-border-strong` |
+| Border radius    | `rounded-xl` |
+| Spacing          | `p-5`, `gap-3` inner |
+| Shadow           | `shadow-card` |
+| Hover            | `hover:border-accent` |
+
+**Pattern notes:** Card showing event name (truncate), `EventStatusBadge`, `BudgetProgressBar` (h-2.5 rounded-full bg-neutral-light with blue fill). Bottom row: line items showing Total / Spent / Remaining in `text-xs text-text-muted` with `formatPHP()`. Colored remaining: green when within budget, red when overspent.
+
+### EventForm
+
+File: components/events/EventForm.tsx
+Last updated: 2026-07-18
+
+| Property         | Class |
+| ---------------- | ----- |
+| Background       | `rounded-xl border border-border bg-surface p-6 shadow-card` |
+| Input            | `rounded-lg border border-border bg-surface px-3 py-2.5 focus:border-accent focus:ring-1 focus:ring-accent` |
+| Submit button    | `rounded-full bg-accent px-6 py-3 text-accent-foreground hover:bg-accent-hover disabled:opacity-50` |
+
+**Pattern notes:** Controlled form (`name` + `budgetTotal`). Accepts optional `onSubmit` prop — when absent, mock-simulates success (600ms delay → `/treasurer/home`). Error display inline. Used by `app/treasurer/events/new/page.tsx` with `createEvent` Server Action wired as `onSubmit`.
+
+### BudgetSummary
+
+File: components/events/BudgetSummary.tsx
+Last updated: 2026-07-18
+
+| Property       | Class |
+| -------------- | ----- |
+| Card           | `rounded-xl border border-border-strong bg-surface p-5 shadow-card` |
+| Stat label     | `text-xs text-text-muted` |
+| Stat value     | `text-lg font-semibold tabular-nums` |
+| Progress bar   | `h-2.5 rounded-full bg-neutral-light` overflow-hidden, fill `h-full rounded-full` colored by ratio (accent/success/error) |
+
+**Pattern notes:** 3-column stat row (Total Budget / Spent / Remaining) with progress fill bar. Remaining color: within budget = `text-text-primary` fill accent; spent > 50% = fill warning; overspent = fill error + `text-error`.
+
+### LockedBanner
+
+File: components/events/LockedBanner.tsx
+Last updated: 2026-07-18
+
+| Property          | Class |
+| ----------------- | ----- |
+| Background        | locked: `bg-info-lightest border-info`; archived: `bg-neutral-light border-border` |
+| Border            | `rounded-xl border px-4 py-3` |
+| Icon              | `h-5 w-5` inline SVG (lock / archive), `text-info-foreground` or `text-text-muted` |
+| Text              | `text-sm font-medium` + `text-xs text-text-muted` details |
+
+**Pattern notes:** Only renders when `isLocked` or `isArchived` is true. Two variants: info-blue for locked (report pending/approved), neutral for archived. Provides user-facing explanation of why actions are disabled.
+
+### EntryRow
+
+File: components/entries/EntryRow.tsx
+Last updated: 2026-07-18
+
+| Property      | Class |
+| ------------- | ----- |
+| Container     | `border-b border-border px-4 py-3 last:border-0` |
+| Type badge    | `rounded-full px-2 py-0.5 text-[11px] font-medium` — receipt: `bg-info-lightest text-info-foreground`; manual: `bg-surface-secondary text-text-secondary` |
+| Status badge  | Uses `StatusBadge` preset mapper (ai_parsed→info, deducted→success, voided→error, etc.) |
+| Void state    | `opacity-60` container + `line-through` on amount + inline void reason |
+
+**Pattern notes:** Single entry row with type indicator, description/supplier, amount, and status badge. Voided entries: dimmed, struck-through amount, always-visible void reason attribution line (not hover-revealed).
+
+### EntryList
+
+File: components/entries/EntryList.tsx
+Last updated: 2026-07-18
+
+| Property   | Class |
+| ---------- | ----- |
+| Container  | `rounded-xl border border-border-strong bg-surface` |
+| Header     | `border-b border-border px-4 py-2.5` with column labels |
+| Animation  | framer-motion `staggerContainer` + `fadeUpItem` from `lib/motion-variants` |
+
+**Pattern notes:** Wraps `EntryRow` components in a header + list. Empty state uses receipt-document SVG icon. Stagger animation on mount via framer-motion. No interactive elements — pure display component shared by dashboard and (future) report review.
 
 ---
 

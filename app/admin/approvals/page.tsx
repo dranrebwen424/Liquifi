@@ -30,7 +30,7 @@ export default async function AdminApprovalsPage() {
     })) ?? [];
 
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-8 pb-28 md:pb-0">
+    <div className="mx-auto flex max-w-7xl flex-col gap-8">
       {/* Header */}
       <div>
         <h1 className="text-xl font-semibold text-text-primary md:text-2xl">
