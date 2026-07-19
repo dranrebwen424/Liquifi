@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { EventStatusBadge } from "@/components/ui/StatusBadge";
+import { Folder, FileText } from "lucide-react";
 import { formatPHP } from "@/lib/format";
 
 type EventCardProps = {
@@ -8,63 +8,60 @@ type EventCardProps = {
   status: "open" | "archived";
   budgetTotal: number;
   totalSpent: number;
+  numEntries: number;
+  createdByName: string;
 };
 
-/** Compute spent from deducted entries only — voided entries excluded. */
-function computeSpent(budgetTotal: number, totalSpent: number) {
-  return Math.min(totalSpent, budgetTotal * 2); // ponytail: clamp for display only
+function budgetColor(pct: number) {
+  if (pct >= 100) return "bg-error";
+  if (pct >= 70) return "bg-warning";
+  return "bg-success";
 }
 
-export function EventCard({ id, name, status, budgetTotal, totalSpent }: EventCardProps) {
-  const remaining = budgetTotal - totalSpent;
-  const pctUsed = budgetTotal > 0 ? (totalSpent / budgetTotal) * 100 : 0;
+export function EventCard({ id, name, status, budgetTotal, totalSpent, numEntries, createdByName }: EventCardProps) {
+  const isOpen = status === "open";
+  const pct = budgetTotal > 0 ? Math.min((totalSpent / budgetTotal) * 100, 100) : 0;
 
   return (
     <Link
       href={`/treasurer/events/${id}`}
-      className="block rounded-xl border border-border-strong bg-surface p-6 shadow-card transition-all duration-200 hover:border-border-strong hover:shadow-md"
+      className="flex min-h-[160px] w-full flex-col rounded-xl border border-border-strong bg-surface p-4 transition-all duration-200 hover:border-accent hover:shadow-lg hover:scale-[1.02] md:mx-auto md:h-[200px] md:max-w-[280px] md:p-5"
     >
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <h3 className="truncate text-base font-semibold text-text-primary">
-            {name}
-          </h3>
-          <p className="mt-0.5 text-xs text-text-muted">
-            Budget: {formatPHP(budgetTotal)}
-          </p>
-        </div>
-        <EventStatusBadge status={status} />
-      </div>
-
-      {/* Budget bar */}
-      <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-border-light">
+      <div className="flex items-start gap-2.5">
         <div
-          className="h-full rounded-full transition-all"
-          style={{
-            width: `${Math.min(pctUsed, 100)}%`,
-            backgroundColor:
-              pctUsed >= 100
-                ? "var(--color-error)"
-                : pctUsed >= 70
-                  ? "var(--color-warning)"
-                  : "var(--color-success)",
-          }}
-        />
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+            isOpen ? "bg-success-light text-success" : "bg-accent-light text-accent"
+          }`}
+        >
+          <Folder className="h-4 w-4" />
+        </div>
+        <h3 className="min-w-0 text-base font-semibold leading-6 text-text-primary line-clamp-2">
+          {name}
+        </h3>
+      </div>
+      <p
+        className={`mt-1.5 text-xs font-medium uppercase tracking-wide ${
+          isOpen ? "text-success" : "text-text-muted"
+        }`}
+      >
+        {isOpen ? "Open" : "Archived"}
+      </p>
+
+      {/* Budget progress bar */}
+      <div className="mt-3">
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-border-light">
+          <div className={`h-full rounded-full ${budgetColor(pct)}`} style={{ width: `${pct}%` }} />
+        </div>
+        <p className="mt-1.5 text-[11px] text-text-muted">
+          {formatPHP(totalSpent)} of {formatPHP(budgetTotal)}
+        </p>
       </div>
 
-      {/* Totals row */}
-      <div className="mt-3 flex items-center justify-between text-sm">
-        <span className="text-text-secondary">
-          Spent: <span className="font-medium text-text-primary">{formatPHP(totalSpent)}</span>
-        </span>
-        <span
-          className={
-            remaining < 0
-              ? "font-medium text-error"
-              : "font-medium text-text-primary"
-          }
-        >
-          Remaining: {remaining < 0 ? `-${formatPHP(Math.abs(remaining))}` : formatPHP(remaining)}
+      <div className="mt-auto flex items-center justify-between gap-2 pt-2 text-[11px] leading-4 text-text-muted">
+        <span className="truncate">By: {createdByName}</span>
+        <span className="flex shrink-0 items-center gap-1">
+          <FileText className="h-3 w-3" />
+          {numEntries}
         </span>
       </div>
     </Link>

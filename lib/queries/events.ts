@@ -9,10 +9,13 @@ export type EventWithMeta = {
   status: EventStatus;
   budget_total: number;
   total_spent: number;
+  num_entries: number;
   is_locked: boolean;
   budget_locked: boolean;
   num_locked: number;
   created_at: string;
+  created_by: string;
+  created_by_name: string;
 };
 
 export type EntryForDashboard = {
@@ -45,7 +48,7 @@ export async function getDepartmentEvents(
 
   const { data: events, error } = await insforge.database
     .from("events")
-    .select("id, name, department_id, status, budget_total, created_at")
+    .select("id, name, department_id, status, budget_total, created_at, created_by")
     .eq("department_id", departmentId)
     .order("created_at", { ascending: false });
 
@@ -71,6 +74,19 @@ export async function getDepartmentEvents(
     }
   }
 
+  // Batch-fetch entry counts per event
+  const { data: countRows } = await insforge.database
+    .from("entries")
+    .select("event_id")
+    .in("event_id", eventIds);
+
+  const entryCountMap: Record<string, number> = {};
+  if (countRows) {
+    for (const row of countRows) {
+      entryCountMap[row.event_id] = (entryCountMap[row.event_id] ?? 0) + 1;
+    }
+  }
+
   // Check which events have pending/approved reports (is_locked)
   const { data: reportRows } = await insforge.database
     .from("reports")
@@ -89,17 +105,35 @@ export async function getDepartmentEvents(
   // Check which events have at least one deducted entry (budget_locked)
   const budgetLockedIds = new Set(Object.keys(spentMap));
 
-  return events.map((e: { id: string; name: string; department_id: string; status: string; budget_total: number; created_at: string }) => ({
+  // Batch-fetch creator names
+  const creatorIds = [...new Set(events.map((e: { created_by: string }) => e.created_by).filter(Boolean))];
+  const nameMap: Record<string, string> = {};
+  if (creatorIds.length > 0) {
+    const { data: users } = await insforge.database
+      .from("users")
+      .select("id, first_name, last_name")
+      .in("id", creatorIds);
+    if (users) {
+      for (const u of users) {
+        nameMap[u.id] = [u.first_name, u.last_name].filter(Boolean).join(" ") || "Unknown";
+      }
+    }
+  }
+
+  return events.map((e: { id: string; name: string; department_id: string; status: string; budget_total: number; created_at: string; created_by: string }) => ({
     id: e.id,
     name: e.name,
     department_id: e.department_id,
     status: e.status as EventStatus,
     budget_total: Number(e.budget_total),
     total_spent: spentMap[e.id] ?? 0,
+    num_entries: entryCountMap[e.id] ?? 0,
     is_locked: lockedEventIds.has(e.id),
     budget_locked: budgetLockedIds.has(e.id),
     num_locked: 0,
     created_at: e.created_at,
+    created_by: e.created_by,
+    created_by_name: nameMap[e.created_by] ?? "Unknown",
   }));
 }
 

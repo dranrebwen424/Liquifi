@@ -210,11 +210,11 @@ Last updated: 2026-07-14 (Figma-matched restyle)
 
 ### Treasurer — Entries (Phase 5)
 
-- [ ] Entry Method Toggle (Receipt vs No Receipt)
-- [ ] Receipt Upload Dropzone
-- [ ] Receipt Review Panel (read-only extracted fields)
-- [ ] Manual Entry Form
-- [ ] Entry List Row (with voided/struck-through state)
+- [x] Entry Method Toggle (Receipt vs No Receipt)
+- [x] Receipt Upload Dropzone
+- [x] Receipt Review Panel (read-only extracted fields)
+- [x] Manual Entry Form
+- [x] Entry List Row (with voided/struck-through state)
 
 ### Voiding & Overspend (Phase 6)
 
@@ -482,6 +482,91 @@ Last updated: 2026-07-18
 | Animation  | framer-motion `staggerContainer` + `fadeUpItem` from `lib/motion-variants` |
 
 **Pattern notes:** Wraps `EntryRow` components in a header + list. Empty state uses receipt-document SVG icon. Stagger animation on mount via framer-motion. No interactive elements — pure display component shared by dashboard and (future) report review.
+
+### ReceiptUpload
+
+File: components/entries/ReceiptUpload.tsx
+Last updated: 2026-07-18
+
+| Property        | Class |
+| --------------- | ----- |
+| Upload zone     | `rounded-xl border-2 border-dashed p-12` — drag: `border-accent bg-accent-muted`; idle: `border-border-strong bg-surface hover:border-accent hover:bg-accent-muted` |
+| Icon circle     | `flex h-12 w-12 items-center justify-center rounded-full bg-accent-light text-accent` |
+| File row        | `flex items-center gap-3 text-sm` with `FileImage` icon |
+| Remove button   | `absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-surface text-text-secondary shadow` |
+| Upload button   | `rounded-full bg-accent px-6 py-3 text-accent-foreground hover:bg-accent-hover disabled:opacity-50` |
+| Progress bar    | `h-1.5 w-full overflow-hidden rounded-full bg-border-light` with `animate-pulse rounded-full bg-accent` fill |
+
+**Pattern notes:** Drag/drop zone with click-to-browse fallback. Validates file type (JPEG/PNG/WebP) and size (10MB). Shows image preview after selection. Mock 1s parse delay via `setTimeout(1000)`. Calls `onParsed(mock)` with `MockParsedReceipt` shape. `resetFile` clears selection for re-upload.
+
+### ReceiptReview
+
+File: components/entries/ReceiptReview.tsx
+Last updated: 2026-07-18
+
+| Property          | Class |
+| ----------------- | ----- |
+| Overlay           | `fixed inset-0 z-50 bg-overlay-alpha` |
+| Modal (desktop)   | `relative w-full max-w-lg rounded-xl border border-border bg-surface p-6 shadow-card` centered via flex |
+| Sheet (mobile)    | `max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-border bg-surface p-6 pb-8 shadow-card` with `mx-auto mb-5 h-1 w-10 rounded-full bg-border-strong` drag handle |
+| Read field        | `rounded-lg border border-border bg-surface-secondary px-3 py-2 text-sm text-text-primary` |
+| Highlighted field | `rounded-lg bg-info-lightest px-3 py-2 text-sm font-semibold text-info-foreground` (amount) |
+| Item table        | `rounded-lg border border-border` with thead `bg-surface-secondary`, tbody rows `border-b border-border last:border-0`, tfoot `border-t border-border-strong bg-surface-secondary font-medium` |
+| Confirm button    | `rounded-full bg-accent px-6 py-3 text-accent-foreground hover:bg-accent-hover` with `Check` icon |
+| Discard button    | `rounded-full border border-error px-6 py-3 text-error hover:bg-error-lightest` with `X` icon |
+
+**Pattern notes:** AnimatePresence overlay + two render branches (`hidden sm:flex` modal / `sm:hidden` bottom sheet). Closes on Escape or overlay click (only when not confirming). Uses `dialogOverlay` / `dialogContent` from framer-motion variants. Exported `ReadOnlyField` atom for reuse. Props: `open`, `data: MockParsedReceipt`, `onConfirm`, `onDiscard`, `onClose`, `confirming?`.
+
+### ManualEntryForm
+
+File: components/entries/ManualEntryForm.tsx
+Last updated: 2026-07-18
+
+| Property        | Class |
+| --------------- | ----- |
+| Header icon     | `flex h-10 w-10 items-center justify-center rounded-lg bg-surface-secondary text-text-secondary` |
+| Input field     | `rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:ring-1 focus:ring-accent` |
+| Item card       | `rounded-lg border border-border bg-surface p-3` with delete button `rounded-md p-1 text-text-muted hover:bg-error-lightest hover:text-error` |
+| Qty/price input | `rounded-lg border border-border bg-surface px-2 py-1.5 text-sm tabular-nums focus:border-accent focus:ring-1 focus:ring-accent` |
+| Amount display  | `flex h-9 items-center rounded-lg border border-border bg-surface-secondary px-2 text-sm tabular-nums text-text-primary` |
+| Total row       | `rounded-lg border border-border-strong bg-surface-secondary p-4` with `text-lg font-semibold tabular-nums` |
+| Submit button   | `rounded-full bg-accent px-6 py-3 text-accent-foreground hover:bg-accent-hover disabled:opacity-50` |
+| Add item button | `rounded-full border border-border px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-surface-secondary hover:text-text-primary` |
+
+**Pattern notes:** Inline form (not a modal). Dynamic item rows with auto-computed `lineAmount = qty * unitPrice` and `totalAmount = sum(lineAmounts)`. Username-style `FormField` wrapper component. `itemBreakdown` type used but not exported (local `ManualLineItem` type). Mock 600ms submit delay. Calls `onSubmit(data: ManualEntryData)`.
+
+### LogEntryModal
+
+File: components/entries/LogEntryModal.tsx
+Last updated: 2026-07-18
+
+| Property       | Class |
+| -------------- | ----- |
+| Overlay        | `fixed inset-0 z-50 bg-overlay-alpha` |
+| Modal (web)    | `relative w-full max-w-lg rounded-xl border border-border bg-surface p-6 shadow-card` centered via flex |
+| Sheet (mobile) | `max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-border bg-surface p-6 pb-8 shadow-card` + `mx-auto mb-5 h-1 w-10 rounded-full bg-border-strong` drag handle |
+| Toggle         | `rounded-xl border border-border bg-surface p-1` — active: `bg-accent text-accent-foreground shadow-sm`; inactive: `text-text-secondary hover:text-text-primary` |
+
+**Pattern notes:** AnimatePresence modal/sheet shell that wraps the same entry-logging flow previously on the standalone page. Method toggle hidden during receipt review. On confirm/submit → calls `onClose()` instead of navigating. State resets on open via `useEffect`. Uses `dialogOverlay`/`dialogContent` framer-motion variants.
+
+### EventDashboardActions
+
+File: components/events/EventDashboardActions.tsx
+Last updated: 2026-07-18
+
+**Pattern notes:** Tiny client-component wrapper that owns the "Log Entry" modal state. Renders the two action buttons (Log Entry + Generate Report) and the `<LogEntryModal>`. Props: `eventId`, `canMutate`, `isArchived`, `isLocked`. Keeps the dashboard page as a Server Component. Buttons match the exact classes from the previous inline `<Link>`.
+
+### NewEntryPage (standalone fallback)
+
+File: app/treasurer/events/[eventId]/entries/new/page.tsx
+Last updated: 2026-07-18
+
+**Layout:** Centered `mx-auto max-w-2xl flex flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10`. Back link `ArrowLeft` → event dashboard. Page heading "Log Entry" with subtitle. Method toggle `rounded-xl border border-border bg-surface p-1` segmented control with `Camera` / `Pencil` icons. Content card `rounded-xl border border-border-strong bg-surface p-5 sm:p-6`. Renders `ReceiptUpload` or `ManualEntryForm` based on toggle state. When receipt parsed → renders `ReceiptReview` modal/sheet. Confirm navigates back to event dashboard after 800ms mock. Discard closes review and resets to upload state.
+
+| Property        | Class |
+| --------------- | ----- |
+| Method toggle   | `rounded-xl border border-border bg-surface p-1` with `flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium` — active: `bg-accent text-accent-foreground shadow-sm`; inactive: `text-text-secondary hover:text-text-primary` |
+| Content card    | `rounded-xl border border-border-strong bg-surface p-5 sm:p-6` |
 
 ---
 
