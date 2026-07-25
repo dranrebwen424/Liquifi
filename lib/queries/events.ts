@@ -57,33 +57,22 @@ export async function getDepartmentEvents(
     return [];
   }
 
-  // Batch-fetch aggregated spending per event
+  // Batch-fetch all entries for these events (one query instead of two)
   const eventIds = events.map((e: { id: string }) => e.id);
 
-  const { data: spentRows } = await insforge.database
+  const { data: entryRows } = await insforge.database
     .from("entries")
-    .select("event_id, amount")
-    .in("event_id", eventIds)
-    .eq("status", "deducted");
-
-  // Build a map: event_id → total spent
-  const spentMap: Record<string, number> = {};
-  if (spentRows) {
-    for (const row of spentRows) {
-      spentMap[row.event_id] = (spentMap[row.event_id] ?? 0) + Number(row.amount);
-    }
-  }
-
-  // Batch-fetch entry counts per event
-  const { data: countRows } = await insforge.database
-    .from("entries")
-    .select("event_id")
+    .select("event_id, amount, status")
     .in("event_id", eventIds);
 
+  const spentMap: Record<string, number> = {};
   const entryCountMap: Record<string, number> = {};
-  if (countRows) {
-    for (const row of countRows) {
+  if (entryRows) {
+    for (const row of entryRows) {
       entryCountMap[row.event_id] = (entryCountMap[row.event_id] ?? 0) + 1;
+      if (row.status === "deducted") {
+        spentMap[row.event_id] = (spentMap[row.event_id] ?? 0) + Number(row.amount);
+      }
     }
   }
 

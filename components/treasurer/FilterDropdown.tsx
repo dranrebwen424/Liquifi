@@ -93,7 +93,7 @@ export function FilterDropdown({ label, options, value, onChange, className }: P
       {open && (
         <ul
           role="listbox"
-          className="absolute z-30 mt-1 w-full origin-top overflow-hidden rounded-lg border border-border-strong bg-surface py-1 shadow-card sm:w-44"
+          className="absolute z-30 mt-1 min-w-40 origin-top overflow-hidden rounded-lg border border-border-strong bg-surface py-1 shadow-card sm:w-44"
         >
           {options.map((o, i) => (
             <li

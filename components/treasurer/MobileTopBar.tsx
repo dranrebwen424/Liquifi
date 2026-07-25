@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ArrowLeft, Search } from "lucide-react";
 
@@ -7,13 +8,26 @@ export function MobileTopBar() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isSearching = searchParams.get("search") === "1";
-  const query = searchParams.get("q") ?? "";
+  const [query, setQuery] = useState(searchParams.get("q") ?? "");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ponytail: debounce URL sync so router.replace doesn't fire on every keystroke
+  useEffect(() => {
+    if (!isSearching) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      const sp = new URLSearchParams();
+      sp.set("search", "1");
+      if (query) sp.set("q", query);
+      router.replace(`?${sp.toString()}`, { scroll: false });
+    }, 150);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [query, isSearching]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const enterSearch = () => {
-    const sp = new URLSearchParams(searchParams.toString());
-    sp.set("search", "1");
-    sp.delete("q");
-    router.push(`?${sp.toString()}`);
+    router.push("?search=1");
   };
 
   const exitSearch = () => {
@@ -21,14 +35,7 @@ export function MobileTopBar() {
   };
 
   const updateQuery = (value: string) => {
-    const sp = new URLSearchParams(searchParams.toString());
-    sp.set("search", "1");
-    if (value) {
-      sp.set("q", value);
-    } else {
-      sp.delete("q");
-    }
-    router.replace(`?${sp.toString()}`, { scroll: false });
+    setQuery(value);
   };
 
   if (isSearching) {

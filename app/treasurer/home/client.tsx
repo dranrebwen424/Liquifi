@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Plus, Search, Archive, ArrowLeft } from "lucide-react";
 import { EventCard } from "@/components/events/EventCard";
@@ -60,7 +60,14 @@ export function TreasurerHomeClient({ events }: Props) {
   const [budgetFilter, setBudgetFilter] = useState("all");
 
   const isSearching = searchParams.get("search") === "1";
-  const search = searchParams.get("q") ?? "";
+  const [search, setSearch] = useState(searchParams.get("q") ?? "");
+  const deferredSearch = useDeferredValue(search);
+
+  // Sync search from URL changes (mobile top bar debounces URL writes)
+  useEffect(() => {
+    const q = searchParams.get("q") ?? "";
+    setSearch(q);
+  }, [searchParams]);
 
   const treasurerOptions = useMemo(() => {
     const seen = new Map<string, string>();
@@ -83,7 +90,7 @@ export function TreasurerHomeClient({ events }: Props) {
 
   const filtered = useMemo(() => {
     const result = events.filter((e) => {
-      if (search && !e.name.toLowerCase().includes(search.toLowerCase())) return false;
+      if (deferredSearch && !e.name.toLowerCase().includes(deferredSearch.toLowerCase())) return false;
       if (typeFilter !== "all" && e.status !== typeFilter) return false;
       if (treasurerFilter !== "all" && e.created_by_name !== treasurerFilter) return false;
       if (modifiedFilter !== "all") {
@@ -118,14 +125,14 @@ export function TreasurerHomeClient({ events }: Props) {
     });
 
     return result;
-  }, [events, search, typeFilter, treasurerFilter, modifiedFilter, budgetFilter, sortBy]);
+  }, [events, deferredSearch, typeFilter, treasurerFilter, modifiedFilter, budgetFilter, sortBy]);
 
   const activeEvents = filtered.filter((e) => e.status === "open");
   const archivedEvents = filtered.filter((e) => e.status === "archived");
   const archivedByYear = groupByYear(archivedEvents);
 
   const hasActiveFilters =
-    search || typeFilter !== "all" || treasurerFilter !== "all" || modifiedFilter !== "all" || budgetFilter !== "all";
+    deferredSearch || typeFilter !== "all" || treasurerFilter !== "all" || modifiedFilter !== "all" || budgetFilter !== "all";
 
   const clearFilters = () => {
     setTypeFilter("all");
@@ -140,14 +147,7 @@ export function TreasurerHomeClient({ events }: Props) {
   };
 
   const updateQuery = (value: string) => {
-    const sp = new URLSearchParams(searchParams.toString());
-    sp.set("search", "1");
-    if (value) {
-      sp.set("q", value);
-    } else {
-      sp.delete("q");
-    }
-    router.replace(`?${sp.toString()}`, { scroll: false });
+    setSearch(value);
   };
 
   return (

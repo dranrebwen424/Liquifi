@@ -13,42 +13,65 @@ type Props = {
   createdAt: string;
 };
 
+function budgetColor(pct: number) {
+  if (pct >= 100) return "bg-error";
+  if (pct >= 70) return "bg-warning";
+  return "bg-success";
+}
+
 export function EventListItem({ id, name, status, budgetTotal, totalSpent, numEntries, createdAt }: Props) {
   const created = new Date(createdAt);
   const dateStr = created.toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" });
+  const pct = budgetTotal > 0 ? Math.min((totalSpent / budgetTotal) * 100, 100) : 0;
 
   return (
     <Link
       href={`/treasurer/events/${id}`}
-      className="flex items-center gap-4 rounded-lg border border-border bg-surface px-4 py-3 transition-colors hover:bg-surface-secondary"
+      className="group flex items-center gap-4 rounded-xl border border-border bg-surface px-4 py-3 transition-colors hover:border-border-strong hover:bg-surface-secondary md:px-5"
     >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-light text-accent">
-        <Folder className="h-4 w-4" />
+      {/* Folder icon */}
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neutral-light text-text-muted transition-colors group-hover:bg-success-light group-hover:text-success">
+        <Folder className="h-5 w-5" />
       </div>
+
+      {/* Name + Date */}
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-text-primary">{name}</p>
-        <div className="mt-0.5 flex items-center gap-2 text-xs text-text-muted">
-          <span>{dateStr}</span>
-          <span className="text-text-muted">·</span>
-          <span className="tabular-nums">{formatPHP(totalSpent)}</span>
-          <span className="flex items-center gap-0.5">
-            <FileText className="h-3 w-3" />
-            {numEntries}
-          </span>
-        </div>
+        <p className="truncate text-sm font-semibold text-text-primary">{name}</p>
+        <p className="mt-0.5 text-xs text-text-muted">{dateStr}</p>
       </div>
-      <div className="hidden items-center gap-6 sm:flex">
-        <div className="text-right">
+
+      {/* Amount + Budget (desktop only) */}
+      <div className="hidden items-center gap-4 sm:flex sm:gap-6">
+        {/* Amount */}
+        <div className="w-[120px] text-right">
           <p className="text-sm font-medium tabular-nums text-text-primary">{formatPHP(totalSpent)}</p>
           <p className="text-[11px] text-text-muted">of {formatPHP(budgetTotal)}</p>
         </div>
-        <div className="flex items-center gap-1 text-xs text-text-muted">
+
+        {/* Budget progress bar */}
+        <div className="hidden w-[80px] md:block">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-border-light">
+            <div
+              className={`h-full rounded-full ${budgetColor(pct)}`}
+              style={{ width: `${Math.max(pct, 1)}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Entry count */}
+        <div className="flex w-[48px] items-center justify-center gap-1 text-xs text-text-muted">
           <FileText className="h-3 w-3" />
           {numEntries}
         </div>
-        <EventStatusBadge status={status} />
+
+        {/* Status badge */}
+        <div className="w-[80px]">
+          <EventStatusBadge status={status} />
+        </div>
       </div>
-      <ChevronRight className="h-4 w-4 shrink-0 text-text-muted" />
+
+      {/* Chevron */}
+      <ChevronRight className="h-4 w-4 shrink-0 text-text-muted transition-transform group-hover:translate-x-0.5" />
     </Link>
   );
 }

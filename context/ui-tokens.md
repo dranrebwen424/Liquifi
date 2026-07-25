@@ -62,9 +62,9 @@ telling the user something about status — not decoration.
   --color-surface-inverse: #111114;
 
   /* Borders */
-  --color-border: #e5e5e8;
-  --color-border-light: #eeeeef;
-  --color-border-strong: #d4d4d8;
+  --color-border: #e5e5e5;
+  --color-border-light: #eeeeee;
+  --color-border-strong: #d4d4d4;
 
   /* Text */
   --color-text-primary: #111114;
