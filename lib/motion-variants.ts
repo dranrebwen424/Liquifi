@@ -24,14 +24,26 @@ export const dialogOverlay: Variants = {
   show: { opacity: 1 },
 };
 
-/** Dialog/sheet content spring — scale 0.95 → 1, y:8 → 0. */
+/** Dialog content — popup scale with slight overshoot spring. */
 export const dialogContent: Variants = {
-  hidden: { opacity: 0, scale: 0.95, y: 8 },
+  hidden: { opacity: 0, scale: 0.88 },
   show: {
     opacity: 1,
     scale: 1,
-    y: 0,
-    transition: { type: "spring", stiffness: 100, damping: 20, duration: 0.3 },
+    transition: { type: "spring", stiffness: 260, damping: 20 },
   },
-  exit: { opacity: 0, scale: 0.95, transition: { duration: 0.15 } },
+  exit: { opacity: 0, scale: 0.92, transition: { duration: 0.12 } },
+};
+
+/** Bottom sheet — slides up from below, no scale. */
+export const sheetSlideUp: Variants = {
+  hidden: { y: "100%" },
+  show: {
+    y: 0,
+    transition: { type: "spring", stiffness: 300, damping: 30 },
+  },
+  exit: {
+    y: "100%",
+    transition: { duration: 0.2, ease: "easeIn" },
+  },
 };

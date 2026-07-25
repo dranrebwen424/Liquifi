@@ -1,6 +1,6 @@
 import { requireLayoutRole } from "@/lib/layout-guard";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
-import { MobileBottomNav } from "@/components/admin/MobileBottomNav";
+import { AdminMobileBottomNav } from "@/components/admin/MobileBottomNav";
 
 export default async function AdminLayout({
   children,
@@ -32,7 +32,7 @@ export default async function AdminLayout({
       </div>
 
       {/* Mobile bottom nav */}
-      <MobileBottomNav />
+      <AdminMobileBottomNav />
 
       {/* Main content */}
       <main className="lg:pl-60">

@@ -121,6 +121,8 @@ font-weight:     500
 border-radius:   var(--radius-full)
 hover:           background var(--color-accent-hover)
                  no visual layout change
+transition:      transition-[color,transform]
+press:           active:scale-[0.98]
 ```
 
 ### Secondary

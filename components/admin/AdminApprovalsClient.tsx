@@ -146,7 +146,7 @@ export function AdminApprovalsClient({ applicants }: Props) {
                     <button
                       onClick={() => handleApprove(a.id)}
                       disabled={togglingId === a.id}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-xs font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {togglingId === a.id ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -210,7 +210,7 @@ export function AdminApprovalsClient({ applicants }: Props) {
               <button
                 onClick={() => handleApprove(a.id)}
                 disabled={togglingId === a.id}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-accent px-3 py-2 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-accent px-3 py-2 text-xs font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {togglingId === a.id ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />

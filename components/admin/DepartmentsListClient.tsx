@@ -8,7 +8,7 @@ import { motion } from "framer-motion";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { createDepartment } from "@/actions/departments";
-import { MobileBottomNav } from "@/components/admin/MobileBottomNav";
+import { AdminMobileBottomNav } from "@/components/admin/MobileBottomNav";
 
 // ─── Animation variants ───────────────────────────────────────────────
 const staggerContainer = {
@@ -137,7 +137,7 @@ export function DepartmentsListClient({ initialDepartments }: Props) {
               <button
                 onClick={handleCreate}
                 disabled={!newName.trim() || !newCode.trim() || creating}
-                className="flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {creating && <Loader2 className="h-4 w-4 animate-spin" />}
                 {creating ? "Creating…" : "Create"}
@@ -169,7 +169,7 @@ export function DepartmentsListClient({ initialDepartments }: Props) {
               <button
                 onClick={handleCreate}
                 disabled={!newName.trim() || !newCode.trim() || creating}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {creating && <Loader2 className="h-4 w-4 animate-spin" />}
                 {creating ? "Creating…" : "Create"}
@@ -201,7 +201,7 @@ export function DepartmentsListClient({ initialDepartments }: Props) {
           </div>
           <button
             onClick={() => setCreateView("modal")}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-accent px-4 py-3 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent-hover"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-accent px-4 py-3 text-sm font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98]"
           >
             <Plus className="h-4 w-4" />
             New Department
@@ -230,7 +230,7 @@ export function DepartmentsListClient({ initialDepartments }: Props) {
             !search ? (
               <button
                 onClick={() => setCreateView("modal")}
-                className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent-hover"
+                className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98]"
               >
                 New Department
               </button>
@@ -337,7 +337,7 @@ export function DepartmentsListClient({ initialDepartments }: Props) {
         </button>
       )}
 
-      <MobileBottomNav />
+      <AdminMobileBottomNav />
     </div>
   );
 }

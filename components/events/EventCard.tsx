@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Folder, FileText } from "lucide-react";
 import { formatPHP } from "@/lib/format";
-import { EventStatusBadge } from "@/components/ui/StatusBadge";
 
 type EventCardProps = {
   id: string;
@@ -26,7 +25,7 @@ export function EventCard({ id, name, status, budgetTotal, totalSpent, numEntrie
   return (
     <Link
       href={`/treasurer/events/${id}`}
-      className="group flex min-h-[160px] w-full flex-col rounded-xl border border-border bg-surface p-5 transition-all duration-200 hover:border-accent hover:shadow-lg hover:scale-[1.02] md:mx-auto md:max-w-[300px]"
+      className="group flex min-h-[160px] w-full flex-col rounded-xl border border-border bg-surface p-5 transition-all duration-200 hover:border-accent hover:shadow-lg hover:scale-[1.02]"
     >
       {/* Icon + Name */}
       <div className="flex items-start gap-3">
@@ -40,11 +39,6 @@ export function EventCard({ id, name, status, budgetTotal, totalSpent, numEntrie
         <h3 className="min-w-0 pt-0.5 text-base font-semibold leading-snug text-text-primary line-clamp-2">
           {name}
         </h3>
-      </div>
-
-      {/* Status */}
-      <div className="mt-2.5">
-        <EventStatusBadge status={status} />
       </div>
 
       {/* Budget bar */}

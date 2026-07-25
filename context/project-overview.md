@@ -42,7 +42,6 @@ Public
 
 Treasurer
   /treasurer/home                          → Events list
-  /treasurer/events/new                    → Event creation form
   /treasurer/events/[eventId]              → Event dashboard (Total / Spent / Remaining, entries)
   /treasurer/events/[eventId]/entries/new  → Receipt upload or manual form
   /treasurer/reports

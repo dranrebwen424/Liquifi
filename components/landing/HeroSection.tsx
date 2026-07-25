@@ -36,7 +36,7 @@ export function HeroSection() {
             <a href="#features" className="rounded-md px-3 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary">Features</a>
             <a href="#how" className="rounded-md px-3 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary">How it works</a>
             <Link href="/login" className="ml-2 rounded-md px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary">Sign in</Link>
-            <Link href="/signup" className="ml-1 rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent-hover">Get started</Link>
+            <Link href="/signup" className="ml-1 rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98]">Get started</Link>
           </nav>
 
           {/* Mobile menu */}
@@ -51,7 +51,7 @@ export function HeroSection() {
               <a href="#how" className="block rounded-md px-3 py-2 text-sm font-medium text-text-secondary hover:bg-surface-secondary hover:text-text-primary">How it works</a>
               <div className="my-2 h-px bg-border" />
               <Link href="/login" className="block rounded-md px-3 py-2 text-sm font-medium text-text-secondary hover:bg-surface-secondary hover:text-text-primary">Sign in</Link>
-              <Link href="/signup" className="mt-1 block rounded-full bg-accent px-3 py-2 text-center text-sm font-medium text-accent-foreground hover:bg-accent-hover">Get started</Link>
+              <Link href="/signup" className="mt-1 block rounded-full bg-accent px-3 py-2 text-center text-sm font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98]">Get started</Link>
             </div>
           </details>
         </div>
@@ -73,8 +73,8 @@ export function HeroSection() {
         </p>
 
         <div style={reveal(240)} className="mt-12 flex items-center justify-center gap-3">
-          <Link href="/signup" className="rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent-hover">Get started</Link>
-          <Link href="/login" className="rounded-full border border-border bg-surface px-6 py-3 text-sm font-medium text-text-primary transition-colors hover:border-border-strong hover:bg-surface-secondary">Sign in</Link>
+          <Link href="/signup" className="rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98]">Get started</Link>
+          <Link href="/login" className="rounded-full border border-border bg-surface px-6 py-3 text-sm font-medium text-text-primary transition-[color,transform] hover:border-border-strong hover:bg-surface-secondary active:scale-[0.98]">Sign in</Link>
         </div>
       </section>
 

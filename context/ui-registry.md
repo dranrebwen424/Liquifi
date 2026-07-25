@@ -418,15 +418,29 @@ Last updated: 2026-07-18
 ### EventForm
 
 File: components/events/EventForm.tsx
-Last updated: 2026-07-18
+Last updated: 2026-07-25 (stripped page chrome — now embeddable in modals)
 
 | Property         | Class |
 | ---------------- | ----- |
-| Background       | `rounded-xl border border-border bg-surface p-6 shadow-card` |
-| Input            | `rounded-lg border border-border bg-surface px-3 py-2.5 focus:border-accent focus:ring-1 focus:ring-accent` |
+| Input field      | `rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:ring-1 focus:ring-accent` |
 | Submit button    | `rounded-full bg-accent px-6 py-3 text-accent-foreground hover:bg-accent-hover disabled:opacity-50` |
 
-**Pattern notes:** Controlled form (`name` + `budgetTotal`). Accepts optional `onSubmit` prop — when absent, mock-simulates success (600ms delay → `/treasurer/home`). Error display inline. Used by `app/treasurer/events/new/page.tsx` with `createEvent` Server Action wired as `onSubmit`.
+**Pattern notes:** Pure form component (no card wrapper, no back link). Accepts optional `onSubmit` prop — when absent, mock-simulates success. Error display inline. Used by `NewEventModal` with `createEvent` Server Action wired as `onSubmit`. Also used standalone as fallback. Changed from page-wrapped to embeddable — the modal provides its own chrome (overlay, card, close button).
+
+### NewEventModal
+
+File: components/events/NewEventModal.tsx
+Last updated: 2026-07-25
+
+| Property       | Class |
+| -------------- | ----- |
+| Overlay        | `fixed inset-0 z-50 bg-overlay-alpha` |
+| Modal (web)    | `relative w-full max-w-lg rounded-xl border border-border bg-surface p-6 shadow-card` centered via flex |
+| Sheet (mobile) | `max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-border bg-surface p-6 pb-8 shadow-card` + `mx-auto mb-5 h-1 w-10 rounded-full bg-border-strong` drag handle |
+| Close button   | `absolute right-4 top-4 flex h-7 w-7 items-center justify-center rounded-full text-text-muted hover:bg-surface-secondary hover:text-text-primary` |
+| Cancel (mobile)| `w-full rounded-full border border-border px-4 py-2.5 text-sm font-medium text-text-secondary hover:bg-surface-secondary hover:text-text-primary` |
+
+**Pattern notes:** AnimatePresence modal/sheet shell wrapping `EventForm`. Props: `open`, `onClose`. Calls `createEvent` Server Action on submit → `router.refresh()` to revalidate list. Escape key and overlay click close. Body scroll locked when open. State resets on open. Follows `LogEntryModal` pattern exactly.
 
 ### BudgetSummary
 

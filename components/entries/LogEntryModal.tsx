@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Check, X, Camera, Pencil, FileText, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatPHP } from "@/lib/format";
-import { dialogOverlay, dialogContent } from "@/lib/motion-variants";
+import { dialogOverlay, dialogContent, sheetSlideUp } from "@/lib/motion-variants";
 import { ReceiptUpload } from "@/components/entries/ReceiptUpload";
 import { ManualEntryForm } from "@/components/entries/ManualEntryForm";
 import type { MockParsedReceipt } from "@/components/entries/ReceiptUpload";
@@ -192,7 +192,7 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
         <button
           onClick={handleConfirm}
           disabled={confirming}
-          className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+          className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
         >
           <Check className="h-4 w-4" />
           {confirming ? "Confirming…" : "Confirm & Deduct"}
@@ -251,10 +251,16 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
           {/* Mobile: bottom sheet */}
           <motion.div
             key="logentry-sheet"
-            variants={dialogContent}
+            variants={sheetSlideUp}
             initial="hidden"
             animate="show"
             exit="exit"
+            drag="y"
+            dragConstraints={{ top: 0 }}
+            dragElastic={0.2}
+            onDragEnd={(_, info) => {
+              if (info.offset.y > 100) onClose();
+            }}
             className="fixed inset-x-0 bottom-0 z-50 sm:hidden"
           >
             <div className="max-h-[85vh] rounded-t-2xl border-t border-border bg-surface shadow-card">

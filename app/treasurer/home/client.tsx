@@ -1,12 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Plus, Search, Archive, ArrowLeft } from "lucide-react";
 import { EventCard } from "@/components/events/EventCard";
 import { EventListItem } from "@/components/events/EventListItem";
+import { NewEventModal } from "@/components/events/NewEventModal";
 import { ViewToggle } from "@/components/events/ViewToggle";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FilterDropdown } from "@/components/treasurer/FilterDropdown";
@@ -53,6 +53,7 @@ export function TreasurerHomeClient({ events }: Props) {
   const searchParams = useSearchParams();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [sortBy, setSortBy] = useState("newest");
+  const [newEventOpen, setNewEventOpen] = useState(false);
 
   const [typeFilter, setTypeFilter] = useState("all");
   const [treasurerFilter, setTreasurerFilter] = useState("all");
@@ -158,13 +159,14 @@ export function TreasurerHomeClient({ events }: Props) {
           <h1 className="text-xl font-semibold text-text-primary md:text-2xl">Events</h1>
           <p className="mt-1 text-xs text-text-muted">Manage your department event budgets and expenses</p>
         </div>
-        <Link
-          href="/treasurer/events/new"
-          className="hidden shrink-0 items-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent-hover md:inline-flex"
+        <button
+          type="button"
+          onClick={() => setNewEventOpen(true)}
+          className="hidden shrink-0 items-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground transition-[color,transform,shadow] hover:bg-accent-hover hover:shadow-lg hover:scale-[1.04] active:scale-[0.98] md:inline-flex"
         >
           <Plus className="h-4 w-4" />
           New Event
-        </Link>
+        </button>
       </div>
 
       {/* Search + Filters */}
@@ -243,13 +245,14 @@ export function TreasurerHomeClient({ events }: Props) {
                 Clear filters
               </button>
             ) : (
-              <Link
-                href="/treasurer/events/new"
-                className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-foreground"
+              <button
+                type="button"
+                onClick={() => setNewEventOpen(true)}
+                className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-[color,transform,shadow] hover:bg-accent-hover hover:shadow-lg hover:scale-[1.04] active:scale-[0.98]"
               >
                 <Plus className="h-4 w-4" />
                 New Event
-              </Link>
+              </button>
             )
           }
         />
@@ -259,7 +262,7 @@ export function TreasurerHomeClient({ events }: Props) {
           {activeEvents.length > 0 && (
             <section>
               <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-text-primary">Active Events</h2>
+                <h2 className="text-base font-semibold text-text-primary">Active Events</h2>
                 <ViewToggle value={viewMode} onChange={setViewMode} />
               </div>
               {viewMode === "grid" ? (
@@ -268,7 +271,7 @@ export function TreasurerHomeClient({ events }: Props) {
                   variants={staggerContainer}
                   initial="hidden"
                   animate="show"
-                  className="grid grid-cols-1 gap-x-5 gap-y-6 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4"
+                  className="grid grid-cols-2 gap-x-5 gap-y-6 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4"
                 >
                   {activeEvents.map((event) => (
                     <motion.div key={event.id} variants={fadeUpItem}>
@@ -312,9 +315,10 @@ export function TreasurerHomeClient({ events }: Props) {
 
           {/* ── Archive ── */}
           {archivedEvents.length > 0 && (
-            <section>
+            <section className="pt-4">
+              <div className="mb-4 h-px bg-border" />
               <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-text-primary">Archive</h2>
+                <h2 className="text-base font-semibold text-text-primary">Archive</h2>
                 <FilterDropdown
                   label="Sort"
                   options={SORT_OPTIONS}
@@ -325,7 +329,7 @@ export function TreasurerHomeClient({ events }: Props) {
               <div className="flex flex-col gap-5">
                 {archivedByYear.map(([year, yearEvents]) => (
                   <div key={year}>
-                    <p className="mb-2 text-xs font-medium uppercase tracking-wide text-text-muted">{year}</p>
+                    <p className="mb-3 text-xs font-medium uppercase tracking-wide text-text-muted">{year}</p>
                     <motion.div
                       key={`archive-${year}-${yearEvents.length}`}
                       variants={staggerContainer}
@@ -356,13 +360,16 @@ export function TreasurerHomeClient({ events }: Props) {
       )}
 
       {/* Mobile FAB */}
-      <Link
-        href="/treasurer/events/new"
-        className="fixed bottom-24 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-lg transition-transform hover:scale-[1.02] active:scale-95 md:hidden"
+      <button
+        type="button"
+        onClick={() => setNewEventOpen(true)}
+        className="fixed bottom-24 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-lg transition-[color,transform,shadow] hover:bg-accent-hover hover:shadow-xl hover:scale-110 active:scale-95 md:hidden"
         aria-label="New event"
       >
         <Plus className="h-6 w-6" />
-      </Link>
+      </button>
+
+      <NewEventModal open={newEventOpen} onClose={() => setNewEventOpen(false)} />
     </div>
   );
 }

@@ -184,8 +184,7 @@ Build the complete treasurer events list and event creation UI with mock data.
 
 **UI:**
 
-- `/treasurer/home` — events list, status badges (open/archived), Total/Spent/Remaining preview per card, "New Event" button
-- `/treasurer/events/new` — event name, budget total form
+- `/treasurer/home` — events list, status badges (open/archived), Total/Spent/Remaining preview per card, "New Event" button opens modal/sheet
 
 **Logic:**
 

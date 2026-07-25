@@ -32,7 +32,6 @@ Phase 0 authorization foundation. This single artifact drives both the InsForge 
 | Route | Method | Role | Dept match? | State preconditions | RLS policy |
 | --- | --- | --- | --- | --- | --- |
 | `/treasurer/home` | GET | treasurer | no | — | DEPT |
-| `/treasurer/events/new` | GET | treasurer | n/a | — | DEPT |
 | `/treasurer/events/[eventId]` | GET | treasurer | yes | — (archived events viewable read-only) | DEPT |
 | `/treasurer/events/[eventId]/entries/new` | GET | treasurer | yes | `Event.is_locked = false`, `Event.status != 'archived'` | DEPT |
 | `/treasurer/reports` | GET | treasurer | n/a | — | DEPT |
