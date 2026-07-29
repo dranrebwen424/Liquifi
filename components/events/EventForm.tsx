@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { formatNumberInput } from "@/lib/format";
 
 type EventFormProps = {
   /** Called on submit. Defaults to mock behavior if omitted. */
@@ -12,13 +13,14 @@ export function EventForm({ onSubmit }: EventFormProps) {
   const [budgetTotal, setBudgetTotal] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const budgetRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
     const nameTrimmed = name.trim();
-    const parsed = parseFloat(budgetTotal);
+    const parsed = parseFloat(budgetTotal.replace(/,/g, ""));
 
     if (!nameTrimmed) {
       setError("Event name is required.");
@@ -75,11 +77,30 @@ export function EventForm({ onSubmit }: EventFormProps) {
         </label>
         <input
           id="event-budget"
-          type="number"
-          step="0.01"
-          min="0.01"
+          ref={budgetRef}
+          type="text"
+          inputMode="decimal"
           value={budgetTotal}
-          onChange={(e) => setBudgetTotal(e.target.value)}
+          onChange={(e) => {
+            const raw = e.target.value;
+            const cursor = e.target.selectionStart ?? raw.length;
+            const pre = raw.slice(0, cursor).replace(/,/g, "").length;
+            const formatted = formatNumberInput(raw);
+            setBudgetTotal(formatted);
+            requestAnimationFrame(() => {
+              if (!budgetRef.current) return;
+              // Find where the cursor should be after formatting by counting
+              // how many commas appear before the pre-formatted cursor pos
+              let newCursor = 0;
+              let digitsSeen = 0;
+              for (const ch of formatted) {
+                if (digitsSeen >= pre) break;
+                if (ch !== ",") digitsSeen++;
+                newCursor++;
+              }
+              budgetRef.current.setSelectionRange(newCursor, newCursor);
+            });
+          }}
           placeholder="0.00"
           className="rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:ring-1 focus:ring-accent"
           required

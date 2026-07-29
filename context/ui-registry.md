@@ -402,18 +402,46 @@ Last updated: 2026-07-18
 ### EventCard
 
 File: components/events/EventCard.tsx
-Last updated: 2026-07-18
+Last updated: 2026-07-26 (larger name + shadow depth)
 
 | Property         | Class |
 | ---------------- | ----- |
 | Background       | `bg-surface` |
-| Border           | `border border-border-strong` |
+| Border           | `border border-border` |
 | Border radius    | `rounded-xl` |
 | Spacing          | `p-5`, `gap-3` inner |
-| Shadow           | `shadow-card` |
-| Hover            | `hover:border-accent` |
+| Shadow           | `shadow-sm` at rest → `hover:shadow-md` on hover |
+| Hover            | `hover:border-accent hover:scale-[1.02]` |
+| Name             | `text-lg font-semibold` (was `text-base`) |
 
-**Pattern notes:** Card showing event name (truncate), `EventStatusBadge`, `BudgetProgressBar` (h-2.5 rounded-full bg-neutral-light with blue fill). Bottom row: line items showing Total / Spent / Remaining in `text-xs text-text-muted` with `formatPHP()`. Colored remaining: green when within budget, red when overspent.
+**Pattern notes:** Card showing event name (truncate), `EventStatusBadge`, `BudgetProgressBar` (h-2.5 rounded-full bg-neutral-light with blue fill). Bottom row: line items showing Total / Spent / Remaining in `text-xs text-text-muted` with `formatPHP()`. Colored remaining: green when within budget, red when overspent. Shadow depth creates visual hierarchy on the grid.
+
+### EventListItem
+
+File: components/events/EventListItem.tsx
+Last updated: 2026-07-26 (hover shadow + accent bar)
+
+| Property         | Class |
+| ---------------- | ----- |
+| Container        | `relative overflow-hidden rounded-xl border border-border bg-surface px-4 py-3 md:px-5` |
+| Hover            | `hover:border-border-strong hover:bg-surface-secondary hover:shadow-md` |
+| Left accent bar  | `absolute left-0 top-0 h-full w-[3px] -translate-x-full bg-success group-hover:translate-x-0` |
+| Transition       | `transition-all duration-200` |
+
+**Pattern notes:** List row with folder icon, name + date, amount/budget, progress bar, entry count, status badge, chevron. Left green accent bar slides in on hover via `translate-x` transform for modern interaction feedback. Chevron shifts right on hover (`group-hover:translate-x-0.5`).
+
+### EventDashboardActions
+
+File: components/events/EventDashboardActions.tsx
+Last updated: 2026-07-26 (mobile-only, lg:hidden)
+
+| Property         | Class |
+| ---------------- | ----- |
+| Container        | `grid grid-cols-2 gap-3 lg:hidden` |
+| Primary button   | `flex-1 rounded-xl bg-accent px-4 py-3 text-sm font-medium` + `hover:shadow-md hover:scale-[1.02] active:scale-[0.98]` |
+| Secondary button | `flex-1 rounded-xl border border-border px-4 py-3 text-sm font-medium` + `hover:shadow-sm hover:scale-[1.02] active:scale-[0.98]` |
+
+**Pattern notes:** Mobile-only action buttons (`lg:hidden`). Desktop buttons are now inside `BudgetSummary`. Grid layout on mobile, full-width buttons with hover micro-popup.
 
 ### EventForm
 
@@ -445,57 +473,137 @@ Last updated: 2026-07-25
 ### BudgetSummary
 
 File: components/events/BudgetSummary.tsx
-Last updated: 2026-07-18
+Last updated: 2026-07-26 (rewritten — two-column with embedded buttons)
 
 | Property       | Class |
 | -------------- | ----- |
-| Card           | `rounded-xl border border-border-strong bg-surface p-5 shadow-card` |
-| Stat label     | `text-xs text-text-muted` |
-| Stat value     | `text-lg font-semibold tabular-nums` |
-| Progress bar   | `h-2.5 rounded-full bg-neutral-light` overflow-hidden, fill `h-full rounded-full` colored by ratio (accent/success/error) |
+| Card           | `rounded-xl bg-surface-inverse p-5 shadow-card sm:p-6` |
+| Hero label     | `text-xs font-medium uppercase tracking-wide text-text-inverse/60` |
+| Hero value     | `text-[32px] font-semibold leading-9 tabular-nums sm:text-[40px] sm:leading-12 text-text-inverse` |
+| Supporting label | `text-xs font-medium uppercase tracking-wide text-text-inverse/60` |
+| Supporting value | `text-sm font-semibold tabular-nums text-text-inverse` |
+| Status text    | `text-xs text-text-inverse/60` right-aligned at bottom |
+| Primary button | `bg-surface text-text-inverse rounded-lg px-5 py-2.5 text-sm font-medium` + `hover:bg-surface-secondary hover:shadow-md active:scale-[0.98]` (desktop only) |
+| Secondary button | `border border-white/30 text-text-inverse rounded-lg px-5 py-2.5 text-sm font-medium` + `hover:bg-white/10 hover:shadow-sm active:scale-[0.98]` (desktop only) |
 
-**Pattern notes:** 3-column stat row (Total Budget / Spent / Remaining) with progress fill bar. Remaining color: within budget = `text-text-primary` fill accent; spent > 50% = fill warning; overspent = fill error + `text-error`.
+**Pattern notes:** Dark hero card with two-column flex layout. Left: EXPENSES label + remaining value + TOTAL/PAID row. Right: action buttons stacked vertically (desktop only, `hidden lg:flex`). Bottom-right: budget status text ("Budget Fully Utilized" / "Over Budget" / "{pct}% Budget Utilized"). No progress bar. Contains `LogEntryModal` for the "+ New Entry" button. Uses `bg-surface-inverse` for dark background, `text-text-inverse` for white text.
+
+### ExpenseFilters
+
+File: components/entries/ExpenseFilters.tsx
+Last updated: 2026-07-26 (new component)
+
+| Property       | Class |
+| -------------- | ----- |
+| Container      | `flex items-center gap-2` |
+| Chip (default) | via `FilterDropdown`: `rounded-lg border border-border bg-surface px-2 py-1 text-xs font-medium` |
+| Chip (active)  | via `FilterDropdown`: `border-accent bg-accent-muted text-accent` |
+
+**Pattern notes:** 4 filter chips using existing `FilterDropdown` component. Filters: Type (All/With Receipt/Manual), Sort (Newest/Oldest/Amount High-Low/Amount Low-High), Budget (All/₱0–100/₱100–500/₱500–1000/₱1000+), Category (All + dynamic from data). State managed in `ExpensesSection` parent component.
+
+### ExpensesSection
+
+File: components/entries/ExpensesSection.tsx
+Last updated: 2026-07-26 (new component)
+
+| Property       | Class |
+| -------------- | ----- |
+| (wraps EntryList with filter logic) | |
+
+**Pattern notes:** Client component that manages filter state and passes filtered entries to `EntryList`. Filters by type, budget range, category, and sorts by newest/oldest/amount. Renders `ExpenseFilters` as a slot in the `EntryList` header. Replaces the direct `EntryList` usage on the event dashboard.
+
+### EventProgress
+
+File: components/events/EventProgress.tsx
+Last updated: 2026-07-26 (new component — horizontal step bar)
+
+| Property       | Class |
+| -------------- | ----- |
+| Card           | `rounded-xl border border-border bg-surface p-4 shadow-card` |
+| Step dot (active) | `h-7 w-7 rounded-full bg-accent text-accent-foreground` |
+| Step dot (completed) | `h-7 w-7 rounded-full bg-success text-white` |
+| Step dot (pending) | `h-7 w-7 rounded-full border-2 border-border bg-surface text-text-muted` |
+| Connector (completed) | `h-0.5 flex-1 bg-success` |
+| Connector (pending) | `h-0.5 flex-1 bg-border` |
+| Label | `text-[11px] font-medium` — active/completed: `text-text-primary`, pending: `text-text-muted` |
+
+**Pattern notes:** Horizontal 3-step progress bar showing event lifecycle: Open → Report Pending → Approved. Completed steps show `Check` icon, active shows step number, pending shows empty ring. Steps connected by thin lines. Logic: `status === "open"` → step 1 active; `isLocked` → step 2 active; `status === "archived"` → all completed.
 
 ### LockedBanner
 
 File: components/events/LockedBanner.tsx
-Last updated: 2026-07-18
+Last updated: 2026-07-26 (icon + left border accent)
 
 | Property          | Class |
 | ----------------- | ----- |
-| Background        | locked: `bg-info-lightest border-info`; archived: `bg-neutral-light border-border` |
-| Border            | `rounded-xl border px-4 py-3` |
-| Icon              | `h-5 w-5` inline SVG (lock / archive), `text-info-foreground` or `text-text-muted` |
-| Text              | `text-sm font-medium` + `text-xs text-text-muted` details |
+| Container (locked) | `flex items-center gap-3 rounded-xl border border-border border-l-[3px] border-l-info bg-info-lightest px-4 py-3` |
+| Container (archived) | `flex items-center gap-3 rounded-xl border border-border border-l-[3px] border-l-neutral bg-neutral-light px-4 py-3` |
+| Icon              | `h-4 w-4 shrink-0` — Lock / Archive from lucide-react |
+| Title             | `text-sm font-medium` — `text-info-foreground` (locked) / `text-neutral-foreground` (archived) |
+| Description       | `text-xs text-text-muted` |
 
-**Pattern notes:** Only renders when `isLocked` or `isArchived` is true. Two variants: info-blue for locked (report pending/approved), neutral for archived. Provides user-facing explanation of why actions are disabled.
+**Pattern notes:** Two variants: info-blue left border + Lock icon for locked (report pending/approved), neutral left border + Archive icon for archived. Left border accent (`border-l-[3px]`) adds visual weight. Icon + title + description layout for clear hierarchy. Only renders when `isLocked` or `isArchived` is true.
 
 ### EntryRow
 
 File: components/entries/EntryRow.tsx
-Last updated: 2026-07-18
+Last updated: 2026-07-26 (hover state added)
 
 | Property      | Class |
 | ------------- | ----- |
-| Container     | `border-b border-border px-4 py-3 last:border-0` |
+| Container     | `border-b border-border px-4 py-3 transition-colors last:border-0 hover:bg-surface-secondary` |
 | Type badge    | `rounded-full px-2 py-0.5 text-[11px] font-medium` — receipt: `bg-info-lightest text-info-foreground`; manual: `bg-surface-secondary text-text-secondary` |
 | Status badge  | Uses `StatusBadge` preset mapper (ai_parsed→info, deducted→success, voided→error, etc.) |
 | Void state    | `opacity-60` container + `line-through` on amount + inline void reason |
 
-**Pattern notes:** Single entry row with type indicator, description/supplier, amount, and status badge. Voided entries: dimmed, struck-through amount, always-visible void reason attribution line (not hover-revealed).
+**Pattern notes:** Single entry row with type indicator, description/supplier, amount, and status badge. Hover: `bg-surface-secondary` with `transition-colors`. Voided entries: dimmed, struck-through amount, always-visible void reason attribution line (not hover-revealed).
+
+### EntryCard
+
+File: components/entries/EntryCard.tsx
+Last updated: 2026-07-26 (hover animation, click-to-detail, reference design match)
+
+| Property       | Class |
+| -------------- | ----- |
+| Card           | `rounded-xl border border-border bg-surface shadow-sm cursor-pointer` + `transition-[shadow,transform] duration-200 hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]` |
+| Preview area   | `h-32 w-full relative` — receipt: styled receipt placeholder; manual: centered `Pencil` icon on `bg-surface-secondary` |
+| Status badge   | `absolute right-2 top-2` — overlaid on preview area |
+| Content area   | `flex-1 flex-col justify-between p-3` — fills remaining space, pushes amount to bottom |
+| Supplier name  | `text-sm font-medium text-text-primary line-clamp-1` |
+| Category       | `text-xs text-text-muted line-clamp-1` (or `\u00A0` placeholder for consistent height) |
+| Amount         | `text-xl font-bold tabular-nums text-text-primary` (most prominent) |
+| Void state     | `opacity-60` card + `line-through` on amount + void attribution below |
+
+**Pattern notes:** Grid card matching reference design (`entrycard.png`). Large preview area (~60% of card) with status badge overlay. Supplier name and amount are visual highlights. Card is clickable — opens `EntryDetailModal` showing all parsed content. Hover: 2px lift + shadow deepening. Press: scale 0.98 feedback.
+
+### EntryDetailModal
+
+File: components/entries/EntryDetailModal.tsx
+Last updated: 2026-07-26 (new component)
+
+| Property       | Class |
+| -------------- | ----- |
+| Overlay        | `fixed inset-0 z-50 bg-overlay-alpha` |
+| Modal (desktop)| `hidden sm:flex` — `max-h-[85vh] max-w-lg overflow-y-auto rounded-xl border border-border bg-surface p-6 shadow-card` centered |
+| Sheet (mobile) | `sm:hidden` — `max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-border bg-surface p-6 pb-8 shadow-card` slides up |
+| Close button   | `absolute right-4 top-4 h-7 w-7 rounded-full text-text-muted hover:bg-surface-secondary` |
+| Detail rows    | `divide-y divide-border rounded-lg border border-border bg-surface-secondary/50 px-4` |
+| Item breakdown | `overflow-hidden rounded-lg border border-border` table |
+
+**Pattern notes:** Shows all parsed entry content: receipt image (placeholder for now), supplier name, category, amount, status badge, document type/number, date/time, item breakdown table (receipt only), void info (if voided). Desktop: centered modal with `dialogContent` animation. Mobile: bottom sheet with `sheetSlideUp` animation. Image viewer: full-screen overlay with dark backdrop (click receipt to view). Reuses `dialogOverlay`, `dialogContent`, `sheetSlideUp` from `lib/motion-variants.ts`.
 
 ### EntryList
 
 File: components/entries/EntryList.tsx
-Last updated: 2026-07-18
+Last updated: 2026-07-26 (click-to-detail modal, expanded entry type)
 
 | Property   | Class |
 | ---------- | ----- |
-| Container  | `rounded-xl border border-border-strong bg-surface` |
-| Header     | `border-b border-border px-4 py-2.5` with column labels |
+| Header     | `flex flex-wrap items-center gap-3` — "EXPENSES (count)" + filter slot + view toggle |
+| Grid       | `grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 md:gap-5 lg:grid-cols-4 lg:gap-6 xl:grid-cols-5` |
 | Animation  | framer-motion `staggerContainer` + `fadeUpItem` from `lib/motion-variants` |
 
-**Pattern notes:** Wraps `EntryRow` components in a header + list. Empty state uses receipt-document SVG icon. Stagger animation on mount via framer-motion. No interactive elements — pure display component shared by dashboard and (future) report review.
+**Pattern notes:** Card grid layout — 5 columns on desktop (`xl:`), 4 on large (`lg:`), 3 on tablet (`md:`), 2 on mobile. Header shows "EXPENSES (count)" title with filter chips (desktop) or filter icon (mobile) + ViewToggle on far right. Each card is clickable — opens `EntryDetailModal` with full entry details. Manages `selectedEntry` state. Exported `EntryListItem` type includes all parsed fields for the modal.
 
 ### ReceiptUpload
 
@@ -562,13 +670,6 @@ Last updated: 2026-07-18
 | Toggle         | `rounded-xl border border-border bg-surface p-1` — active: `bg-accent text-accent-foreground shadow-sm`; inactive: `text-text-secondary hover:text-text-primary` |
 
 **Pattern notes:** AnimatePresence modal/sheet shell that wraps the same entry-logging flow previously on the standalone page. Method toggle hidden during receipt review. On confirm/submit → calls `onClose()` instead of navigating. State resets on open via `useEffect`. Uses `dialogOverlay`/`dialogContent` framer-motion variants.
-
-### EventDashboardActions
-
-File: components/events/EventDashboardActions.tsx
-Last updated: 2026-07-18
-
-**Pattern notes:** Tiny client-component wrapper that owns the "Log Entry" modal state. Renders the two action buttons (Log Entry + Generate Report) and the `<LogEntryModal>`. Props: `eventId`, `canMutate`, `isArchived`, `isLocked`. Keeps the dashboard page as a Server Component. Buttons match the exact classes from the previous inline `<Link>`.
 
 ### NewEntryPage (standalone fallback)
 

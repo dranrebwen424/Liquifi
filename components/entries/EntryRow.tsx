@@ -1,3 +1,4 @@
+import { FileText, Pencil } from "lucide-react";
 import { formatPHP } from "@/lib/format";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { cn } from "@/lib/utils";
@@ -9,21 +10,9 @@ type EntryRowProps = {
   amount: number;
   description?: string | null;
   supplierName?: string | null;
-  documentType?: string | null;
-  documentNumber?: string | null;
-  voidReason?: string | null;
-  voidedBy?: string | null;
-};
-
-const typeLabel: Record<EntryType, { label: string; class: string }> = {
-  receipt: {
-    label: "Receipt",
-    class: "bg-info-lightest text-info-foreground",
-  },
-  manual: {
-    label: "Manual",
-    class: "bg-surface-secondary text-text-secondary",
-  },
+  category?: string | null;
+  createdAt?: string;
+  onClick?: () => void;
 };
 
 const statusVariant: Record<string, "info" | "warning" | "success" | "error" | "neutral"> = {
@@ -43,85 +32,91 @@ function formatStatus(value: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+function formatDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return "—";
+  try {
+    return new Date(dateStr).toLocaleDateString("en-PH", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  } catch {
+    return "—";
+  }
+}
+
 export function EntryRow({
   type,
   status,
   amount,
   description,
   supplierName,
-  documentType,
-  documentNumber,
-  voidReason,
-  voidedBy,
+  category,
+  createdAt,
+  onClick,
 }: EntryRowProps) {
   const isVoided = status === "voided";
+  const displayName = supplierName || description || "Untitled entry";
+  const dateStr = formatDate(createdAt);
 
   return (
     <div
+      onClick={onClick}
       className={cn(
-        "flex flex-col gap-2 border-b border-border px-4 py-3 last:border-0",
+        "flex cursor-pointer items-start justify-between px-4 py-3 transition-colors hover:bg-surface-secondary/50",
+        "md:items-center md:justify-start md:gap-4 md:grid md:[grid-template-columns:minmax(0,2.5fr)_1fr_1fr_0.8fr_7rem]",
         isVoided && "opacity-60",
       )}
     >
-      <div className="flex items-center justify-between">
-        <div className="flex min-w-0 items-center gap-3">
-          {/* Type badge */}
-          <span
-            className={cn(
-              "inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
-              typeLabel[type].class,
-            )}
-          >
-            {typeLabel[type].label}
-          </span>
-
-          {/* Description / supplier */}
-          <div className="min-w-0">
-            <p
-              className={cn(
-                "truncate text-sm font-medium text-text-primary",
-                isVoided && "line-through",
-              )}
-            >
-              {description ?? supplierName ?? "Untitled entry"}
-            </p>
-            {supplierName && description && (
-              <p className="truncate text-xs text-text-muted">{supplierName}</p>
-            )}
-            {documentType && documentNumber && (
-              <p className="truncate text-xs text-text-muted">
-                {documentType} #{documentNumber}
-              </p>
-            )}
-          </div>
+      {/* Left — icon + text block */}
+      <div className="flex min-w-0 items-start gap-3 md:items-center">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface-secondary">
+          {type === "receipt" ? (
+            <FileText className="h-4 w-4 text-text-muted" />
+          ) : (
+            <Pencil className="h-4 w-4 text-text-muted" />
+          )}
         </div>
-
-        <div className="flex shrink-0 items-center gap-3">
-          {/* Amount */}
-          <span
+        <div className="min-w-0">
+          <p
             className={cn(
-              "text-sm font-medium tabular-nums",
-              isVoided
-                ? "text-text-muted line-through"
-                : "text-text-primary",
+              "truncate text-sm font-semibold text-text-primary",
+              isVoided && "line-through",
             )}
           >
-            {formatPHP(amount)}
-          </span>
-
-          {/* Status badge */}
-          <StatusBadge variant={statusVariant[status] ?? "neutral"}>
-            {formatStatus(status)}
-          </StatusBadge>
+            {displayName}
+          </p>
+          {/* Mobile: category + date on one muted line */}
+          <p className="truncate text-xs text-text-muted md:hidden">
+            {[category, dateStr].filter(Boolean).join(" \u00B7 ") || "\u00A0"}
+          </p>
         </div>
       </div>
 
-      {/* Void attribution — always visible, not hidden behind hover */}
-      {isVoided && voidReason && (
-        <p className="text-xs text-text-muted">
-          Voided{voidedBy ? ` by ${voidedBy}` : ""}: {voidReason}
+      {/* Desktop: Date column (hidden mobile) */}
+      <p className="hidden truncate text-xs text-text-muted md:block">
+        {dateStr}
+      </p>
+
+      {/* Desktop: Category column (hidden mobile) */}
+      <p className="hidden truncate text-xs text-text-muted md:block">
+        {category || "\u00A0"}
+      </p>
+
+      {/* Amount + Status — flex-col on mobile, md:contents on desktop */}
+      <div className="flex flex-col items-end gap-1 md:flex-row md:items-center md:gap-4 md:contents">
+        <p
+          className={cn(
+            "text-right text-sm font-semibold tabular-nums",
+            isVoided ? "text-text-muted line-through" : "text-text-primary",
+          )}
+        >
+          {formatPHP(amount)}
         </p>
-      )}
+        <StatusBadge variant={statusVariant[status] ?? "neutral"}>
+          {formatStatus(status)}
+        </StatusBadge>
+      </div>
     </div>
   );
 }

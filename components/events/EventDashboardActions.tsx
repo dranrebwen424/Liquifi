@@ -22,14 +22,14 @@ export function EventDashboardActions({
 
   return (
     <>
-      <div className="flex flex-wrap gap-3">
+      <div className="grid grid-cols-2 gap-3 lg:hidden">
         <button
           onClick={() => setLogEntryOpen(true)}
           disabled={!canMutate}
           className={cn(
-            "inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium transition-[color,transform]",
+            "inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-medium transition-[color,transform,shadow] hover:scale-[1.02]",
             canMutate
-              ? "bg-accent text-accent-foreground hover:bg-accent-hover active:scale-[0.98]"
+              ? "bg-accent text-accent-foreground hover:bg-accent-hover hover:shadow-md active:scale-[0.98]"
               : "cursor-not-allowed border border-border bg-surface text-text-muted opacity-50",
           )}
           title={
@@ -47,9 +47,9 @@ export function EventDashboardActions({
         <button
           disabled={!canMutate}
           className={cn(
-            "inline-flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-medium transition-[color,transform]",
+            "inline-flex flex-1 items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium transition-[color,transform,shadow] hover:scale-[1.02]",
             canMutate
-              ? "border-border text-text-primary hover:bg-surface-secondary hover:border-border-strong active:scale-[0.98]"
+              ? "border-border text-text-primary hover:bg-surface-secondary hover:border-border-strong hover:shadow-sm active:scale-[0.98]"
               : "cursor-not-allowed border-border bg-surface text-text-muted opacity-50",
           )}
           title={

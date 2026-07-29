@@ -12,7 +12,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatPHP } from "@/lib/format";
+import { formatPHP, formatNumberInput } from "@/lib/format";
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -194,7 +194,8 @@ export function ManualEntryForm({ onSubmit }: ManualEntryFormProps) {
   }, [config, computeValues]);
 
   const updateCompute = useCallback((key: string, raw: string) => {
-    setComputeValues((prev) => ({ ...prev, [key]: Math.max(0, Number(raw) || 0) }));
+    const cleaned = raw.replace(/,/g, "");
+    setComputeValues((prev) => ({ ...prev, [key]: Math.max(0, Number(cleaned) || 0) }));
   }, []);
 
   const resetCompute = useCallback(() => {
@@ -349,11 +350,38 @@ export function ManualEntryForm({ onSubmit }: ManualEntryFormProps) {
                     </span>
                   )}
                   <input
-                    type="number"
-                    min="0"
-                    step={f.inputType === "currency" ? "0.01" : "1"}
-                    value={computeValues[f.key] ? String(computeValues[f.key]) : ""}
-                    onChange={(e) => updateCompute(f.key, e.target.value)}
+                    type={f.inputType === "currency" ? "text" : "number"}
+                    inputMode={f.inputType === "currency" ? "decimal" : undefined}
+                    min={f.inputType !== "currency" ? "0" : undefined}
+                    step={f.inputType === "number" ? "1" : undefined}
+                    value={
+                      f.inputType === "currency"
+                        ? formatNumberInput(String(computeValues[f.key] ?? ""))
+                        : computeValues[f.key]
+                          ? String(computeValues[f.key])
+                          : ""
+                    }
+                    onChange={(e) => {
+                      if (f.inputType === "currency") {
+                        const raw = e.target.value;
+                        const cursor = e.target.selectionStart ?? raw.length;
+                        const pre = raw.slice(0, cursor).replace(/,/g, "").length;
+                        updateCompute(f.key, raw.replace(/,/g, ""));
+                        requestAnimationFrame(() => {
+                          const formatted = formatNumberInput(raw.replace(/,/g, ""));
+                          let newCursor = 0;
+                          let digitsSeen = 0;
+                          for (const ch of formatted) {
+                            if (digitsSeen >= pre) break;
+                            if (ch !== ",") digitsSeen++;
+                            newCursor++;
+                          }
+                          e.target.setSelectionRange(newCursor, newCursor);
+                        });
+                      } else {
+                        updateCompute(f.key, e.target.value);
+                      }
+                    }}
                     placeholder={f.placeholder}
                     className={cn(
                       "w-full rounded-lg border border-border bg-surface py-2.5 text-sm tabular-nums text-text-primary placeholder:text-text-muted focus:border-accent focus:ring-1 focus:ring-accent",

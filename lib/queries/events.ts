@@ -36,8 +36,15 @@ export type EntryForDashboard = {
   supplier_name?: string | null;
   document_type_raw?: string | null;
   document_number?: string | null;
+  issue_date?: string | null;
+  issue_time?: string | null;
+  category?: string | null;
+  image_url?: string | null;
+  item_breakdown?: unknown;
+  created_at?: string;
   void_reason?: string | null;
   voided_by?: string | null;
+  voided_at?: string | null;
 };
 
 /** Fetch all events for a department with computed `total_spent` and `is_locked`. */
@@ -132,7 +139,7 @@ export async function getEventDashboard(eventId: string) {
 
   const { data: event, error } = await insforge.database
     .from("events")
-    .select("id, name, department_id, status, budget_total, created_at")
+    .select("id, name, department_id, status, budget_total, created_at, created_by")
     .eq("id", eventId)
     .maybeSingle();
 
@@ -165,6 +172,19 @@ export async function getEventDashboard(eventId: string) {
   const isLocked = !!report;
   const budgetLocked = totalSpent > 0;
 
+  // Fetch creator name
+  let createdByName = "Unknown";
+  if (event.created_by) {
+    const { data: creator } = await insforge.database
+      .from("users")
+      .select("first_name, last_name")
+      .eq("id", event.created_by)
+      .maybeSingle();
+    if (creator) {
+      createdByName = [creator.first_name, creator.last_name].filter(Boolean).join(" ") || "Unknown";
+    }
+  }
+
   return {
     id: event.id,
     name: event.name,
@@ -175,6 +195,7 @@ export async function getEventDashboard(eventId: string) {
     is_locked: isLocked,
     budget_locked: budgetLocked,
     created_at: event.created_at,
+    created_by_name: createdByName,
     entries: (entries ?? []) as EntryForDashboard[],
   };
 }
