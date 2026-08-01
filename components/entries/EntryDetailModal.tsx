@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, FileText, Pencil, ZoomIn } from "lucide-react";
+import { X, FileText, Pencil, ZoomIn, CircleMinus } from "lucide-react";
 import { formatPHP } from "@/lib/format";
-import { StatusBadge } from "@/components/ui/StatusBadge";
+import { StatusBadge, entryStatusMap } from "@/components/ui/StatusBadge";
 import { cn } from "@/lib/utils";
 import { dialogOverlay, dialogContent, sheetSlideUp } from "@/lib/motion-variants";
 import type { EntryType, EntryStatus } from "@/types";
@@ -33,23 +33,6 @@ type EntryDetailModalProps = {
   onClose: () => void;
   entry: EntryDetail;
 };
-
-const statusVariant: Record<string, "info" | "warning" | "success" | "error" | "neutral"> = {
-  ai_parsed: "info",
-  pending_approval: "warning",
-  deducted: "success",
-  approved: "success",
-  rejected: "error",
-  voided: "error",
-  draft: "info",
-  discarded: "error",
-};
-
-function formatStatus(value: string): string {
-  return value
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
-}
 
 function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return "—";
@@ -167,9 +150,11 @@ function EntryDetailContent({
         >
           {formatPHP(entry.amount)}
         </p>
-        <StatusBadge variant={statusVariant[entry.status] ?? "neutral"}>
-          {formatStatus(entry.status)}
-        </StatusBadge>
+        <StatusBadge
+          icon={entryStatusMap[entry.status]?.icon ?? CircleMinus}
+          variant={entryStatusMap[entry.status]?.variant ?? "neutral"}
+          label={entryStatusMap[entry.status]?.label ?? entry.status}
+        />
       </div>
 
       {/* Detail rows */}
@@ -371,14 +356,6 @@ export function EntryDetailModal({ open, onClose, entry }: EntryDetailModalProps
             >
               {/* Drag handle */}
               <div className="mx-auto mb-5 mt-3 h-1 w-10 rounded-full bg-border-strong" />
-
-              {/* Close button — outside scrollable area */}
-              <button
-                onClick={onClose}
-                className="sticky top-3 z-10 float-right mr-3 flex h-7 w-7 items-center justify-center rounded-full bg-surface text-text-muted shadow-sm hover:bg-surface-secondary hover:text-text-primary"
-              >
-                <X className="h-4 w-4" />
-              </button>
 
               <div className="p-6 pb-8 pt-0">
                 <EntryDetailContent

@@ -110,6 +110,8 @@
 │   ├── entries.ts                                     → Confirm/discard receipt entry, submit manual entry
 │   ├── reports.ts                                     → Signatory setup, cancel report
 │   └── departments.ts                                 → Admin department CRUD
+├── hooks/
+│   └── usePeopleReuse.ts                              → localStorage witness name persistence
 ├── components/
 │   ├── ui/                                            → shadcn/ui components only
 │   ├── layout/
@@ -126,7 +128,10 @@
 │   ├── entries/
 │   │   ├── ReceiptUpload.tsx
 │   │   ├── ReceiptReview.tsx
-│   │   ├── ManualEntryForm.tsx
+│   │   ├── FloatingInput.tsx
+│   │   ├── manual-categories.ts
+│   │   ├── ManualCategoryPicker.tsx
+│   │   ├── ManualQuickForm.tsx
 │   │   ├── EntryList.tsx
 │   │   ├── EntryRow.tsx
 │   │   └── VoidEntryModal.tsx

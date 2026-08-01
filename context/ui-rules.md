@@ -188,49 +188,42 @@ Read-only fields (receipt review — extracted values the treasurer cannot edit)
 
 ## Badges (Status / Role / Tags)
 
+Badges are **bare Lucide icons** — no background, no border, no text. The icon color encodes status via semantic tokens. Each badge includes `aria-label` and `title` for accessibility and hover tooltip.
+
 ```
-border-radius:   var(--radius-full)
-padding:         2px 8px
-font-size:       12px
-font-weight:     500
+size:           20×20px
+display:        inline-flex, shrink-0
+background:     none
+border:         none
+padding:        none
 ```
 
-One shared `<StatusBadge>` component drives every state-machine field — never a one-off badge per page. Fixed color mapping, extend this table rather than inventing new colors per feature:
+One shared `<StatusBadge>` component drives every state-machine field — never a one-off badge per page. Takes `icon` (Lucide component), `variant` (color), and `label` (aria text). Fixed icon mapping, extend this table rather than inventing new icons per feature:
 
-### Status Badge Color Mapping
+### Status Badge Icon Mapping
 
-| State family | Value | Background | Text |
-|---|---|---|---|
-| Account | `pending_approval` | `var(--color-warning-lightest)` | `var(--color-warning-foreground)` |
-| Account | `active` | `var(--color-success-lightest)` | `var(--color-success-foreground)` |
-| Account | `deactivated` / `rejected` | `var(--color-neutral-light)` | `var(--color-text-muted)` |
-| Event | `open` | `var(--color-success-lightest)` | `var(--color-success-foreground)` |
-| Event | `archived` | `var(--color-neutral-light)` | `var(--color-text-muted)` |
-| Entry | `ai_parsed` / `treasurer_reviewed` / `draft` | `var(--color-info-lightest)` | `var(--color-info-foreground)` |
-| Entry | `pending_approval` / `resubmitted` | `var(--color-warning-lightest)` | `var(--color-warning-foreground)` |
-| Entry | `approved` / `deducted` | `var(--color-success-lightest)` | `var(--color-success-foreground)` |
-| Entry | `rejected` / `discarded` | `var(--color-error-lightest)` | `var(--color-error-foreground)` |
-| Entry | `voided` | `var(--color-error-lightest)` | `var(--color-error-foreground)` (paired with strikethrough) |
-| Report | `pending_adviser_approval` | `var(--color-warning-lightest)` | `var(--color-warning-foreground)` |
-| Report | `approved` | `var(--color-success-lightest)` | `var(--color-success-foreground)` |
-| Report | `rejected` / `cancelled` | `var(--color-error-lightest)` | `var(--color-error-foreground)` |
+| State family | Value | Icon | Variant | Color source |
+|---|---|---|---|---|
+| Account | `pending_approval` | `Clock` | `warning` | `var(--color-warning)` |
+| Account | `active` | `CircleCheckBig` | `success` | `var(--color-success)` |
+| Account | `deactivated` / `rejected` | `CircleMinus` | `neutral` | `var(--color-neutral)` |
+| Event | `open` | `CircleCheckBig` | `success` | `var(--color-success)` |
+| Event | `archived` | `CircleMinus` | `neutral` | `var(--color-neutral)` |
+| Entry | `ai_parsed` / `treasurer_reviewed` / `draft` | `CircleDot` | `info` | `var(--color-info)` |
+| Entry | `pending_approval` / `resubmitted` | `Clock` | `warning` | `var(--color-warning)` |
+| Entry | `approved` / `deducted` | `CircleCheckBig` | `success` | `var(--color-success)` |
+| Entry | `rejected` / `discarded` / `voided` | `CircleX` | `error` | `var(--color-error)` |
+| Report | `pending_adviser_approval` | `Clock` | `warning` | `var(--color-warning)` |
+| Report | `approved` | `CircleCheckBig` | `success` | `var(--color-success)` |
+| Report | `rejected` / `cancelled` | `CircleX` | `error` | `var(--color-error)` |
 
-Trend badges on stat cards use `border-radius: var(--radius-sm)` (not pill) with `var(--color-success-lightest)` background and `var(--color-success-foreground)` text.
+### Role Badge Icon Mapping
 
-### Role Badge Colors
-
-| Role | Background | Text |
-|------|-----------|------|
-| Admin | `var(--color-role-admin-light)` | `var(--color-role-admin)` |
-| Adviser | `var(--color-role-adviser-light)` | `var(--color-role-adviser)` |
-| Treasurer | `var(--color-role-treasurer-light)` | `var(--color-role-treasurer)` |
-
-### Entry Source Badge Colors
-
-| Source | Background | Text |
-|--------|-----------|------|
-| Receipt (AI-parsed) | `var(--color-info-lightest)` | `var(--color-info-foreground)` |
-| No-receipt (manual) | `var(--color-surface-secondary)` | `var(--color-text-secondary)` |
+| Role | Icon | Variant | Color source |
+|------|------|---------|-------------|
+| Admin | `Shield` | `default` | `var(--color-accent)` |
+| Adviser | `BookOpen` | `info` | `var(--color-info)` |
+| Treasurer | `Landmark` | `success` | `var(--color-success)` |
 
 ---
 

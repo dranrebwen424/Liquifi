@@ -232,7 +232,13 @@ Build the complete entry logging UI (both methods) with mock data.
 - `/treasurer/events/[eventId]/entries/new` — method toggle: Receipt Upload vs No Receipt (manual form)
 - Receipt Upload — drag/drop or file picker (image only), "one document per upload" note, upload progress state
 - Receipt Review (post-parse) — all extracted fields shown **read-only**: document type (verbatim), document number, issue date/time, supplier name, amount, itemized breakdown table; Confirm and Discard buttons
-- Manual form — category, amount fields, computed total display, submit button
+- Manual form — 2-step flow: category icon picker → per-category form
+- Category picker — responsive icon grid (7 expense types: transportation, meals, honorarium, supplies, printing, rental, other)
+- Per-category form — dynamic field rendering per type: text prefix fields (transportation/meals/honorarium), dynamic item rows (supplies/other-itemized), sub-mode pills for "Other" (flat/itemized)
+- Common extras on all forms: witness required (localStorage suggestion chip), photo attachment (optional image-only), collapsed justification (required for "Other" only)
+- Live running total from all fields with formula hint
+- Transportation: round-trip toggle + expandable multi-trip override (number of one-way rides)
+- Success state with "Log another [same category]?" inline option
 
 **Logic:**
 

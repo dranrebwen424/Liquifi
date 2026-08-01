@@ -3,12 +3,13 @@
 import { useState, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { Folder, Loader2 } from "lucide-react";
+import { Folder, Loader2, CircleCheckBig, CircleMinus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   StatusBadge,
   AccountStatusBadge,
   RoleBadge,
+  reportStatusMap,
 } from "@/components/ui/StatusBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { formatPHP } from "@/lib/format";
@@ -139,9 +140,11 @@ export function DepartmentDetailClient({
             {department.code}
           </p>
         </div>
-        <StatusBadge variant={department.is_active ? "success" : "neutral"}>
-          {department.is_active ? "Active" : "Inactive"}
-        </StatusBadge>
+        <StatusBadge
+          icon={CircleCheckBig}
+          variant={department.is_active ? "success" : "neutral"}
+          label={department.is_active ? "Active" : "Inactive"}
+        />
       </div>
 
       {toggleError && (
@@ -413,16 +416,10 @@ function ReportsTab({ reports }: { reports: Report[] }) {
             <p className="mt-2 text-xs text-text-muted">{report.event_name}</p>
             <div className="mt-auto pt-4">
               <StatusBadge
-                variant={
-                  report.status === "approved"
-                    ? "success"
-                    : report.status === "rejected"
-                      ? "error"
-                      : "warning"
-                }
-              >
-                {report.status.replace(/_/g, " ")}
-              </StatusBadge>
+                icon={reportStatusMap[report.status]?.icon ?? CircleMinus}
+                variant={reportStatusMap[report.status]?.variant ?? "neutral"}
+                label={reportStatusMap[report.status]?.label ?? report.status}
+              />
             </div>
           </div>
         ))}
@@ -437,16 +434,10 @@ function ReportsTab({ reports }: { reports: Report[] }) {
               <p className="mt-0.5 text-xs text-text-muted">{report.event_name}</p>
               <div className="mt-2">
                 <StatusBadge
-                  variant={
-                    report.status === "approved"
-                      ? "success"
-                      : report.status === "rejected"
-                        ? "error"
-                        : "warning"
-                  }
-                >
-                  {report.status.replace(/_/g, " ")}
-                </StatusBadge>
+                  icon={reportStatusMap[report.status]?.icon ?? CircleMinus}
+                  variant={reportStatusMap[report.status]?.variant ?? "neutral"}
+                  label={reportStatusMap[report.status]?.label ?? report.status}
+                />
               </div>
             </div>
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-light text-accent">

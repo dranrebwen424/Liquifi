@@ -1,6 +1,6 @@
-import { FileText, Pencil } from "lucide-react";
+import { FileText, Pencil, CircleMinus } from "lucide-react";
 import { formatPHP } from "@/lib/format";
-import { StatusBadge } from "@/components/ui/StatusBadge";
+import { StatusBadge, entryStatusMap } from "@/components/ui/StatusBadge";
 import { cn } from "@/lib/utils";
 import type { EntryType, EntryStatus } from "@/types";
 
@@ -23,23 +23,6 @@ type EntryCardProps = {
   voidedAt?: string | null;
   onClick?: () => void;
 };
-
-const statusVariant: Record<string, "info" | "warning" | "success" | "error" | "neutral"> = {
-  ai_parsed: "info",
-  pending_approval: "warning",
-  deducted: "success",
-  approved: "success",
-  rejected: "error",
-  voided: "error",
-  draft: "info",
-  discarded: "error",
-};
-
-function formatStatus(value: string): string {
-  return value
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
-}
 
 /** Styled receipt placeholder — simulates a receipt look without real images. */
 function ReceiptPlaceholder() {
@@ -119,9 +102,11 @@ export function EntryCard({
 
         {/* Status badge — overlaid top right */}
         <div className="absolute right-2 top-2">
-          <StatusBadge variant={statusVariant[status] ?? "neutral"}>
-            {formatStatus(status)}
-          </StatusBadge>
+          <StatusBadge
+            icon={entryStatusMap[status]?.icon ?? CircleMinus}
+            variant={entryStatusMap[status]?.variant ?? "neutral"}
+            label={entryStatusMap[status]?.label ?? status}
+          />
         </div>
       </div>
 

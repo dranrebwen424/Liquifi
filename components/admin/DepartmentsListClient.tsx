@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Plus, MoreVertical, Folder, LayoutGrid, CheckCircle2, User, Loader2 } from "lucide-react";
+import { Search, Plus, MoreVertical, Folder, LayoutGrid, CheckCircle2, User, Loader2, CircleCheckBig } from "lucide-react";
 import { motion } from "framer-motion";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -268,9 +268,11 @@ export function DepartmentsListClient({ initialDepartments }: Props) {
                     <span>Adviser: {dept.adviser ?? "None"}</span>
                     <span>Treasurer: {dept.treasurer ?? "None"}</span>
                   </div>
-                  <StatusBadge variant={dept.is_active ? "success" : "neutral"}>
-                    {dept.is_active ? "Active" : "Inactive"}
-                  </StatusBadge>
+                  <StatusBadge
+                    icon={CircleCheckBig}
+                    variant={dept.is_active ? "success" : "neutral"}
+                    label={dept.is_active ? "Active" : "Inactive"}
+                  />
                 </div>
               </Link>
               </motion.div>
@@ -298,9 +300,11 @@ export function DepartmentsListClient({ initialDepartments }: Props) {
                   </p>
                 </Link>
                 <div className="flex shrink-0 flex-col items-end gap-2">
-                  <StatusBadge variant={dept.is_active ? "success" : "neutral"}>
-                    {dept.is_active ? "Active" : "Inactive"}
-                  </StatusBadge>
+                  <StatusBadge
+                    icon={CircleCheckBig}
+                    variant={dept.is_active ? "success" : "neutral"}
+                    label={dept.is_active ? "Active" : "Inactive"}
+                  />
                   <button
                     onClick={() => setMenuOpenId(menuOpenId === dept.id ? null : dept.id)}
                     className="-mr-1 rounded-md p-1 text-text-muted hover:bg-surface-tertiary hover:text-text-primary"

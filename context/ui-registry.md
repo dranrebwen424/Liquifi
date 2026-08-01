@@ -246,21 +246,21 @@ Last updated: 2026-07-14 (Figma-matched restyle)
 ### StatusBadge
 
 File: components/ui/StatusBadge.tsx
-Last updated: 2026-07-17
+Last updated: 2026-07-30 (icon-only bare icons, no background)
 
 | Property         | Class |
 | ---------------- | ----- |
-| Background       | variant-dependent (see table below) |
-| Border           | none |
-| Border radius    | `rounded-full` |
-| Text — primary   | variant-dependent |
-| Spacing          | `px-2 py-0.5` |
+| Background       | (none — bare icon, no container) |
+| Border           | (none) |
+| Border radius    | (none) |
+| Icon size        | `size={20}` |
+| Display          | `inline-flex shrink-0` |
 | Hover state      | none |
 | Shadow           | none |
 | Accent usage     | none |
 
 **Pattern notes:**
-Single shared component driving every state-machine field. Variants: `default` (bg-accent-light text-accent), `success` (bg-success-lightest text-success-foreground), `warning` (bg-warning-lightest text-warning-foreground), `error` (bg-error-lightest text-error-foreground), `info` (bg-info-lightest text-info-foreground), `neutral` (bg-neutral-light text-text-muted). Also exports preset mappers: `AccountStatusBadge`, `EventStatusBadge`, `RoleBadge`. Used across departments list, department detail, and all future state-display surfaces.
+Bare Lucide icons — no background, no border, no text. Color encoded via semantic variant tokens: `success` → `text-success`, `warning` → `text-warning`, `error` → `text-error`, `info` → `text-info`, `neutral` → `text-neutral`, `default` → `text-accent`. Each badge includes `aria-label` + `title` for accessibility. Exports preset mappers (`AccountStatusBadge`, `EventStatusBadge`, `RoleBadge`) and status maps (`entryStatusMap`, `reportStatusMap`) for direct callers. Uses `lucide-react` icons: `CircleCheckBig` (success), `Clock` (warning), `CircleDot` (info), `CircleX` (error), `CircleMinus` (neutral), `Shield` (admin), `BookOpen` (adviser), `Landmark` (treasurer).
 
 ### EmptyState
 
@@ -639,28 +639,83 @@ Last updated: 2026-07-18
 
 **Pattern notes:** AnimatePresence overlay + two render branches (`hidden sm:flex` modal / `sm:hidden` bottom sheet). Closes on Escape or overlay click (only when not confirming). Uses `dialogOverlay` / `dialogContent` from framer-motion variants. Exported `ReadOnlyField` atom for reuse. Props: `open`, `data: MockParsedReceipt`, `onConfirm`, `onDiscard`, `onClose`, `confirming?`.
 
-### ManualEntryForm
+### UsePeopleReuse
 
-File: components/entries/ManualEntryForm.tsx
-Last updated: 2026-07-18
+File: hooks/usePeopleReuse.ts
+Last updated: 2026-07-29
 
-| Property        | Class |
-| --------------- | ----- |
-| Header icon     | `flex h-10 w-10 items-center justify-center rounded-lg bg-surface-secondary text-text-secondary` |
-| Input field     | `rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:ring-1 focus:ring-accent` |
-| Item card       | `rounded-lg border border-border bg-surface p-3` with delete button `rounded-md p-1 text-text-muted hover:bg-error-lightest hover:text-error` |
-| Qty/price input | `rounded-lg border border-border bg-surface px-2 py-1.5 text-sm tabular-nums focus:border-accent focus:ring-1 focus:ring-accent` |
-| Amount display  | `flex h-9 items-center rounded-lg border border-border bg-surface-secondary px-2 text-sm tabular-nums text-text-primary` |
-| Total row       | `rounded-lg border border-border-strong bg-surface-secondary p-4` with `text-lg font-semibold tabular-nums` |
-| Submit button   | `rounded-full bg-accent px-6 py-3 text-accent-foreground hover:bg-accent-hover disabled:opacity-50` |
-| Add item button | `rounded-full border border-border px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-surface-secondary hover:text-text-primary` |
+**Pattern notes:** Minimal hook for localStorage persistence of the witness/people_present field. Key: `liquifi:pp:{eventId}`. Two methods: `read()` and `write(names)` — both wrapped in try/catch for quota/availability safety. No JSON parsing needed — stores a flat comma-separated string. Created during the manual-entry UX refine (Phase 5 Step 13b).
 
-**Pattern notes:** Inline form (not a modal). Dynamic item rows with auto-computed `lineAmount = qty * unitPrice` and `totalAmount = sum(lineAmounts)`. Username-style `FormField` wrapper component. `itemBreakdown` type used but not exported (local `ManualLineItem` type). Mock 600ms submit delay. Calls `onSubmit(data: ManualEntryData)`.
+### FloatingInput
+
+File: components/entries/FloatingInput.tsx
+Last updated: 2026-07-29
+
+| Property       | Class |
+| -------------- | ----- |
+| Input          | `peer w-full rounded-lg border bg-surface pb-2 pt-6 text-sm text-text-primary outline-none transition-colors tabular-nums` |
+| Label (rest)   | `absolute left-4 top-1/2 -translate-y-1/2 text-sm text-text-muted` |
+| Label (focus)  | `peer-focus:top-2 peer-focus:translate-y-0 peer-focus:scale-90 peer-focus:text-xs` |
+| Label (value)  | `peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:translate-y-0 peer-[:not(:placeholder-shown)]:scale-90` |
+| Focus          | `focus:border-accent focus:ring-1 focus:ring-accent` |
+| Error          | `border-error focus:border-error focus:ring-1 focus:ring-error` + red "!" badge |
+| Suffix         | `text-[11px] text-text-muted` below input |
+
+**Pattern notes:** Floating-label input component matching the `AuthInput` pattern from the sign-up page. Uses the `peer` CSS trick: placeholder is `" "` (space), label floats up on focus/when value is non-empty. Supports currency prefix (`₱`), number/text input, optional Lucide icon, suffix text, and per-field error state (red border + "!" badge + error message below). Props: `label`, `value`, `onChange`, `prefix?`, `icon?`, `suffix?`, `type?`, `inputMode?`, `min?`, `step?`, `required?`, `error?`. Used by `ManualQuickForm` for all main form fields.
+
+### manual-categories (shared config)
+
+File: components/entries/manual-categories.ts
+Last updated: 2026-07-29
+
+**Pattern notes:** Shared `CATEGORIES` config map and `ExpenseType` type used by both `ManualCategoryPicker` and `ManualQuickForm`. Defines icon, label, hint, compute fields, and compute function for all 7 expense types. Supplies and Others have empty compute (handled inline in `ManualQuickForm` via dynamic item rows). Imported by both consumer components and `LogEntryModal`.
+
+### ManualCategoryPicker
+
+File: components/entries/ManualCategoryPicker.tsx
+Last updated: 2026-07-29
+
+| Property         | Class |
+| ---------------- | ----- |
+| Container        | `flex flex-col gap-4` |
+| Grid             | `grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4` |
+| Card             | `flex flex-col items-center gap-2 rounded-xl border border-border-strong bg-surface px-3 py-5 text-center` |
+| Hover            | `hover:border-accent hover:bg-accent-muted hover:shadow-sm` |
+| Icon tile        | `flex h-9 w-9 items-center justify-center rounded-lg bg-accent-light text-accent` |
+| Label            | `text-sm font-medium text-text-primary` |
+| Hint             | `text-[11px] leading-tight text-text-muted` |
+| Animation        | framer-motion stagger container (35ms stagger, 40ms delay, y:10 fade-up per card) |
+
+**Pattern notes:** First step of the no-receipt manual flow inside `LogEntryModal`. Shows 7 category icon cards in a responsive grid. Tapping a card calls `onSelect(category)` which transitions the modal to the `ManualQuickForm` screen. Uses `CATEGORIES` config from `manual-categories.ts`. No local state — pure render.
+
+### ManualQuickForm
+
+File: components/entries/ManualQuickForm.tsx
+Last updated: 2026-07-29
+
+| Property             | Class |
+| -------------------- | ----- |
+| Back button          | `rounded-lg text-text-secondary hover:bg-surface-secondary hover:text-text-primary` |
+| Header icon tile     | `flex h-9 w-9 items-center justify-center rounded-lg bg-accent-light text-accent` |
+| Section header       | `text-[11px] font-medium uppercase tracking-wide text-text-muted` |
+| Section divider      | `border-t border-border pt-5` |
+| Input fields         | `FloatingInput` — floating-label pattern matching `AuthInput` (sign-up page) |
+| Toggle switch        | `rounded-full h-6 w-10` — active: `bg-accent`, inactive: `bg-border-strong` with 5×5 white dot `translate-x-[18px]` or `translate-x-[2px]` |
+| Item row (supplies)  | `rounded-lg border border-border bg-surface p-2.5 flex items-start gap-2` |
+| Item add button      | `rounded-lg border border-dashed border-border-strong px-3 py-2 text-xs` |
+| Other sub-mode pills | `rounded-lg px-4 py-2 text-sm` — active: `bg-accent text-accent-foreground shadow-sm`; inactive: `border border-border bg-surface text-text-secondary hover:border-accent` |
+| Suggestion chip      | `rounded-md bg-accent-muted px-2.5 py-1 text-xs text-accent` |
+| Live total           | `rounded-lg border border-border-strong bg-surface-secondary px-4 py-3 flex justify-between` — total value: `text-lg font-semibold tabular-nums` |
+| Photo row            | Inline flex with `Paperclip` icon, thumbnail `h-10 w-10 rounded-md object-cover` |
+| Justification textarea | `rounded-lg border border-border-strong bg-surface px-4 py-3 text-sm` |
+| Submit button        | `rounded-full bg-accent px-6 py-3 text-accent-foreground disabled:opacity-50` |
+
+**Pattern notes:** Second step of the no-receipt manual flow. Uses `FloatingInput` for all main fields (matching auth-style floating labels). Form restructured into 3 visual sections with headers: "Trip Details" (category-specific fields), "Extra Information" (witness + photo), "Additional Details" (justification). Section dividers use `border-t border-border`. Per-field error state via `submitted` flag — errors shown after first submit attempt. Item rows (supplies/other-itemized) remain compact inline inputs (no floating labels) since they're inside card-like containers. Live running total updated on every field change.
 
 ### LogEntryModal
 
 File: components/entries/LogEntryModal.tsx
-Last updated: 2026-07-18
+Last updated: 2026-07-29
 
 | Property       | Class |
 | -------------- | ----- |
@@ -669,14 +724,14 @@ Last updated: 2026-07-18
 | Sheet (mobile) | `max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-border bg-surface p-6 pb-8 shadow-card` + `mx-auto mb-5 h-1 w-10 rounded-full bg-border-strong` drag handle |
 | Toggle         | `rounded-xl border border-border bg-surface p-1` — active: `bg-accent text-accent-foreground shadow-sm`; inactive: `text-text-secondary hover:text-text-primary` |
 
-**Pattern notes:** AnimatePresence modal/sheet shell that wraps the same entry-logging flow previously on the standalone page. Method toggle hidden during receipt review. On confirm/submit → calls `onClose()` instead of navigating. State resets on open via `useEffect`. Uses `dialogOverlay`/`dialogContent` framer-motion variants.
+**Pattern notes:** AnimatePresence modal/sheet shell. Method toggle stays `[Upload Receipt] [No Receipt]`. Receipt flow unchanged (ReceiptUpload → ReceiptReview → Confirm/Discard). Manual flow replaced with 3-screen state machine: `picker` (ManualCategoryPicker) → `form` (ManualQuickForm) → `success` (inline success state with "Log another [category]?" and "Close"). State resets on open via `useEffect`. Mobile sheet cancel button now only shows for receipt flow (manual has its own back/close). No method toggle or receipt-review cancel on mobile during manual success.
 
 ### NewEntryPage (standalone fallback)
 
 File: app/treasurer/events/[eventId]/entries/new/page.tsx
-Last updated: 2026-07-18
+Last updated: 2026-07-29
 
-**Layout:** Centered `mx-auto max-w-2xl flex flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10`. Back link `ArrowLeft` → event dashboard. Page heading "Log Entry" with subtitle. Method toggle `rounded-xl border border-border bg-surface p-1` segmented control with `Camera` / `Pencil` icons. Content card `rounded-xl border border-border-strong bg-surface p-5 sm:p-6`. Renders `ReceiptUpload` or `ManualEntryForm` based on toggle state. When receipt parsed → renders `ReceiptReview` modal/sheet. Confirm navigates back to event dashboard after 800ms mock. Discard closes review and resets to upload state.
+**Layout:** Centered `mx-auto max-w-2xl flex flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10`. Method toggle + content card. Manual flow uses same 3-screen state machine as the modal (picker → form → success). Receipt flow unchanged. Replaces the old `ManualEntryForm` import with `ManualCategoryPicker` + `ManualQuickForm`.
 
 | Property        | Class |
 | --------------- | ----- |

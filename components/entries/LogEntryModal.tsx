@@ -2,15 +2,28 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, X, Camera, Pencil, FileText, ArrowLeft } from "lucide-react";
+import {
+  Check,
+  X,
+  Camera,
+  Pencil,
+  FileText,
+  RefreshCw,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatPHP } from "@/lib/format";
 import { dialogOverlay, dialogContent, sheetSlideUp } from "@/lib/motion-variants";
 import { ReceiptUpload } from "@/components/entries/ReceiptUpload";
-import { ManualEntryForm } from "@/components/entries/ManualEntryForm";
+import { ManualCategoryPicker } from "@/components/entries/ManualCategoryPicker";
+import { ManualQuickForm, type ManualSubmitPayload } from "@/components/entries/ManualQuickForm";
+import LottiePlayer from "@/components/LottiePlayer";
 import type { MockParsedReceipt } from "@/components/entries/ReceiptUpload";
+import type { ExpenseType } from "@/components/entries/manual-categories";
+
+// ─── Types ─────────────────────────────────────────────────────────
 
 type Method = "receipt" | "manual";
+type ManualScreen = "picker" | "form" | "success";
 
 type LogEntryModalProps = {
   open: boolean;
@@ -18,11 +31,19 @@ type LogEntryModalProps = {
   eventId: string;
 };
 
+// ─── Component ─────────────────────────────────────────────────────
+
 export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
   const [method, setMethod] = useState<Method>("receipt");
+
+  // Receipt flow state
   const [parsedData, setParsedData] = useState<MockParsedReceipt | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
+
+  // Manual flow state
+  const [manualScreen, setManualScreen] = useState<ManualScreen>("picker");
+  const [selectedCategory, setSelectedCategory] = useState<ExpenseType | null>(null);
 
   // Reset state on open
   useEffect(() => {
@@ -31,10 +52,12 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
       setParsedData(null);
       setReviewOpen(false);
       setConfirming(false);
+      setManualScreen("picker");
+      setSelectedCategory(null);
     }
   }, [open]);
 
-  // Close on Escape
+  // Close on Escape (not during confirm or submit)
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === "Escape" && !confirming) onClose();
@@ -76,66 +99,157 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
 
   // ─── Manual flow ───────────────────────────────────────────────
 
-  const handleManualSubmit = useCallback(async () => {
-    await new Promise((r) => setTimeout(r, 600));
-    onClose();
-  }, [onClose]);
+  const handleCategorySelect = useCallback((category: ExpenseType) => {
+    setSelectedCategory(category);
+    setManualScreen("form");
+  }, []);
 
-  // ─── Content ───────────────────────────────────────────────────
+  const handleFormBack = useCallback(() => {
+    setManualScreen("picker");
+    setSelectedCategory(null);
+  }, []);
 
-  /** Choose / upload / manual-entry screen */
+  const handleFormSubmit = useCallback(
+    async (_data: ManualSubmitPayload) => {
+      // ponytail: mock submit delay — real submission will be wired later
+      await new Promise((r) => setTimeout(r, 600));
+      setManualScreen("success");
+    },
+    [],
+  );
+
+  const handleLogAnother = useCallback(() => {
+    setManualScreen("form");
+    // Keep same category — ManualQuickForm resets its own fields via useEffect on category
+  }, []);
+
+  // ─── Content: screens ──────────────────────────────────────────
+
+  /** Method toggle + active method content */
   const screenContent = (
-    <div className="flex flex-col gap-6">
-      {/* Method toggle */}
-      <div className="flex rounded-xl border border-border bg-surface p-1">
-        {[
-          { value: "receipt" as Method, label: "Upload Receipt", icon: Camera },
-          { value: "manual" as Method, label: "No Receipt", icon: Pencil },
-        ].map((opt) => {
-          const active = method === opt.value;
-          return (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => setMethod(opt.value)}
-              className={cn(
-                "flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all",
-                active
-                  ? "bg-accent text-accent-foreground shadow-sm"
-                  : "text-text-secondary hover:text-text-primary",
-              )}
-            >
-              <opt.icon className="h-4 w-4" />
-              {opt.label}
-            </button>
-          );
-        })}
+    <div className="flex flex-col gap-5">
+      {/* Method toggle row */}
+      <div className="flex items-center gap-2">
+        <div className="flex flex-1 rounded-xl border border-border bg-surface p-1">
+          {[
+            { value: "receipt" as Method, label: "Upload Receipt", icon: Camera },
+            { value: "manual" as Method, label: "No Receipt", icon: Pencil },
+          ].map((opt) => {
+            const active = method === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => {
+                  setMethod(opt.value);
+                  setManualScreen("picker");
+                  setSelectedCategory(null);
+                }}
+                className={cn(
+                  "flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-medium transition-all",
+                  active
+                    ? "bg-accent text-accent-foreground shadow-sm"
+                    : "text-text-secondary hover:text-text-primary",
+                )}
+              >
+                <opt.icon className="h-4 w-4" />
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+        {/* Close button — web only */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-surface-secondary hover:text-text-primary sm:flex"
+          aria-label="Close"
+        >
+          <X className="h-4 w-4" />
+        </button>
       </div>
 
-      {method === "receipt" ? (
+      {/* Receipt flow */}
+      {method === "receipt" && (
         <ReceiptUpload onParsed={handleParsed} />
-      ) : (
-        <ManualEntryForm onSubmit={handleManualSubmit} />
+      )}
+
+      {/* Manual flow — screen state machine */}
+      {method === "manual" && manualScreen === "picker" && (
+        <ManualCategoryPicker onSelect={handleCategorySelect} />
+      )}
+
+      {method === "manual" && manualScreen === "form" && selectedCategory && (
+        <ManualQuickForm
+          category={selectedCategory}
+          eventId={eventId}
+          onBack={handleFormBack}
+          onSubmit={handleFormSubmit}
+        />
+      )}
+
+      {method === "manual" && manualScreen === "success" && (
+        <div className="flex flex-col items-center gap-4 py-6">
+          <LottiePlayer
+            src="/Auth%20pages/success.json"
+            className="h-32 w-32"
+            loop={false}
+          />
+          <div className="text-center">
+            <h3 className="text-lg font-semibold text-text-primary">
+              Entry Submitted!
+            </h3>
+            <p className="mt-1.5 text-sm text-text-muted">
+              Your department adviser will review this entry.
+            </p>
+          </div>
+          <div className="mt-2 flex w-full flex-col gap-2.5 sm:flex-row">
+            <button
+              onClick={onClose}
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-border px-6 py-3 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary"
+            >
+              Close
+            </button>
+            <button
+              onClick={handleLogAnother}
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98]"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Log another{" "}
+              {selectedCategory
+                ? CATEGORY_LABELS[selectedCategory]
+                : "entry"}
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
 
   /** Receipt review — replaces screenContent inline */
   const reviewContent = parsedData && (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       {/* Header */}
-      <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-info-lightest text-info">
-          <FileText className="h-5 w-5" />
+      <div className="flex items-start gap-4">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-info-lightest text-info">
+          <FileText className="h-6 w-6" />
         </div>
         <div className="min-w-0 flex-1">
           <h2 className="text-base font-semibold text-text-primary">
             Review Extracted Details
           </h2>
-          <p className="mt-0.5 text-xs text-text-muted">
+          <p className="mt-1 text-sm text-text-muted">
             AI-parsed from receipt. If anything looks wrong, discard and re-upload.
           </p>
         </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-surface-secondary hover:text-text-primary sm:flex"
+          aria-label="Close"
+        >
+          <X className="h-4 w-4" />
+        </button>
       </div>
 
       {/* Extracted fields */}
@@ -154,7 +268,7 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
 
       {/* Itemized breakdown */}
       <div>
-        <p className="mb-2 text-xs font-medium uppercase tracking-wide text-text-muted">
+        <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-text-muted">
           Itemized Breakdown
         </p>
         <div className="overflow-x-auto rounded-lg border border-border">
@@ -188,11 +302,11 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
       </div>
 
       {/* Actions */}
-      <div className="flex flex-col gap-2 sm:flex-row-reverse">
+      <div className="flex flex-col gap-2.5 sm:flex-row-reverse">
         <button
           onClick={handleConfirm}
           disabled={confirming}
-          className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-6 py-3.5 text-sm font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
         >
           <Check className="h-4 w-4" />
           {confirming ? "Confirming…" : "Confirm & Deduct"}
@@ -200,7 +314,7 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
         <button
           onClick={handleDiscard}
           disabled={confirming}
-          className="inline-flex w-full items-center justify-center gap-1.5 rounded-full border border-error px-6 py-3 text-sm font-medium text-error transition-colors hover:bg-error-lightest disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-error px-6 py-3.5 text-sm font-medium text-error transition-colors hover:bg-error-lightest disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
         >
           <X className="h-4 w-4" />
           Discard & Re-upload
@@ -235,15 +349,7 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
             exit="exit"
             className="fixed inset-0 z-50 hidden overflow-y-auto p-4 sm:flex sm:items-center sm:justify-center"
           >
-            <div className="relative w-full max-w-lg rounded-xl border border-border bg-surface p-6 shadow-card">
-              <button
-                type="button"
-                onClick={onClose}
-                className="absolute right-4 top-4 flex h-7 w-7 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-surface-secondary hover:text-text-primary"
-                aria-label="Close"
-              >
-                <X className="h-4 w-4" />
-              </button>
+            <div className="w-full max-w-xl max-h-[85vh] overflow-y-auto rounded-xl border border-border bg-surface p-6 shadow-card">
               {reviewOpen ? reviewContent : screenContent}
             </div>
           </motion.div>
@@ -263,14 +369,14 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
             }}
             className="fixed inset-x-0 bottom-0 z-50 sm:hidden"
           >
-            <div className="max-h-[85vh] rounded-t-2xl border-t border-border bg-surface shadow-card">
-              <div className="mx-auto mt-3 h-1 w-10 rounded-full bg-border-strong" />
-              <div className="overflow-y-auto p-6 pb-4">
+            <div className="flex max-h-[85vh] flex-col rounded-t-2xl border-t border-border bg-surface shadow-card">
+              <div className="mx-auto mt-3 h-1 w-10 shrink-0 rounded-full bg-border-strong" />
+              <div className="min-h-0 overflow-y-auto p-6 pb-4">
                 {reviewOpen ? reviewContent : screenContent}
               </div>
-              {/* Persistent Cancel for mobile sheet */}
-              {!reviewOpen && (
-                <div className="border-t border-border px-6 py-3">
+              {/* Persistent Cancel for mobile sheet — only when not in receipt review */}
+              {!reviewOpen && method === "receipt" && (
+                <div className="shrink-0 border-t border-border px-6 py-3">
                   <button
                     type="button"
                     onClick={onClose}
@@ -287,6 +393,18 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
     </AnimatePresence>
   );
 }
+
+// ─── Category label map ────────────────────────────────────────────
+
+const CATEGORY_LABELS: Record<string, string> = {
+  transportation: "Transportation",
+  meals: "Meals",
+  honorarium: "Honorarium",
+  supplies: "Supplies",
+  printing: "Printing",
+  rental: "Rental",
+  others: "Other",
+};
 
 // ─── Read-Only Field Atom ─────────────────────────────────────────
 
