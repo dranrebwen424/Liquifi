@@ -29,13 +29,8 @@ export function EventListItem({ id, name, status, budgetTotal, totalSpent, numEn
       href={`/treasurer/events/${id}`}
       className="group relative flex items-center gap-4 overflow-hidden rounded-xl border border-border bg-surface px-4 py-3 transition-all duration-200 hover:border-border-strong hover:bg-surface-secondary hover:shadow-md md:px-5"
     >
-      {/* Left accent bar on hover */}
-      <div className="absolute left-0 top-0 h-full w-[3px] -translate-x-full bg-success transition-transform duration-200 group-hover:translate-x-0" />
-
-      {/* Folder icon */}
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neutral-light text-text-muted transition-colors group-hover:bg-success-light group-hover:text-success">
-        <Folder className="h-5 w-5" />
-      </div>
+      {/* Folder icon — standalone, fills solid ink on hover */}
+      <Folder className="h-5 w-5 shrink-0 text-text-muted transition-colors group-hover:fill-current group-hover:text-text-primary" />
 
       {/* Name + Date */}
       <div className="min-w-0 flex-1">

@@ -151,7 +151,7 @@ export async function getEventDashboard(eventId: string) {
   const { data: entries } = await insforge.database
     .from("entries")
     .select(
-      "id, type, status, amount, supplier_name, document_type_raw, document_number, void_reason, voided_by",
+      "id, type, status, amount, supplier_name, document_type_raw, document_number, issue_date, issue_time, category, image_url, item_breakdown, created_at, void_reason, voided_by, voided_at",
     )
     .eq("event_id", eventId)
     .order("created_at", { ascending: false });

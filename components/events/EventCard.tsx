@@ -39,7 +39,6 @@ function budgetColor(pct: number) {
 }
 
 export function EventCard({ id, name, status, budgetTotal, totalSpent, numEntries, createdByName }: EventCardProps) {
-  const isOpen = status === "open";
   const pct = budgetTotal > 0 ? Math.min((totalSpent / budgetTotal) * 100, 100) : 0;
 
   return (
@@ -71,60 +70,44 @@ export function EventCard({ id, name, status, budgetTotal, totalSpent, numEntrie
             />
           </motion.svg>
 
-          {/* Paper sheet — slides out on hover */}
+          {/* Paper sheet — slides out on hover, holds all card info */}
           <motion.div
             variants={paperVariants}
             transition={cardHover}
-            className="absolute left-0 top-[20%] h-[76%] w-full rounded-xl bg-surface-secondary"
+            className="absolute left-0 top-[14%] flex h-[82%] w-full flex-col gap-1.5 rounded-xl bg-surface-secondary p-3"
           >
-            <div className="flex h-full items-end px-4 pb-3">
-              <div className="flex -space-x-1.5">
-                {/* Status indicator dot */}
+            {/* Name */}
+            <h3 className="text-sm font-semibold leading-snug text-text-primary line-clamp-1">
+              {name}
+            </h3>
+
+            {/* Budget */}
+            <div>
+              <div className="flex items-baseline justify-between">
+                <p className="text-[11px] text-text-muted">
+                  {formatPHP(totalSpent)} of {formatPHP(budgetTotal)}
+                </p>
+                {pct > 0 && (
+                  <span className="text-[11px] font-medium text-text-muted">{Math.round(pct)}%</span>
+                )}
+              </div>
+              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-border-light">
                 <div
-                  className={`h-5 w-5 rounded-full border-2 border-surface-secondary ${isOpen ? "bg-success" : "bg-neutral"}`}
+                  className={`h-full rounded-full transition-all ${budgetColor(pct)}`}
+                  style={{ width: `${Math.max(pct, 1)}%` }}
                 />
-                {/* Entry count badge */}
-                <div className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-surface-secondary bg-surface text-[8px] font-semibold text-text-primary">
-                  {numEntries}
-                </div>
               </div>
             </div>
+
+            {/* Footer */}
+            <div className="mt-auto flex items-center justify-between gap-2 text-[11px] text-text-muted">
+              <span className="truncate">{createdByName}</span>
+              <span className="flex shrink-0 items-center gap-1">
+                <FileText className="h-3 w-3" />
+                {numEntries} {numEntries === 1 ? "entry" : "entries"}
+              </span>
+            </div>
           </motion.div>
-        </div>
-
-        {/* ── Info below folder ─────────────────────────────── */}
-        <div className="flex flex-1 flex-col gap-2 px-0.5">
-          {/* Name */}
-          <h3 className="text-sm font-semibold leading-snug text-text-primary line-clamp-1">
-            {name}
-          </h3>
-
-          {/* Budget */}
-          <div>
-            <div className="flex items-baseline justify-between">
-              <p className="text-[11px] text-text-muted">
-                {formatPHP(totalSpent)} of {formatPHP(budgetTotal)}
-              </p>
-              {pct > 0 && (
-                <span className="text-[11px] font-medium text-text-muted">{Math.round(pct)}%</span>
-              )}
-            </div>
-            <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-border-light">
-              <div
-                className={`h-full rounded-full transition-all ${budgetColor(pct)}`}
-                style={{ width: `${Math.max(pct, 1)}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="mt-auto flex items-center justify-between gap-2 text-[11px] text-text-muted">
-            <span className="truncate">{createdByName}</span>
-            <span className="flex shrink-0 items-center gap-1">
-              <FileText className="h-3 w-3" />
-              {numEntries} {numEntries === 1 ? "entry" : "entries"}
-            </span>
-          </div>
         </div>
       </MotionLink>
     </MotionConfig>

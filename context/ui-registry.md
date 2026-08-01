@@ -402,23 +402,24 @@ Last updated: 2026-07-18
 ### EventCard
 
 File: components/events/EventCard.tsx
-Last updated: 2026-08-01 (Figma "folder 2" design + hover slide animation)
+Last updated: 2026-08-01 (info moved onto the paper sheet; grid 6-col)
 
 | Property         | Class |
 | ---------------- | ----- |
 | Root             | `MotionLink` (`motion.create(Link)`), `flex w-full flex-col gap-3`, `initial="rest" whileHover="hover"` |
 | Folder container | `relative aspect-[412/312] w-full` (prototype proportions, fluid across grid) |
 | Folder silhouette | inline SVG (2 paths, `viewBox="0 0 404 263"`), `absolute left-1 top-0 w-[calc(100%-8px)] text-neutral drop-shadow-md`, `fill="currentColor"` |
-| Paper sheet      | `absolute left-0 top-[20%] h-[76%] w-full rounded-xl bg-surface-secondary` — carries status dot + entry-count badge (bottom-left, `border-2 border-surface-secondary`) |
+| Paper sheet      | `absolute left-0 top-[14%] flex h-[82%] w-full flex-col gap-1.5 rounded-xl bg-surface-secondary p-3` — holds ALL card info |
+| Name             | `text-sm font-semibold leading-snug text-text-primary line-clamp-1` |
+| Budget row       | `text-[11px] text-text-muted` — `formatPHP()` "spent of total" + pct% |
+| Progress bar     | `mt-1 h-1.5 rounded-full` track `bg-border-light`, fill `bg-success`/`bg-warning`/`bg-error` by range |
+| Footer           | `mt-auto text-[11px] text-text-muted` — creator name (truncate) + `FileText` icon + entry count |
 | Hover (folder)   | variants `{ rest: { x: 0 }, hover: { x: -4 } }` |
 | Hover (paper)    | variants `{ rest: { x: 0, y: 0, width: "100%" }, hover: { x: -11, y: 8, width: "104.25%" } }` |
 | Transition       | `{ duration: 0.2, ease: "easeOut" }` shared const (prototype 300ms tightened to card-hover window) |
 | Reduced motion   | `MotionConfig reducedMotion="user"` wrapper |
-| Name             | `text-sm font-semibold leading-snug text-text-primary line-clamp-1` |
-| Budget bar       | `h-1.5 rounded-full` track `bg-border-light`, fill `bg-success`/`bg-warning`/`bg-error` by range; `formatPHP()` "spent of total" + pct |
-| Footer           | `text-[11px] text-text-muted` — creator name + `FileText` icon + entry count |
 
-**Pattern notes:** Folder is an inline SVG silhouette (tabbed folder from Figma `folder 2` export, paths inline, `fill="currentColor"` mapped to `text-neutral`), with a rounded paper sheet (`bg-surface-secondary`) overlapping its lower half — on card hover the paper slides down-left and widens while the folder shifts left, via framer-motion variants propagated from `MotionLink` (whole card is the hover target). Animation values are relative to a `412×312` container so they scale across the responsive 2/3/4-col grid. Status dot: `bg-success` open / `bg-neutral` archived. Registry note: previous entry (2026-07-26) described an outdated card layout — superseded by this design.
+**Pattern notes:** Folder is an inline SVG silhouette (tabbed folder from Figma `folder 2` export, paths inline, `fill="currentColor"` mapped to `text-neutral`), with a rounded paper sheet (`bg-surface-secondary`) overlapping its lower half — on card hover the paper slides down-left and widens while the folder shifts left, via framer-motion variants propagated from `MotionLink` (whole card is the hover target). Animation values are relative to a `412×312` container so they scale across the responsive grid (2→5 cols: `grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5` in `app/treasurer/home/client.tsx`). All card info (name, budget, bar, footer) lives ON the paper sheet — nothing below the folder. Circular entry-count badge removed (footer shows count); status dot removed 2026-08-01. Registry note: 2026-07-26 entry described an outdated card layout — superseded by this design.
 
 ### EventListItem
 
@@ -432,7 +433,7 @@ Last updated: 2026-07-26 (hover shadow + accent bar)
 | Left accent bar  | `absolute left-0 top-0 h-full w-[3px] -translate-x-full bg-success group-hover:translate-x-0` |
 | Transition       | `transition-all duration-200` |
 
-**Pattern notes:** List row with folder icon, name + date, amount/budget, progress bar, entry count, status badge, chevron. Left green accent bar slides in on hover via `translate-x` transform for modern interaction feedback. Chevron shifts right on hover (`group-hover:translate-x-0.5`).
+**Pattern notes:** List row with standalone folder icon, name + date, amount/budget, progress bar, entry count, status badge, chevron. Hover feedback is neutral only: `hover:bg-surface-secondary` + border/shadow deepening; green accent bar and green icon tint removed 2026-08-01. Icon is a bare `Folder` (`h-5 w-5 text-text-muted`, no tile background) that fills solid ink on hover (`group-hover:fill-current group-hover:text-text-primary`). Chevron shifts right on hover (`group-hover:translate-x-0.5`).
 
 ### EventDashboardActions
 
@@ -503,7 +504,7 @@ Last updated: 2026-07-26 (new component)
 | Chip (default) | via `FilterDropdown`: `rounded-lg border border-border bg-surface px-2 py-1 text-xs font-medium` |
 | Chip (active)  | via `FilterDropdown`: `border-accent bg-accent-muted text-accent` |
 
-**Pattern notes:** 4 filter chips using existing `FilterDropdown` component. Filters: Type (All/With Receipt/Manual), Sort (Newest/Oldest/Amount High-Low/Amount Low-High), Budget (All/₱0–100/₱100–500/₱500–1000/₱1000+), Category (All + dynamic from data). State managed in `ExpensesSection` parent component.
+**Pattern notes:** 4 filter chips using existing `FilterDropdown` component. Filters: Type (All/With Receipt/Manual), Sort (Newest/Oldest/Amount High-Low/Amount Low-High), Budget (All/₱0–100/₱100–500/₱500–1000/₱1000+), Category (All + dynamic from data). State managed in `ExpensesSection` parent component. **Mobile** (`ExpenseFilterIcon`, `md:hidden`): icon-only `SlidersHorizontal` pill (no "Filter" text) that opens `FilterPopover` — `absolute right-0 top-full z-30 mt-1.5 w-64 rounded-lg border border-border-strong bg-surface p-4 shadow-card`, right-aligned under the button, closes on outside `mousedown`/`Escape` (same pattern as `FilterDropdown`). Bottom sheet removed 2026-08-01.
 
 ### ExpensesSection
 
