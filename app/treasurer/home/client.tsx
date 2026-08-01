@@ -271,7 +271,7 @@ export function TreasurerHomeClient({ events }: Props) {
                   variants={staggerContainer}
                   initial="hidden"
                   animate="show"
-                  className="grid grid-cols-2 gap-x-5 gap-y-6 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4"
+                  className="grid grid-cols-2 gap-x-5 gap-y-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
                 >
                   {activeEvents.map((event) => (
                     <motion.div key={event.id} variants={fadeUpItem}>

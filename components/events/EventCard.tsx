@@ -1,5 +1,9 @@
+"use client";
+
 import Link from "next/link";
-import { Folder, FileText } from "lucide-react";
+import { motion, MotionConfig } from "framer-motion";
+import type { Transition, Variants } from "framer-motion";
+import { FileText } from "lucide-react";
 import { formatPHP } from "@/lib/format";
 
 type EventCardProps = {
@@ -10,6 +14,22 @@ type EventCardProps = {
   totalSpent: number;
   numEntries: number;
   createdByName: string;
+};
+
+const MotionLink = motion.create(Link);
+
+const cardHover: Transition = { duration: 0.2, ease: "easeOut" };
+
+// Matches Figma "folder 2" hover: folder shifts left, paper sheet slides
+// down-left and widens (412→429.5 px at prototype scale, kept relative here).
+const folderVariants: Variants = {
+  rest: { x: 0 },
+  hover: { x: -4 },
+};
+
+const paperVariants: Variants = {
+  rest: { x: 0, y: 0, width: "100%" },
+  hover: { x: -11, y: 8, width: "104.25%" },
 };
 
 function budgetColor(pct: number) {
@@ -23,50 +43,90 @@ export function EventCard({ id, name, status, budgetTotal, totalSpent, numEntrie
   const pct = budgetTotal > 0 ? Math.min((totalSpent / budgetTotal) * 100, 100) : 0;
 
   return (
-    <Link
-      href={`/treasurer/events/${id}`}
-      className="group flex min-h-[160px] w-full flex-col rounded-xl border border-border bg-surface p-5 shadow-sm transition-all duration-200 hover:border-accent hover:shadow-md hover:scale-[1.02]"
-    >
-      {/* Icon + Name */}
-      <div className="flex items-start gap-3">
-        <div
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-            isOpen ? "bg-success-light text-success" : "bg-neutral-light text-text-muted"
-          }`}
-        >
-          <Folder className="h-5 w-5" />
-        </div>
-        <h3 className="min-w-0 pt-0.5 text-lg font-semibold leading-snug text-text-primary line-clamp-2">
-          {name}
-        </h3>
-      </div>
+    <MotionConfig reducedMotion="user">
+      <MotionLink
+        href={`/treasurer/events/${id}`}
+        initial="rest"
+        whileHover="hover"
+        className="flex w-full flex-col gap-3"
+      >
+        {/* ── Folder visual (Figma "folder 2") ─────────────── */}
+        <div className="relative aspect-[412/312] w-full">
+          {/* Folder silhouette — tabbed, gray */}
+          <motion.svg
+            variants={folderVariants}
+            transition={cardHover}
+            className="absolute left-1 top-0 w-[calc(100%-8px)] text-neutral drop-shadow-md"
+            viewBox="0 0 404 263"
+            fill="none"
+            aria-hidden="true"
+          >
+            <path
+              fill="currentColor"
+              d="M404 245.5C404 255.165 396.165 263 386.5 263H17.5C7.83501 263 0 255.165 0 245.5V74.0001H404V245.5Z"
+            />
+            <path
+              fill="currentColor"
+              d="M404 75.1668H0V17.5C0 7.83504 7.83502 0 17.5 0H138.743C142.059 0 145.218 1.41107 147.432 3.88053L165.436 23.9714C167.649 26.4408 170.808 27.8519 174.124 27.8519H386.5C396.165 27.8519 404 35.6869 404 45.3519V75.1668Z"
+            />
+          </motion.svg>
 
-      {/* Budget bar */}
-      <div className="mt-4">
-        <div className="flex items-baseline justify-between">
-          <p className="text-[11px] text-text-muted">
-            {formatPHP(totalSpent)} of {formatPHP(budgetTotal)}
-          </p>
-          {pct > 0 && (
-            <span className="text-[11px] font-medium text-text-muted">{Math.round(pct)}%</span>
-          )}
+          {/* Paper sheet — slides out on hover */}
+          <motion.div
+            variants={paperVariants}
+            transition={cardHover}
+            className="absolute left-0 top-[20%] h-[76%] w-full rounded-xl bg-surface-secondary"
+          >
+            <div className="flex h-full items-end px-4 pb-3">
+              <div className="flex -space-x-1.5">
+                {/* Status indicator dot */}
+                <div
+                  className={`h-5 w-5 rounded-full border-2 border-surface-secondary ${isOpen ? "bg-success" : "bg-neutral"}`}
+                />
+                {/* Entry count badge */}
+                <div className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-surface-secondary bg-surface text-[8px] font-semibold text-text-primary">
+                  {numEntries}
+                </div>
+              </div>
+            </div>
+          </motion.div>
         </div>
-        <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-border-light">
-          <div
-            className={`h-full rounded-full transition-all ${budgetColor(pct)}`}
-            style={{ width: `${Math.max(pct, 1)}%` }}
-          />
-        </div>
-      </div>
 
-      {/* Footer */}
-      <div className="mt-auto flex items-center justify-between gap-2 pt-3 text-[11px] text-text-muted">
-        <span className="truncate">{createdByName}</span>
-        <span className="flex shrink-0 items-center gap-1">
-          <FileText className="h-3 w-3" />
-          {numEntries} {numEntries === 1 ? "entry" : "entries"}
-        </span>
-      </div>
-    </Link>
+        {/* ── Info below folder ─────────────────────────────── */}
+        <div className="flex flex-1 flex-col gap-2 px-0.5">
+          {/* Name */}
+          <h3 className="text-sm font-semibold leading-snug text-text-primary line-clamp-1">
+            {name}
+          </h3>
+
+          {/* Budget */}
+          <div>
+            <div className="flex items-baseline justify-between">
+              <p className="text-[11px] text-text-muted">
+                {formatPHP(totalSpent)} of {formatPHP(budgetTotal)}
+              </p>
+              {pct > 0 && (
+                <span className="text-[11px] font-medium text-text-muted">{Math.round(pct)}%</span>
+              )}
+            </div>
+            <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-border-light">
+              <div
+                className={`h-full rounded-full transition-all ${budgetColor(pct)}`}
+                style={{ width: `${Math.max(pct, 1)}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="mt-auto flex items-center justify-between gap-2 text-[11px] text-text-muted">
+            <span className="truncate">{createdByName}</span>
+            <span className="flex shrink-0 items-center gap-1">
+              <FileText className="h-3 w-3" />
+              {numEntries} {numEntries === 1 ? "entry" : "entries"}
+            </span>
+          </div>
+        </div>
+      </MotionLink>
+    </MotionConfig>
   );
 }

@@ -402,19 +402,23 @@ Last updated: 2026-07-18
 ### EventCard
 
 File: components/events/EventCard.tsx
-Last updated: 2026-07-26 (larger name + shadow depth)
+Last updated: 2026-08-01 (Figma "folder 2" design + hover slide animation)
 
 | Property         | Class |
 | ---------------- | ----- |
-| Background       | `bg-surface` |
-| Border           | `border border-border` |
-| Border radius    | `rounded-xl` |
-| Spacing          | `p-5`, `gap-3` inner |
-| Shadow           | `shadow-sm` at rest → `hover:shadow-md` on hover |
-| Hover            | `hover:border-accent hover:scale-[1.02]` |
-| Name             | `text-lg font-semibold` (was `text-base`) |
+| Root             | `MotionLink` (`motion.create(Link)`), `flex w-full flex-col gap-3`, `initial="rest" whileHover="hover"` |
+| Folder container | `relative aspect-[412/312] w-full` (prototype proportions, fluid across grid) |
+| Folder silhouette | inline SVG (2 paths, `viewBox="0 0 404 263"`), `absolute left-1 top-0 w-[calc(100%-8px)] text-neutral drop-shadow-md`, `fill="currentColor"` |
+| Paper sheet      | `absolute left-0 top-[20%] h-[76%] w-full rounded-xl bg-surface-secondary` — carries status dot + entry-count badge (bottom-left, `border-2 border-surface-secondary`) |
+| Hover (folder)   | variants `{ rest: { x: 0 }, hover: { x: -4 } }` |
+| Hover (paper)    | variants `{ rest: { x: 0, y: 0, width: "100%" }, hover: { x: -11, y: 8, width: "104.25%" } }` |
+| Transition       | `{ duration: 0.2, ease: "easeOut" }` shared const (prototype 300ms tightened to card-hover window) |
+| Reduced motion   | `MotionConfig reducedMotion="user"` wrapper |
+| Name             | `text-sm font-semibold leading-snug text-text-primary line-clamp-1` |
+| Budget bar       | `h-1.5 rounded-full` track `bg-border-light`, fill `bg-success`/`bg-warning`/`bg-error` by range; `formatPHP()` "spent of total" + pct |
+| Footer           | `text-[11px] text-text-muted` — creator name + `FileText` icon + entry count |
 
-**Pattern notes:** Card showing event name (truncate), `EventStatusBadge`, `BudgetProgressBar` (h-2.5 rounded-full bg-neutral-light with blue fill). Bottom row: line items showing Total / Spent / Remaining in `text-xs text-text-muted` with `formatPHP()`. Colored remaining: green when within budget, red when overspent. Shadow depth creates visual hierarchy on the grid.
+**Pattern notes:** Folder is an inline SVG silhouette (tabbed folder from Figma `folder 2` export, paths inline, `fill="currentColor"` mapped to `text-neutral`), with a rounded paper sheet (`bg-surface-secondary`) overlapping its lower half — on card hover the paper slides down-left and widens while the folder shifts left, via framer-motion variants propagated from `MotionLink` (whole card is the hover target). Animation values are relative to a `412×312` container so they scale across the responsive 2/3/4-col grid. Status dot: `bg-success` open / `bg-neutral` archived. Registry note: previous entry (2026-07-26) described an outdated card layout — superseded by this design.
 
 ### EventListItem
 
