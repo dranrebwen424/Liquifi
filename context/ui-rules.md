@@ -121,6 +121,8 @@ font-weight:     500
 border-radius:   var(--radius-full)
 hover:           background var(--color-accent-hover)
                  no visual layout change
+transition:      transition-[color,transform]
+press:           active:scale-[0.98]
 ```
 
 ### Secondary
@@ -186,49 +188,42 @@ Read-only fields (receipt review — extracted values the treasurer cannot edit)
 
 ## Badges (Status / Role / Tags)
 
+Badges are **bare Lucide icons** — no background, no border, no text. The icon color encodes status via semantic tokens. Each badge includes `aria-label` and `title` for accessibility and hover tooltip.
+
 ```
-border-radius:   var(--radius-full)
-padding:         2px 8px
-font-size:       12px
-font-weight:     500
+size:           20×20px
+display:        inline-flex, shrink-0
+background:     none
+border:         none
+padding:        none
 ```
 
-One shared `<StatusBadge>` component drives every state-machine field — never a one-off badge per page. Fixed color mapping, extend this table rather than inventing new colors per feature:
+One shared `<StatusBadge>` component drives every state-machine field — never a one-off badge per page. Takes `icon` (Lucide component), `variant` (color), and `label` (aria text). Fixed icon mapping, extend this table rather than inventing new icons per feature:
 
-### Status Badge Color Mapping
+### Status Badge Icon Mapping
 
-| State family | Value | Background | Text |
-|---|---|---|---|
-| Account | `pending_approval` | `var(--color-warning-lightest)` | `var(--color-warning-foreground)` |
-| Account | `active` | `var(--color-success-lightest)` | `var(--color-success-foreground)` |
-| Account | `deactivated` / `rejected` | `var(--color-neutral-light)` | `var(--color-text-muted)` |
-| Event | `open` | `var(--color-success-lightest)` | `var(--color-success-foreground)` |
-| Event | `archived` | `var(--color-neutral-light)` | `var(--color-text-muted)` |
-| Entry | `ai_parsed` / `treasurer_reviewed` / `draft` | `var(--color-info-lightest)` | `var(--color-info-foreground)` |
-| Entry | `pending_approval` / `resubmitted` | `var(--color-warning-lightest)` | `var(--color-warning-foreground)` |
-| Entry | `approved` / `deducted` | `var(--color-success-lightest)` | `var(--color-success-foreground)` |
-| Entry | `rejected` / `discarded` | `var(--color-error-lightest)` | `var(--color-error-foreground)` |
-| Entry | `voided` | `var(--color-error-lightest)` | `var(--color-error-foreground)` (paired with strikethrough) |
-| Report | `pending_adviser_approval` | `var(--color-warning-lightest)` | `var(--color-warning-foreground)` |
-| Report | `approved` | `var(--color-success-lightest)` | `var(--color-success-foreground)` |
-| Report | `rejected` / `cancelled` | `var(--color-error-lightest)` | `var(--color-error-foreground)` |
+| State family | Value | Icon | Variant | Color source |
+|---|---|---|---|---|
+| Account | `pending_approval` | `Clock` | `warning` | `var(--color-warning)` |
+| Account | `active` | `CircleCheckBig` | `success` | `var(--color-success)` |
+| Account | `deactivated` / `rejected` | `CircleMinus` | `neutral` | `var(--color-neutral)` |
+| Event | `open` | `CircleCheckBig` | `success` | `var(--color-success)` |
+| Event | `archived` | `CircleMinus` | `neutral` | `var(--color-neutral)` |
+| Entry | `ai_parsed` / `treasurer_reviewed` / `draft` | `CircleDot` | `info` | `var(--color-info)` |
+| Entry | `pending_approval` / `resubmitted` | `Clock` | `warning` | `var(--color-warning)` |
+| Entry | `approved` / `deducted` | `CircleCheckBig` | `success` | `var(--color-success)` |
+| Entry | `rejected` / `discarded` / `voided` | `CircleX` | `error` | `var(--color-error)` |
+| Report | `pending_adviser_approval` | `Clock` | `warning` | `var(--color-warning)` |
+| Report | `approved` | `CircleCheckBig` | `success` | `var(--color-success)` |
+| Report | `rejected` / `cancelled` | `CircleX` | `error` | `var(--color-error)` |
 
-Trend badges on stat cards use `border-radius: var(--radius-sm)` (not pill) with `var(--color-success-lightest)` background and `var(--color-success-foreground)` text.
+### Role Badge Icon Mapping
 
-### Role Badge Colors
-
-| Role | Background | Text |
-|------|-----------|------|
-| Admin | `var(--color-role-admin-light)` | `var(--color-role-admin)` |
-| Adviser | `var(--color-role-adviser-light)` | `var(--color-role-adviser)` |
-| Treasurer | `var(--color-role-treasurer-light)` | `var(--color-role-treasurer)` |
-
-### Entry Source Badge Colors
-
-| Source | Background | Text |
-|--------|-----------|------|
-| Receipt (AI-parsed) | `var(--color-info-lightest)` | `var(--color-info-foreground)` |
-| No-receipt (manual) | `var(--color-surface-secondary)` | `var(--color-text-secondary)` |
+| Role | Icon | Variant | Color source |
+|------|------|---------|-------------|
+| Admin | `Shield` | `default` | `var(--color-accent)` |
+| Adviser | `BookOpen` | `info` | `var(--color-info)` |
+| Treasurer | `Landmark` | `success` | `var(--color-success)` |
 
 ---
 
@@ -368,6 +363,114 @@ Every section that can be empty must have an empty state. Keep it minimal:
 
 ---
 
+## Animation Standards
+
+See `code-standards.md` → Animation Library Selection for the tool selection rules (CSS → framer-motion → GSAP). This section defines the *what* and *how* — the visual standards every animation must meet.
+
+### 5 Animation Rules
+
+**1. Animate only when meaning changes.** If the user can't answer "what just happened", the animation is noise. Animations communicate state transitions — they are not decoration.
+
+**2. Keep durations short.**
+
+| Element | Duration |
+|---|---|
+| Hover / focus | 120–180 ms |
+| Buttons | 150–200 ms |
+| Cards | 180–250 ms |
+| Dialogs / sheets | 250–350 ms |
+| Page transitions | 250–400 ms |
+
+When in doubt, use the lower end of the range.
+
+**3. Prefer spring motion** over linear easing. Springs feel natural and make the UI feel responsive.
+
+```
+// framer-motion
+transition={{ type: "spring", stiffness: 100, damping: 20, duration: 0.2 }}
+
+// CSS approximation
+transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+```
+
+Reserve fixed-duration `power` eases for GSAP presentation animations only (ScrollTrigger reveals, hero sequences).
+
+**4. Use subtle movement.**
+
+| Parameter | Range | Example |
+|---|---|---|
+| Slide / translate | 8–24 px | `y: 12` for card stagger |
+| Scale | 0.98 ↔ 1.02 | `scale: 1.02` on hover |
+| Opacity | 0 → 1 | Gentle fades only |
+| Blur | 0 → 4 px max | Dialog backdrops |
+
+No dramatic 100+ px slides, no large bounces, no jarring transforms.
+
+**5. Every animation must have a purpose.** Is the user waiting? → communicate progress. Did a new element appear? → fade it in so their peripheral vision catches it. Are we listing entries? → a micro-stagger cues "these are related items."
+
+If the answer to "what information does this communicate?" is "none" — remove it.
+
+### framer-motion vs GSAP Boundary
+
+| Use framer-motion for | Use GSAP for |
+|---|---|
+| List stagger-ins | ScrollTrigger parallax |
+| Modal/sheet mount/unmount | SVG path drawing (`DrawSVG`) |
+| Page transitions | Timeline sequences (>5 steps) |
+| Tab content crossfade | Canvas/WebGL integrations |
+| Layout animations (`layoutId`) | Animation that needs progress-based scrub |
+
+### Stagger Pattern (Standard)
+
+```tsx
+"use client";
+import { motion } from "framer-motion";
+
+const staggerContainer = {
+  hidden: {},
+  show: {
+    transition: { staggerChildren: 0.04, delayChildren: 0.05 },
+  },
+};
+
+const fadeUpItem = {
+  hidden: { opacity: 0, y: 12 },
+  show: {
+    opacity: 1, y: 0,
+    transition: { type: "spring", stiffness: 100, damping: 20, duration: 0.2 },
+  },
+};
+
+// Usage
+<motion.div variants={staggerContainer} initial="hidden" animate="show">
+  {items.map(item => (
+    <motion.div key={item.id} variants={fadeUpItem}>
+      {item.content}
+    </motion.div>
+  ))}
+</motion.div>
+```
+
+### AnimatePresence Pattern (Standard)
+
+```tsx
+"use client";
+import { motion, AnimatePresence } from "framer-motion";
+
+<AnimatePresence mode="wait">
+  <motion.div
+    key={activeTab}
+    initial={{ opacity: 0, y: 8 }}
+    animate={{ opacity: 1, y: 0, transition: { type: "spring", stiffness: 100, damping: 20 } }}
+    exit={{ opacity: 0, y: -4, transition: { duration: 0.1 } }}
+  >
+    {content}
+  </motion.div>
+</AnimatePresence>
+```
+
+---
+
 ## Tailwind v4 Note
 
 This project uses Tailwind v4. Tokens are defined with `@theme` in `globals.css` — no `tailwind.config.ts` needed. Never define colors in a config file. Always use `@theme` for new tokens.
@@ -380,7 +483,7 @@ This project uses Tailwind v4. Tokens are defined with `@theme` in `globals.css`
 - Never define colors in `tailwind.config.ts` — use `@theme` in `globals.css`
 - Never add gradients to card backgrounds
 - Never use more than one font weight in a single UI element
-- Never show raw error messages to users — always show human-readable text (e.g. a failed OpenRouter parse never surfaces a stack trace, it surfaces "Couldn't read this receipt — try again or use manual entry")
+- Never show raw error messages to users — always show human-readable text (e.g. a failed AI parse never surfaces a stack trace, it surfaces "Couldn't read this receipt — try again or use manual entry")
 - Never stack more than 2 levels of border radius inside each other
 - Never use `position: fixed` for UI elements — use normal flow layout (this includes the batch-approval action bar — use sticky within the scroll container, not fixed to viewport)
 - Never hide a disabled/unavailable action without explaining why (locked event, archived event, wrong role) — always pair with a banner or tooltip

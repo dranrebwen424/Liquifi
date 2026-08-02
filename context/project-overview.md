@@ -2,7 +2,7 @@
 
 ## About the Project
 
-**Liquifi** is a full stack liquidation-management system for department councils at Mabini Colleges. It replaces manual expense computation and physical receipt-keeping with a digital workflow: treasurers log expenses either by uploading a receipt photo (AI-parsed via OpenRouter) or filling a no-receipt form, advisers review and approve, and the system tracks running budgets in real time. Once an event's spending is fully resolved, the treasurer generates a signed Financial Report PDF, routes it through adviser approval and offline physical signing, then archives the event as a permanent, read-only record.
+**Liquifi** is a full stack liquidation-management system for department councils at Mabini Colleges. It replaces manual expense computation and physical receipt-keeping with a digital workflow: treasurers log expenses either by uploading a receipt photo (AI-parsed via Google Gemini) or filling a no-receipt form, advisers review and approve, and the system tracks running budgets in real time. Once an event's spending is fully resolved, the treasurer generates a signed Financial Report PDF, routes it through adviser approval and offline physical signing, then archives the event as a permanent, read-only record.
 
 All monetary values are in **PHP (₱)**, stored as `decimal(12,2)`.
 
@@ -37,10 +37,11 @@ Public
   /signup
   /pending-approval
   /forgot-password
+  /otp                            → OTP verify (signup verification + password reset)
+  /change-password                → Set new password (password reset only)
 
 Treasurer
   /treasurer/home                          → Events list
-  /treasurer/events/new                    → Event creation form
   /treasurer/events/[eventId]              → Event dashboard (Total / Spent / Remaining, entries)
   /treasurer/events/[eventId]/entries/new  → Receipt upload or manual form
   /treasurer/reports
@@ -99,6 +100,15 @@ Sidebar (web) / Bottom nav (mobile) — icons, minimal:
 - Approved → `/login` → redirected by role to their home page.
 - Admin accounts are never created via signup — pre-provisioned only.
 
+### Password Reset (Forgot Password)
+
+- User requests a reset at `/forgot-password` by entering their account email.
+- A reset OTP is sent (same OTP rules as signup: 10 min expiry, resend after 60s, max 5/hour, 5 wrong attempts locks and forces resend).
+- User verifies the code at `/otp?purpose=reset` → routed to `/change-password`.
+- At `/change-password`, the user sets a **new password** and **confirms** it (both required, must match).
+- On success → `/login`.
+- Part of Phase 1: UI screens built first with mock submit handlers (no InsForge calls), real OTP-send / verify / password-update wired in Phase 1 / `03`.
+
 ### Event & Budget
 
 - Treasurer creates an event with a name and total budget (`budget_total`).
@@ -109,7 +119,7 @@ Sidebar (web) / Bottom nav (mobile) — icons, minimal:
 
 **Method 1 — Receipt (AI-parsed):**
 - Treasurer uploads one document image per upload.
-- OpenRouter extracts: verbatim document type label, normalized document type category, document number (tied to the matching label, not incidental POS metadata), issue date/time, supplier name, final amount paid, and a required itemized breakdown.
+- Gemini extracts: verbatim document type label, normalized document type category, document number (tied to the matching label, not incidental POS metadata), issue date/time, supplier name, final amount paid, and a required itemized breakdown.
 - Duplicate check: rejects if (document type + document number) already exists in the same event.
 - Treasurer reviews the parse **read-only** — cannot edit. If wrong, discard and re-upload.
 - Confirm → entry deducts from budget immediately.
@@ -167,10 +177,11 @@ All `Entry`, `Event`, `Report`, and file assets belong to `department_id`, not t
 ## Features In Scope
 
 - Signup/login with email OTP, role + department selection
+- Forgot-password reset flow: email → OTP → set new password (Phase 1)
 - Admin approval of adviser signups; adviser approval of treasurer signups
 - One active adviser + one active treasurer per department, enforced at the DB level
 - Event creation with immutable-after-spend budget
-- Receipt entry via AI-parsed OCR (OpenRouter), with required itemized breakdown
+- Receipt entry via AI-parsed OCR (Gemini), with required itemized breakdown
 - No-receipt manual entry with adviser approval (batchable)
 - Overspend flagging with adviser acknowledgment folded into report approval
 - Entry voiding by the current active treasurer, department-wide

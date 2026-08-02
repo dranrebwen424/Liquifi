@@ -1,5 +1,5 @@
 ---
-description: Instructions for building Liquifi — a full-stack liquidation management system for Mabini Colleges department councils
+description: Instructions building apps with MCP
 globs: *
 alwaysApply: true
 ---
@@ -31,7 +31,7 @@ Read in this exact order before any implementation:
 - **Never use hardcoded hex values or raw Tailwind color classes** — always use `@theme` tokens from `ui-tokens.md` via generated utility classes (`bg-surface`, `text-text-primary`, `border-border`)
 - **State machines are law** — `Event.status`, `Event.budget_locked`, `Event.is_locked`, `Entry.status`, `Report.status` each have strict transition rules. Never shortcut a precondition check, even if it seems safe in one case.
 - **`budget_locked` and `is_locked` are derived** — never persist them as independent booleans. `budget_locked` = EXISTS(entry WHERE event_id = X AND status = 'deducted'). `is_locked` = EXISTS(report WHERE event_id = X AND status IN ('pending_adviser_approval','approved')).
-- **A failed OpenRouter parse never creates an Entry row** — the image stays client-side as a retryable upload. Only a successful parse creates the row at `ai_parsed`.
+- **A failed AI parse never creates an Entry row** — the image stays client-side as a retryable upload. Only a successful parse creates the row at `ai_parsed`.
 - **Reports are never overwritten** — every regeneration after rejection/cancellation creates a new `Report` row reusing the same `fs_document_number` with `revision_count` incremented.
 - **Polygon anchoring happens exactly once** — at the moment `Report.status` transitions to `approved`. Never call it from any other trigger.
 - **Once `Event.status = archived`**, every mutation under that event is rejected at the guard layer, regardless of role.
@@ -81,36 +81,29 @@ npm install @insforge/sdk@latest
 
 ```typescript
 // lib/insforge-client.ts — Browser context only (Client Components, auth state, realtime subs)
-import { createBrowserClient } from "@insforge/ssr";
+import { createClient } from "@insforge/sdk";
 
-export const insforge = createBrowserClient(
-  process.env.NEXT_PUBLIC_INSFORGE_URL!,
-  process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
-);
+export const insforge = createClient({
+  baseUrl: process.env.NEXT_PUBLIC_INSFORGE_URL!,
+  anonKey: process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
+});
 ```
 
 ```typescript
 // lib/insforge-server.ts — Server context only (API routes, Server Actions, agent functions)
-import { createServerClient } from "@insforge/ssr";
+import { createServerClient } from "@insforge/sdk/ssr";
 import { cookies } from "next/headers";
 
-export const createInsforgeServer = async () => {
+export async function createInsforgeServer() {
   const cookieStore = await cookies();
-  return createServerClient(
-    process.env.NEXT_PUBLIC_INSFORGE_URL!,
-    process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => cookieStore.getAll(),
-        setAll: (cookiesToSet) => {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options),
-          );
-        },
-      },
+  return createServerClient({
+    baseUrl: process.env.NEXT_PUBLIC_INSFORGE_URL!,
+    anonKey: process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
+    cookies: {
+      get: (name: string) => cookieStore.get(name)?.value ?? null,
     },
-  );
-};
+  });
+}
 ```
 
 **Rules:**
@@ -135,7 +128,7 @@ export const createInsforgeServer = async () => {
 ```typescript
 // Server context — get current user
 const insforge = await createInsforgeServer();
-const { data: { user }, error } = await insforge.auth.getUser();
+const { data: { user }, error } = await insforge.auth.getCurrentUser();
 if (!user) redirect("/login");
 ```
 
@@ -143,7 +136,48 @@ SDK returns `{ data, error }` for all operations. Always handle the `error` retu
 
 ---
 
-## Database Queries
+## Session Refresh (Auto-Renewal of Expired Tokens)
+
+Access tokens expire after a set time (~1 hour). Without automatic refresh, the user gets logged out mid-session when the token expires — even while actively using the app.
+
+The SDK handles this with two mechanisms:
+
+### 1. Proxy-level refresh (every request)
+
+`proxy.ts` (Next.js 16) or `middleware.ts` (Next.js 15 and earlier) runs `updateSession()` on every non-public request. This reads the refresh token cookie, exchanges it for new tokens if the access token is expired, and sets fresh cookies on the response.
+
+```typescript
+// proxy.ts (Next.js 16)
+import { updateSession } from "@insforge/sdk/ssr/middleware";
+import { NextResponse, type NextRequest } from "next/server";
+
+export async function proxy(request: NextRequest) {
+  const response = NextResponse.next({ request });
+  await updateSession({
+    requestCookies: request.cookies,
+    responseCookies: response.cookies,
+  });
+  // ... redirect logic
+  return response;
+}
+```
+
+### 2. Client-side refresh route
+
+The browser client calls `POST /api/auth/refresh` when the access token is missing or near expiry. The SDK provides a one-liner to create this route:
+
+```typescript
+// app/api/auth/refresh/route.ts
+import { createRefreshAuthRouter } from "@insforge/sdk/ssr";
+export const { POST } = createRefreshAuthRouter();
+```
+
+**Rules:**
+- Always wire `updateSession` in `proxy.ts` — without it, server-side `getCurrentUser()` calls fail on expired tokens, causing redirects to `/login`
+- The refresh route must exist at `POST /api/auth/refresh` for the browser client's auto-refresh mechanism to work
+- `responseCookies.set` writes `Set-Cookie` headers on the HTTP response — these travel back to the browser and update the stored cookies
+
+---
 
 Always scope to the current user's `department_id` (admin is unrestricted) — never query without this filter.
 
@@ -252,37 +286,36 @@ See `architecture.md` for full schema: `report_signatories`, `entry_comments`, `
 
 ## Storage
 
+Three buckets: `receipts` (private), `signed-reports` (private), `avatars` (public).
+
 Keyed by ID, not name — stable across renames:
 
 ```
-storage/
-  departments/{department_id}/
-    events/{event_id}/
-      receipts/{entry_id}.jpg
-      reports/{report_id}.pdf
-      signed/{report_id}/page-{n}.jpg
+receipts/{department_id}/events/{event_id}/receipts/{entry_id}.jpg
+signed-reports/{department_id}/reports/{report_id}/page-{n}.jpg
+avatars/{user_id}.jpg
 ```
 
-```typescript
-// Upload
-const { data, error } = await insforge.storage
-  .from("departments")
-  .upload(`${departmentId}/events/${eventId}/receipts/${entryId}.jpg`, fileBuffer, {
-    contentType: "image/jpeg",
-    upsert: false,
-  });
+**All storage access goes through `lib/storage.ts` helpers** — never call SDK storage directly. Helpers handle auth, ownership verification, and blob download.
 
-// Get public URL
-const { data } = insforge.storage
-  .from("departments")
-  .getPublicUrl(`${departmentId}/events/${eventId}/receipts/${entryId}.jpg`);
+```typescript
+// Upload receipt (treasurer only, ownership verified via event)
+import { uploadReceipt } from "@/lib/storage";
+
+const { url, key } = await uploadReceipt(eventId, entryId, file);
+
+// Download receipt blob (auth enforced by the caller via requireRole)
+const blob = await getReceiptBlob(entryId);
 ```
 
 **Rules:**
 - `upsert: false` everywhere — never overwrite existing files
-- Always save the public URL back to the DB after upload
-- Signed pages keyed by `{report_id}`, not event — prevents collision across rejection/regeneration cycles
+- Private bucket reads go through `GET /api/entries/{entryId}/image` — a session-authed proxy (`requireRole(["treasurer","adviser"], event.department_id)`) that streams the blob; `image_url` stores the storage **key**, never a browser-loadable URL (no signed-URL support in the SDK)
+- Never use `URL.createObjectURL` server-side — it produces a server-only object URL
+- Ownership verified via DB joins: `entries → event → department_id`
+- `deptId` never passed as parameter — derived from authenticated user
 - Never write files to disk — always upload buffer directly to storage
+- `avatars` stays public — profile pics are non-sensitive
 
 ---
 
@@ -322,23 +355,24 @@ channel.subscribe();
 
 ---
 
-# OpenRouter (AI Gateway)
+# AI Gateway
 
-OpenRouter is our AI gateway for receipt OCR/parsing and signed-document verification. We never call OpenAI directly.
+**Receipt OCR/parsing calls Google Gemini directly** (`lib/gemini.ts`, free tier, `gemini-3.5-flash-lite`). Signed-document verification goes through OpenRouter. We never call OpenAI directly.
 
-**Credentials:** `OPENROUTER_API_KEY` in `.env.local` — server-side only, never exposed to the client.
+**Credentials:** `GOOGLE_GENERATIVE_AI_API_KEY` (Gemini, receipt parsing) and `OPENROUTER_API_KEY` (document verification) in `.env.local` — server-side only, never exposed to the client.
 
 ## Receipt Parsing (`agent/receipt-parser.ts`)
 
 One document per upload — AI never auto-splits multiple documents from one image.
 
 ```typescript
-const response = await openrouter.chat.completions.create({
-  model: "gpt-4o", // via OpenRouter
+const content = await geminiChatCompletion({
+  model: GEMINI_MODEL, // gemini-3.5-flash-lite — pinned in lib/gemini.ts
   messages: [
     { role: "system", content: RECEIPT_EXTRACTION_PROMPT },
     { role: "user", content: [{ type: "image_url", image_url: { url: imageUrl } }] },
   ],
+  responseFormat: { type: "json_object" }, // mapped to responseMimeType: application/json
 });
 ```
 
@@ -346,20 +380,24 @@ const response = await openrouter.chat.completions.create({
 
 | Field | Rule |
 |---|---|
-| `document_type_raw` | Verbatim printed label, never forced into an enum |
+| `document_type_raw` | Verbatim printed label, never forced into an enum; `""` when none exists (handwritten slips) |
 | `document_type_category` | System-normalized enum — for reporting only |
-| `document_number` | Tied to `document_type_raw` label (Rule A) |
+| `category` | Expense category inferred from supplier + line items: one of `transportation`, `meals`, `honorarium`, `supplies`, `printing`, `rental`, `others` — normalized; falls back to `others` when unclear |
+| `document_number` | Tied to `document_type_raw` label (Rule A); `""` when no label-tied number exists — never null, never made up |
 | `issue_date` / `issue_time` | `issue_time` optional, never combined |
 | `supplier_name` | |
 | `amount` | Final Amount Due (Rule B) — never sub-total |
 | `item_breakdown` | Required — description, qty, unit price, line amount |
 
+**Classification (guided-upload outcomes):** every response self-classifies before extraction — `valid` (vendor + amount readable, printed or handwritten, any doc type, number optional), `borderline` (clearly a document but blurry/cropped/low-contrast), `invalid` (blank, illegible, or nothing traceable). Doubt → `borderline`, never `invalid`. Never guess: unreadable fields are `null` — if vendor or amount is unreadable, outcome must be `borderline`.
+
 **Rules:**
-- A failed/malformed parse never creates an `Entry` row — image stays client-side
+- Verdicts short-circuit: `borderline`/`invalid` → 422 `entry.receipt_borderline` / `entry.receipt_invalid_document` with guidance + audit — no `Entry` row, no retry
+- A failed/malformed parse never creates an `Entry` row — image stays client-side; 3-attempt retry applies only to zod-inconsistent responses
 - After 3 failed attempts, UI surfaces manual-entry fallback
-- Duplicate check: reject if `(document_type_raw + document_number)` already exists in the same event
+- Duplicate check: reject if `(document_type_raw + document_number)` already exists in the same event (`""` numbers skip the check)
 - Always wrap in try/catch; always validate parsed JSON with zod before using
-- Log every failure to `audit_logs` with enough context to trace back
+- Log every failure/verdict to `audit_logs` with enough context to trace back
 
 ## Document Verification (`agent/document-verifier.ts`)
 
@@ -445,6 +483,7 @@ const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600", "700
 | `NEXT_PUBLIC_INSFORGE_URL` | `lib/insforge-client.ts`, `lib/insforge-server.ts` |
 | `NEXT_PUBLIC_INSFORGE_ANON_KEY` | `lib/insforge-client.ts`, `lib/insforge-server.ts` |
 | `OPENROUTER_API_KEY` | `agent/` functions |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | `lib/gemini.ts` (receipt parsing) |
 | `WEB_PUSH_PUBLIC_KEY` | `lib/web-push.ts`, client subscription |
 | `WEB_PUSH_PRIVATE_KEY` | `lib/web-push.ts` |
 | `WEB_PUSH_SUBJECT` | `lib/web-push.ts` |
@@ -452,3 +491,137 @@ const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600", "700
 | `POLYGON_PRIVATE_KEY` | `agent/report-anchor.ts` |
 
 `NEXT_PUBLIC_` prefix means the variable is exposed to the browser. Never add `NEXT_PUBLIC_` to secret keys.
+
+
+
+# InsForge SDK Documentation - Overview
+
+## What is InsForge?
+
+Backend-as-a-service (BaaS) platform providing:
+
+- **Database**: PostgreSQL with PostgREST API
+- **Authentication**: Email/password + OAuth (Google, GitHub)
+- **Storage**: File upload/download
+- **AI**: OpenRouter key provisioning and model catalog for direct OpenAI-compatible integrations
+- **Functions**: Serverless function deployment
+- **Realtime**: WebSocket pub/sub (database + client events)
+
+## Installation
+
+The following is a step-by-step guide to installing and using the InsForge TypeScript SDK for Web applications. If you are building other types of applications, please refer to:
+- [Swift SDK documentation](/sdks/swift/overview) for iOS, macOS, tvOS, and watchOS applications.
+- [Kotlin SDK documentation](/sdks/kotlin/overview) for Android applications.
+- [REST API documentation](/sdks/rest/overview) for direct HTTP API access.
+
+### 🚨 CRITICAL: Follow these steps in order
+
+### Step 1: Download Template
+
+Use the `download-template` MCP tool to create a new project with your backend URL and anon key pre-configured.
+
+### Step 2: Install SDK
+
+```bash
+npm install @insforge/sdk@latest
+```
+
+### Step 3: Create SDK Client
+
+You must create a client instance using `createClient()` with your base URL and anon key:
+
+```javascript
+import { createClient } from '@insforge/sdk';
+
+const client = createClient({
+  baseUrl: 'https://your-app.region.insforge.app',  // Your InsForge backend URL
+  anonKey: 'your-anon-key-here'       // Get this from backend metadata
+});
+
+```
+
+**API BASE URL**: Your API base URL is `https://your-app.region.insforge.app`.
+
+## Getting Detailed Documentation
+
+### 🚨 CRITICAL: Always Fetch Documentation Before Writing Code
+
+InsForge provides official SDKs and REST APIs, use them to interact with InsForge services from your application code.
+
+- [TypeScript SDK](/sdks/typescript/overview) - JavaScript/TypeScript
+- [Swift SDK](/sdks/swift/overview) - iOS, macOS, tvOS, and watchOS
+- [Kotlin SDK](/sdks/kotlin/overview) - Android and Kotlin Multiplatform
+- [REST API](/sdks/rest/overview) - Direct HTTP API access
+
+Before writing or editing any InsForge integration code, you **MUST** call the `fetch-docs` or `fetch-sdk-docs` MCP tool to get the latest SDK documentation. This ensures you have accurate, up-to-date implementation patterns.
+
+### Use the InsForge `fetch-docs` MCP tool to get specific SDK documentation:
+
+Available documentation types:
+
+- `"instructions"` - Essential backend setup (START HERE)
+- `"real-time"` - Real-time pub/sub (database + client events) via WebSockets
+- `"db-sdk-typescript"` - Database operations with TypeScript SDK
+- **Authentication** - Choose based on implementation:
+  - `"auth-sdk-typescript"` - TypeScript SDK methods for custom auth flows
+  - `"auth-components-react"` - Pre-built auth UI for React+Vite (single-page app)
+  - `"auth-components-react-router"` - Pre-built auth UI for React(Vite+React Router) (multi-page app)
+  - `"auth-components-nextjs"` - Pre-built auth UI for Next.js (SSR app)
+- `"storage-sdk"` - File storage operations
+- `"functions-sdk"` - Serverless functions invocation
+- `"ai-integration-sdk"` - AI integration with the provisioned OpenRouter key and OpenAI SDK
+- `"deployment"` - Deploy frontend applications via MCP tool
+- `"payments"` - Stripe Checkout, Billing Portal, webhook projections, and fulfillment patterns
+
+These docs are mostly for the TypeScript SDK. For other languages, you can also use the `fetch-sdk-docs` MCP tool to get specific documentation.
+
+### Use the InsForge `fetch-sdk-docs` MCP tool to get specific SDK documentation
+
+You can fetch SDK documentation using the `fetch-sdk-docs` MCP tool with a specific feature type and language.
+
+Available feature types:
+- `db` - Database operations
+- `storage` - File storage operations
+- `functions` - Serverless functions invocation
+- `auth` - User authentication
+- `ai` - AI integration with the provisioned OpenRouter key and OpenAI SDK
+- `realtime` - Real-time pub/sub (database + client events) via WebSockets
+- `payments` - Stripe Checkout and Billing Portal with webhook-based fulfillment
+
+Available languages:
+- `typescript` - JavaScript/TypeScript SDK
+- `swift` - Swift SDK (for iOS, macOS, tvOS, and watchOS)
+- `kotlin` - Kotlin SDK (for Android and JVM applications)
+- `rest-api` - REST API
+
+Payments currently has TypeScript SDK docs only. Use the Payments API reference for non-TypeScript clients.
+
+## When to Use SDK vs MCP Tools
+
+### Always SDK for Application Logic:
+
+- Authentication (register, login, logout, profiles)
+- Database CRUD (select, insert, update, delete)
+- Storage operations (upload, download files)
+- AI integration via the provisioned OpenRouter key with the OpenAI SDK or OpenRouter HTTP API
+- Serverless function invocation
+- Payments checkout and customer portal session creation
+
+### Use MCP Tools for Infrastructure:
+
+- Project scaffolding (`download-template`) - Download starter templates with InsForge integration
+- Backend setup and metadata (`get-backend-metadata`)
+- Database schema management (`run-raw-sql`, `get-table-schema`)
+- Storage bucket creation (`create-bucket`, `list-buckets`, `delete-bucket`)
+- Serverless function deployment (`create-function`, `update-function`, `delete-function`)
+- Frontend deployment (`create-deployment`) - Deploy frontend apps to InsForge hosting
+
+## Important Notes
+
+- For auth: use `auth-sdk` for custom UI, or framework-specific components for pre-built UI
+- SDK returns `{data, error}` structure for all operations
+- Database inserts require array format: `[{...}]`
+- Serverless functions have one endpoint and do not support nested route paths
+- Storage: Upload files to buckets, store URLs in database
+- AI integrations should call OpenRouter directly with `baseURL: "https://openrouter.ai/api/v1"` and a server-side `OPENROUTER_API_KEY`
+- **EXTRA IMPORTANT**: Use Tailwind CSS v4. Design tokens live in `app/globals.css` via the `@theme` directive — no `tailwind.config.ts` for colors. Lock these dependencies in `package.json`.

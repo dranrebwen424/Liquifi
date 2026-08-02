@@ -47,7 +47,7 @@ Build the complete landing page and auth screen UI.
 - Signup page — first/middle/last name, email, password, role selector (Treasurer | Adviser only), department picker (mock list)
 - OTP verification screen — 6-digit input, resend link (disabled countdown), "Verify" button
 - Pending approval screen — holding message, "we'll notify you" copy
-- Forgot password screen — email input → OTP → new password
+  - Forgot password screen — email → OTP (reset purpose) → change-password (new password + confirm password) → login
 
 **Logic:**
 
@@ -83,7 +83,7 @@ Wire the auth shell to InsForge Auth + OTP.
 - Signup role = Adviser → notification/queue entry routed to `/admin/approvals`
 - Signup role = Treasurer → routed to that department's active adviser's `/adviser/approvals` ("Pending Users" tab)
 - No blocking at signup even if the department already has an active adviser/treasurer
-- Forgot password: OTP-based reset, same OTP rules as signup
+  - Forgot password: OTP-based reset (reuses `app/api/auth/otp/send` + `otp/verify` with a reset intent; same OTP rules as signup) → `/change-password` (new password + confirm) → `/login`
 - Admin accounts are never created via `/signup` — role selector excludes "Admin" in UI and server-side validation
 
 ---
@@ -184,8 +184,7 @@ Build the complete treasurer events list and event creation UI with mock data.
 
 **UI:**
 
-- `/treasurer/home` — events list, status badges (open/archived), Total/Spent/Remaining preview per card, "New Event" button
-- `/treasurer/events/new` — event name, budget total form
+- `/treasurer/home` — events list, status badges (open/archived), Total/Spent/Remaining preview per card, "New Event" button opens modal/sheet
 
 **Logic:**
 
@@ -233,7 +232,13 @@ Build the complete entry logging UI (both methods) with mock data.
 - `/treasurer/events/[eventId]/entries/new` — method toggle: Receipt Upload vs No Receipt (manual form)
 - Receipt Upload — drag/drop or file picker (image only), "one document per upload" note, upload progress state
 - Receipt Review (post-parse) — all extracted fields shown **read-only**: document type (verbatim), document number, issue date/time, supplier name, amount, itemized breakdown table; Confirm and Discard buttons
-- Manual form — category, amount fields, computed total display, submit button
+- Manual form — 2-step flow: category icon picker → per-category form
+- Category picker — responsive icon grid (7 expense types: transportation, meals, honorarium, supplies, printing, rental, other)
+- Per-category form — dynamic field rendering per type: text prefix fields (transportation/meals/honorarium), dynamic item rows (supplies/other-itemized), sub-mode pills for "Other" (flat/itemized)
+- Common extras on all forms: witness required (localStorage suggestion chip), photo attachment (optional image-only), collapsed justification (required for "Other" only)
+- Live running total from all fields with formula hint
+- Transportation: round-trip toggle + expandable multi-trip override (number of one-way rides)
+- Success state with "Log another [same category]?" inline option
 
 **Logic:**
 
@@ -241,12 +246,12 @@ Build the complete entry logging UI (both methods) with mock data.
 
 ---
 
-### 14 Receipt Parsing — OpenRouter Integration
+### 14 Receipt Parsing — Gemini Integration
 
 **Logic:**
 
 - API route `app/api/entries/receipt` receives the uploaded image
-- Calls `agent/receipt-parser.ts` (OpenRouter): extracts `document_type_raw` (verbatim, never forced into an enum), `document_type_category` (normalized, falls to `other`), `document_number` (Rule A — tied to the label matching `document_type_raw`, not incidental POS metadata), `issue_date`/`issue_time` (time optional, never combined), `supplier_name`, `amount` (Rule B — final Amount Due, never sub-total), `item_breakdown` (required)
+- Calls `agent/receipt-parser.ts` (Gemini direct): extracts `document_type_raw` (verbatim, never forced into an enum), `document_type_category` (normalized, falls to `other`), `document_number` (Rule A — tied to the label matching `document_type_raw`, not incidental POS metadata), `issue_date`/`issue_time` (time optional, never combined), `supplier_name`, `amount` (Rule B — final Amount Due, never sub-total), `item_breakdown` (required)
 - Duplicate check: reject if `(document_type_raw + document_number)` already exists for an entry in the same event
 - A failed/malformed parse **never creates an `Entry` row** — image stays client-side as a retryable upload
 - Only a successful parse creates the `Entry` row, directly at `ai_parsed` status

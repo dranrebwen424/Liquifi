@@ -207,9 +207,9 @@ channel.subscribe();
 
 ---
 
-## OpenRouter
+## Google Gemini (Receipt Parsing)
 
-**Check first:** Check AGENTS.md for an installed OpenRouter skill. OpenRouter is our AI gateway for receipt OCR/parsing and signed-document verification — we never call OpenAI directly.
+**Check first:** `lib/gemini.ts` — receipt OCR/parsing calls Google Gemini directly (free tier, `gemini-3.5-flash-lite`). OpenRouter is used only for signed-document verification. We never call OpenAI directly.
 
 ### Receipt Parsing (`agent/receipt-parser.ts`)
 
@@ -218,39 +218,47 @@ One document per upload — AI never auto-splits multiple documents from one ima
 ```typescript
 // agent/receipt-parser.ts
 // A failed/malformed parse never creates an Entry row — the image stays client-side
-const response = await openrouter.chat.completions.create({
-  model: "gpt-4o", // or equivalent OpenRouter model
+const content = await geminiChatCompletion({
+  model: GEMINI_MODEL, // gemini-3.5-flash-lite — pinned in lib/gemini.ts
   messages: [
     { role: "system", content: RECEIPT_EXTRACTION_PROMPT },
     {
       role: "user",
-      content: [
-        { type: "image_url", image_url: { url: imageUrl } },
-      ],
+      content: [{ type: "image_url", image_url: { url: imageUrl } }],
     },
   ],
+  responseFormat: { type: "json_object" }, // mapped to responseMimeType: application/json
 });
 
-const parsed = JSON.parse(response.choices[0].message.content!);
+const parsed = JSON.parse(content);
 ```
 
 **Extracted fields:**
 
 | Field | Rule | Notes |
 |---|---|---|
-| `document_type_raw` | Verbatim printed label, never forced into an enum | "Official Receipt", "Sales Invoice", "Cash Invoice", etc. |
+| `document_type_raw` | Verbatim printed label, never forced into an enum; `""` when none exists (handwritten slips) | "Official Receipt", "Sales Invoice", "Cash Invoice", etc. |
 | `document_type_category` | System-normalized enum | "official_receipt" / "sales_invoice" / "cash_invoice" / "other" — for reporting only |
-| `document_number` | Tied to the `document_type_raw` label — Rule A | Never detached from its source label |
+| `document_number` | Tied to the `document_type_raw` label — Rule A; `""` when no label-tied number exists — never null, never made up | Never detached from its source label |
 | `issue_date` / `issue_time` | `issue_time` optional, never date+time combined | |
 | `supplier_name` | | |
 | `amount` | Final Amount Due — Rule B — never sub-total | |
 | `item_breakdown` | Required — description, qty, unit price, line amount | |
 
+**Classification (guided-upload outcomes):** every response self-classifies via `classification: { outcome, reason }` — `valid` (vendor + amount readable, printed or handwritten, any doc type, number optional), `borderline` (clearly a document but blurry/cropped/low-contrast), `invalid` (blank, illegible, or nothing traceable). Doubt → `borderline`, never `invalid`. Never guess: unreadable fields are `null` — if vendor or amount is unreadable, outcome must be `borderline` (added after a heavy-blur fixture returned hallucinated values). `parseReceipt` returns a discriminated `ParseOutcome`: verdicts short-circuit `{ outcome, reason }` — no row, no retry; only `valid` carries the strict `ReceiptParseResult` (supplier + amount + ≥1 item guaranteed by `superRefine`).
+
 **Error handling:**
 
-- After **3 failed attempts**, the UI surfaces the manual-entry fallback — the treasurer fills the fields by hand
-- Log every failure to `audit_logs` with enough context to trace back to the upload attempt
+- Verdicts → 422 with guidance: `invalid_document` (No Receipt Entry fallback) / `borderline` (retake photo first) — audited, never counted against the 3-attempt ceiling
+- After **3 failed attempts** (zod-inconsistent responses only), the UI surfaces the manual-entry fallback — the treasurer fills the fields by hand
+- Log every failure/verdict to `audit_logs` with enough context to trace back to the upload attempt
 - Never create an `Entry` row on failure — the image stays client-side as a retryable upload
+
+---
+
+## OpenRouter (Document Verification)
+
+**Check first:** Check AGENTS.md for an installed OpenRouter skill. OpenRouter is used only for signed-document verification — receipt parsing calls Google Gemini directly.
 
 ### Document Verification (`agent/document-verifier.ts`)
 
@@ -678,3 +686,166 @@ After wiring, use via Tailwind utility class `font-sans` — which resolves to `
 - Do not load Poppins in individual page layouts — load once in the root layout only
 - See `ui-tokens.md` for the font token definition
 - See `ui-rules.md` for font usage rules (headings, body, etc.)
+
+---
+
+## framer-motion
+
+**Check first:** Use only when CSS can't handle the animation — see `code-standards.md` → Animation Library Selection (Tier 2). Use GSAP for heavy/timeline animation (Tier 3).
+
+**Reserved for:** mount/unmount, spring physics, staggered lists, layout animations, page transitions.
+
+### Import Pattern
+
+```typescript
+"use client";
+import { motion, AnimatePresence } from "framer-motion";
+```
+
+- Must be in a `"use client"` component — framer-motion uses React context and hooks
+- Only import what you use (`motion`, `AnimatePresence`, `useAnimation`, etc.)
+- Never `export * from "framer-motion"` — import directly per-component
+
+### Standard Variants
+
+**Stagger container (card grids, list items):**
+
+```typescript
+const staggerContainer = {
+  hidden: {},
+  show: {
+    transition: { staggerChildren: 0.04, delayChildren: 0.05 },
+  },
+};
+
+const fadeUpItem = {
+  hidden: { opacity: 0, y: 12 },
+  show: {
+    opacity: 1, y: 0,
+    transition: { type: "spring", stiffness: 100, damping: 20, duration: 0.2 },
+  },
+};
+```
+
+**Dialog/sheet mount/unmount:**
+
+```typescript
+const dialogOverlay = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1 },
+};
+
+const dialogContent = {
+  hidden: { opacity: 0, scale: 0.95, y: 8 },
+  show: {
+    opacity: 1, scale: 1, y: 0,
+    transition: { type: "spring", stiffness: 100, damping: 20, duration: 0.3 },
+  },
+  exit: { opacity: 0, scale: 0.95, transition: { duration: 0.15 } },
+};
+```
+
+### AnimatePresence Rules
+
+- Always use `mode="wait"` when switching between distinct views (tabs, steps) to avoid overlapping enter/exit
+- Always set a unique `key` on the animated child — `AnimatePresence` uses keys to track added/removed elements
+- Wrap the outermost element of conditional content, not individual children
+- Only use `AnimatePresence` for elements that leave the React tree (conditional render, ternary, `null`)
+
+### Layout Animation
+
+- Use `layoutId` only for shared layout animations (sidebar collapse, list reorder)
+- Never use `layoutId` between unrelated elements — it will animate from one to the other
+
+### Rules
+
+- Spring type for interactive animations, `tween` for non-interactive (presentation) only
+- Per-card stagger: 40ms between items, 50ms initial delay
+- Duration: 200ms for individual card animations (180–250ms range)
+- Slide distance: y=12 (8–24px range)
+- Every `AnimatePresence` must have unique keys
+- See `ui-rules.md` for full timing standards
+
+---
+
+## GSAP (GreenSock Animation Platform)
+
+**Check first:** Is framer-motion sufficient? GSAP is Tier 3 — only use when framer-motion's declarative model can't express the animation (ScrollTrigger timeline, SVG morphing, canvas sync).
+
+**Reserved for:** ScrollTrigger parallax, SVG animation (DrawSVG, MorphSVG), complex multi-step timelines, progress-based scrub animations.
+
+### Import Pattern
+
+```typescript
+"use client";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { DrawSVGPlugin } from "gsap/DrawSVGPlugin";
+```
+
+- Must be in a `"use client"` component — GSAP uses DOM querying
+- Register plugins: `gsap.registerPlugin(ScrollTrigger)`
+- Never import barrel — import only what you need
+- Use CDN-only plugins sparingly; prefer ESM imports
+
+### Cleanup Pattern (Required)
+
+```typescript
+useEffect(() => {
+  const ctx = gsap.context(() => {
+    gsap.fromTo(ref.current, { opacity: 0 }, { opacity: 1, duration: 0.3 });
+  });
+  return () => ctx.revert(); // kills all tweens in context
+}, []);
+```
+
+All GSAP code must use `gsap.context()` and call `ctx.revert()` in the cleanup function. No exceptions — without it, animations leak on unmount and cause memory issues.
+
+### Rules
+
+- Always use `gsap.context()` + `ctx.revert()` cleanup — bare `gsap.to()`/`gsap.fromTo()` calls are forbidden
+- Never animate during SSR / server render — wrap in `useEffect`
+- Use `{ paused: true }` + `.play()` for triggered animations (instead of inline autoplay)
+- `ScrollTrigger` must be registered in the component — not in a shared module (tree-shaking issue)
+- No GSAP animation exceeds 400ms for UI-reactive animations (scroll-triggered reveals can be longer since they track scroll position, not time)
+- Prefer `scroll-behavior: smooth` CSS over ScrollTrigger for simple anchor-link scrolls
+
+---
+
+## @base-ui/react
+
+**Check first:** Does shadcn/ui have this primitive? If yes, use shadcn/ui. `@base-ui/react` is the **second** choice — only use when shadcn/ui doesn't cover the primitive (e.g. `NumberField`, `Toolbar`, `Separator`) and you'd otherwise hand-roll complex keyboard/ARIA logic.
+
+**Reserved for:** Advanced headless primitives that shadcn/ui doesn't wrap.
+
+### Import Pattern
+
+```typescript
+import { NumberField } from "@base-ui/react/number-field";
+import { Toolbar } from "@base-ui/react/toolbar";
+```
+
+- Import from the individual subpath — never `import * from "@base-ui/react"`
+- `@base-ui/react` is headless — it provides zero default styles. All visual styling uses `@theme` tokens and Tailwind utility classes.
+
+### Styling Pattern
+
+```tsx
+<NumberField.Root className="flex items-center gap-2">
+  <NumberField.Decrement className="w-8 h-8 rounded-full bg-surface text-text-primary text-lg">
+    −
+  </NumberField.Decrement>
+  <NumberField.Input className="w-20 text-center bg-surface border border-border rounded-radius-md px-3 py-1.5 text-text-primary" />
+  <NumberField.Increment className="w-8 h-8 rounded-full bg-surface text-text-primary text-lg">
+    +
+  </NumberField.Increment>
+</NumberField.Root>
+```
+
+### Rules
+
+- Last resort — only use when shadcn/ui doesn't have the primitive AND the component needs complex keyboard/ARIA that's painful to hand-roll
+- Every `@base-ui/react` import must use selector-focused imports from the subpath
+- All styling must use `@theme` tokens via Tailwind classes — no inline styles, no raw colors
+- Wrap in a shared component if used in more than one place (e.g. `components/ui/number-field.tsx`)
+- Add the component to `ui-registry.md` when introducing it

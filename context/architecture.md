@@ -7,10 +7,14 @@
 | Framework                    | Next.js (latest, App Router)               | Full stack framework                                 |
 | Auth + DB + Storage + Realtime + OTP | InsForge                             | Entire backend                                       |
 | Push notifications           | Web Push API + `web-push` + Service Worker  | Adviser/treasurer alerts                             |
-| AI                           | OpenRouter                                  | Receipt OCR/parsing, signed-document completeness check |
+| AI                           | Google Gemini (receipt parsing) + OpenRouter (document verification) | Receipt OCR/parsing, signed-document completeness check |
 | PDF generation               | @react-pdf/renderer                         | Financial Report PDF rendering                       |
 | Immutability                 | Polygon (hash-anchoring only)               | Tamper-evidence for approved reports                 |
 | Styling                      | Tailwind CSS + shadcn/ui                    | UI components and styling                            |
+| Icons                        | lucide-react                               | All iconography                                    |
+| Animation (micro)            | framer-motion                              | Mount/unmount, stagger, spring, layout transitions |
+| Animation (heavy/timeline)   | GSAP                                       | ScrollTrigger, SVG animation, complex sequences    |
+| Animation (loading)          | lottie-web                                 | Lottie JSON rendering (loading states only)        |
 | Language                     | TypeScript (strict)                         | Throughout                                           |
 
 ---
@@ -35,8 +39,10 @@
 │   ├── (auth)/
 │   │   ├── login/page.tsx
 │   │   ├── signup/page.tsx
+│   │   ├── otp/page.tsx                              → OTP verify (shared: signup + password reset)
 │   │   ├── pending-approval/page.tsx
-│   │   └── forgot-password/page.tsx
+│   │   ├── forgot-password/page.tsx
+│   │   └── change-password/page.tsx                  → Set new password (password reset only)
 │   ├── treasurer/
 │   │   ├── home/page.tsx                            → Events list
 │   │   ├── events/
@@ -74,7 +80,7 @@
 │   │   └── profile/page.tsx
 │   └── api/
 │       ├── entries/
-│       │   ├── receipt/route.ts                     → OpenRouter receipt parse + Entry creation
+│       │   ├── receipt/route.ts                     → Gemini receipt parse + Entry creation
 │       │   ├── manual/route.ts                       → Manual entry creation
 │       │   ├── [entryId]/void/route.ts
 │       │   └── [entryId]/approve/route.ts             → Batchable no-receipt approval
@@ -85,16 +91,17 @@
 │       │   └── [reportId]/cancel/route.ts
 │       ├── events/
 │       │   ├── [eventId]/archive/route.ts             → Signed-document upload + AI completeness check
-│       ├── auth/
-│       │   ├── otp/send/route.ts
-│       │   └── otp/verify/route.ts
+│   ├── auth/
+│   │   ├── otp/send/route.ts                          → OTP send (signup + password-reset intents)
+│   │   ├── otp/verify/route.ts                         → OTP verify (signup + password-reset intents)
+│   │   └── change-password/route.ts                    → Password update after reset OTP verify
 │       ├── approvals/
 │       │   ├── adviser/route.ts                        → Admin approves/rejects adviser signups
 │       │   └── treasurer/route.ts                      → Adviser approves/rejects treasurer signups
 │       └── notifications/
 │           └── subscribe/route.ts                      → Web Push subscription
 ├── agent/
-│   ├── receipt-parser.ts                             → OpenRouter OCR + field extraction
+│   ├── receipt-parser.ts                             → Gemini OCR + field extraction
 │   ├── document-verifier.ts                          → Signed-document completeness check
 │   ├── report-anchor.ts                              → Polygon hash-anchoring
 │   └── types.ts
@@ -103,6 +110,8 @@
 │   ├── entries.ts                                     → Confirm/discard receipt entry, submit manual entry
 │   ├── reports.ts                                     → Signatory setup, cancel report
 │   └── departments.ts                                 → Admin department CRUD
+├── hooks/
+│   └── usePeopleReuse.ts                              → localStorage witness name persistence
 ├── components/
 │   ├── ui/                                            → shadcn/ui components only
 │   ├── layout/
@@ -119,7 +128,10 @@
 │   ├── entries/
 │   │   ├── ReceiptUpload.tsx
 │   │   ├── ReceiptReview.tsx
-│   │   ├── ManualEntryForm.tsx
+│   │   ├── FloatingInput.tsx
+│   │   ├── manual-categories.ts
+│   │   ├── ManualCategoryPicker.tsx
+│   │   ├── ManualQuickForm.tsx
 │   │   ├── EntryList.tsx
 │   │   ├── EntryRow.tsx
 │   │   └── VoidEntryModal.tsx
@@ -185,7 +197,7 @@ Treasurer uploads receipt image
         ↓
 API route app/api/entries/receipt
         ↓
-Calls agent/receipt-parser.ts (OpenRouter)
+Calls agent/receipt-parser.ts (Gemini direct)
         ↓
 Duplicate check (document_type_raw + document_number within event)
         ↓
@@ -231,6 +243,28 @@ Checks: fs_document_number match, signature marks per signatory, page count matc
         ↓
 All pass → signed_document_urls saved → Event.status = archived (terminal)
 ```
+
+### Password Reset (Forgot Password)
+
+```
+User enters email at /forgot-password
+        ↓
+app/api/auth/otp/send (intent = "reset") → InsForge sends reset OTP to email
+        ↓
+User enters 6-digit code at /otp?purpose=reset
+        ↓
+app/api/auth/otp/verify (intent = "reset") → same OTP rules as signup
+        ↓
+On success → /change-password
+        ↓
+User sets new password + confirm → app/api/auth/change-password
+        ↓
+InsForge updates the password → /login
+```
+
+- OTP rules identical to signup: 10 min expiry, resend after 60s (max 5/hour), 5 wrong attempts locks and forces resend.
+- The `/otp` screen is shared between signup verification and password reset — distinguished by `intent` / `purpose`.
+- UI screens are mock-first in Phase 1 (`01`); real OTP-send / verify / password-update wiring lands in Phase 1 (`03`).
 
 ---
 
@@ -536,7 +570,7 @@ Rules the AI agent must never violate:
 - Every mutating action re-checks role × department × resource state server-side — never trust client-provided state.
 - `Event.budget_locked`, `Event.is_locked`, `budget_total` editability, and `Entry.status` transitions must always match the state machines in `project-overview.md` — never shortcut a transition.
 - Receipt entries never receive manual field edits after AI parsing — discard and re-upload only.
-- A failed/malformed OpenRouter parse never creates an `Entry` row.
+- A failed/malformed AI parse never creates an `Entry` row.
 - Void is only permitted while `Event.is_locked = false`, and is always attributed to the **current active treasurer**, regardless of who created the entry.
 - Reports are never overwritten — every regeneration creates a new `Report` row reusing the same `fs_document_number`, with `revision_count` incremented (audit-only, never printed on the PDF).
 - No more than one `Report` per event may be `pending_adviser_approval` or `approved` at a time.
@@ -546,3 +580,4 @@ Rules the AI agent must never violate:
 - `Notification` rows are cleaned up on a 1-year retention job; `AuditLog` rows are never deleted.
 - Always scope InsForge queries to the current user's `department_id` (or unrestricted for admin) — never query without this filter.
 - Partial unique indexes on `users` are the source of truth for the one-active-adviser/one-active-treasurer rule — application logic must not assume it alone enforces this.
+rces this.

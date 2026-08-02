@@ -179,7 +179,7 @@ export async function parseReceipt(
   eventId: string,
 ): Promise<{ success: boolean; entry?: ParsedEntry; error?: string }> {
   try {
-    // implementation — OpenRouter call
+    // implementation — Gemini call (lib/gemini.ts)
     return { success: true, entry };
   } catch (error) {
     console.error("[agent/receipt-parser]", error);
@@ -190,7 +190,7 @@ export async function parseReceipt(
 
 - Every agent function returns `{ success: boolean, error?: string }`
 - Every agent function has a try/catch — never let one failure crash the flow
-- A failed OpenRouter parse never creates an `Entry` row — this must be enforced in the calling API route, not assumed
+- A failed AI parse never creates an `Entry` row — this must be enforced in the calling API route, not assumed
 - Agent functions never import from `components/` or `actions/`
 - Agent functions never use React hooks or browser APIs
 - Polygon anchoring logic (`agent/report-anchor.ts`) only ever runs at the single point defined in `architecture.md` — a `Report` transitioning to `approved` — never call it from any other trigger
@@ -237,7 +237,7 @@ These are project-specific and non-negotiable:
 - Never use empty catch blocks — always log or handle
 - Console errors always include context prefix: `[component/function name]`
 - User-facing errors must be human readable — never expose raw error messages
-- Agent errors (OpenRouter, Polygon) are always logged with enough context to trace back to the entry/report/event — never surface raw agent errors to the UI
+- Agent errors (Gemini/OpenRouter, Polygon) are always logged with enough context to trace back to the entry/report/event — never surface raw agent errors to the UI
 - API route errors return `status: 500` with a generic message — never expose internals
 
 ---
@@ -301,8 +301,120 @@ import { Button } from "../../../components/ui/button";
 
 - No comments explaining what the code does — code must be self-explanatory
 - Comments only for why — explaining a non-obvious decision (e.g. why `budget_locked` is derived rather than stored, why void authority is department-wide rather than creator-scoped)
-- Agent functions may have a brief comment explaining the OpenRouter prompt strategy or Polygon anchoring approach
+- Agent functions may have a brief comment explaining the AI prompt strategy or Polygon anchoring approach
 - Never leave TODO comments in committed code
+
+---
+
+## UI Primitive Order
+
+When you need a UI component (dialog, select, dropdown, table, tabs, etc.):
+
+1. **shadcn/ui first** — if it has the primitive, use it. shadcn wraps Radix (headless) with our Tailwind tokens baked in.
+2. **`@base-ui/react` second** — if shadcn doesn't have the primitive and you'd otherwise hand-roll complex keyboard/ARIA logic.
+3. **Custom CSS + tokens** — only if neither library matches the design (e.g. auth floating-label inputs). Style using `@theme` tokens only.
+
+This rule keeps the codebase consistent — avoid having three different implementations of the same component.
+
+---
+
+## Animation Library Selection
+
+Which animation tool to use depends on complexity. Follow this 3-tier hierarchy — never reach for a library when the tier above suffices.
+
+### Tier 1 — CSS Transitions (preferred, zero cost)
+
+Use for single-property reactions to state changes: color, opacity, simple transforms. These require no import, no bundle cost, no re-render overhead.
+
+```css
+/* Examples already in the codebase */
+transition-colors duration-150   /* button hover, focus ring */
+transition-all duration-200      /* card hover scale + shadow */
+```
+
+### Tier 2 — Framer Motion (default for interactive animations)
+
+Use for any animation that CSS can't handle: mount/unmount, spring physics, staggered lists, layout transitions, page transitions.
+
+```tsx
+"use client";
+import { motion, AnimatePresence } from "framer-motion";
+```
+
+Concrete use cases:
+- **Mount/unmount** — modals, sheets, dropdowns, banners (use `AnimatePresence`)
+- **Staggered entrances** — card grids, table rows, notification lists
+- **Tab content transitions** — switch between tab panels with crossfade
+- **Layout animations** — sidebar collapse, list reorder (use `layoutId`)
+- **Hover/tap feedback** — spring-based micro-interactions
+
+### Tier 3 — GSAP (reserved for heavy/timeline animation)
+
+Use only when framer-motion's declarative model is insufficient. Requires justification in PR review.
+
+```tsx
+"use client";
+import gsap from "gsap";
+// Only import plugins when used:
+// import { ScrollTrigger } from "gsap/ScrollTrigger";
+```
+
+Concrete use cases:
+- **Scroll-triggered reveals** — parallax, progress-based timelines (`ScrollTrigger` plugin)
+- **Complex multi-step timelines** — sequenced choreography that can't be expressed as variants
+- **SVG path drawing / morphing** — `DrawSVGPlugin`, `MorphSVGPlugin`
+- **Canvas/WebGL integrations** — animated backgrounds, data visualizations
+
+### Apple-Style Animation Rules
+
+Every animation in this project follows these 5 rules:
+
+**1. Animate only when meaning changes**
+
+| Animate | Don't animate |
+|---------|--------------|
+| Modal appearing / sidebar opening / card expanding / tab switching | Every icon on page load / every paragraph / every button |
+| Communicates: "something just happened that you need to notice" | Communicates: noise |
+
+**2. Keep durations short**
+
+| Element | Duration |
+|---------|----------|
+| Hover / focus | 120–180 ms |
+| Buttons | 150–200 ms |
+| Cards | 180–250 ms |
+| Dialogs / modals | 250–350 ms |
+| Page transitions | 250–400 ms |
+
+Long animations make the app feel sluggish — prefer the lower end of these ranges.
+
+**3. Prefer spring motion**
+
+Apple rarely uses linear easing. Spring curves feel natural for interactive elements.
+
+```tsx
+// framer-motion spring (preferred)
+transition={{ type: "spring", stiffness: 100, damping: 20, duration: 0.2 }}
+
+// GSAP spring equivalent
+ease: "back.out(1.7)"
+```
+
+Reserve fixed-duration eases (like `power2.out`) for non-interactive presentation animations only.
+
+**4. Use subtle movement**
+
+| Parameter | Range |
+|-----------|-------|
+| Slide distance | 8–24 px (never 100+ px slides) |
+| Scale changes | 0.98 ↔ 1.02 (never large bounces) |
+| Opacity fades | Gentle, never jarring |
+
+**5. Every animation must have a purpose**
+
+Ask: *"What information does this animation communicate?"*
+
+If the answer is "none" — remove it. Do not animate components users interact with repeatedly (tables, forms, dialogs, menus) unless it improves clarity. **Responsiveness over spectacle.**
 
 ---
 
@@ -313,17 +425,26 @@ Never install a new package without a clear reason. Before installing anything c
 1. Does shadcn/ui already have this component?
 2. Does Next.js already provide this functionality?
 3. Is there a simpler native solution?
+4. Could CSS or a few lines of TypeScript replace the dependency?
 
 Approved dependencies for this project:
 
-- `@insforge/ssr` — InsForge client
-- `openai` or equivalent OpenRouter-compatible SDK — receipt OCR and document verification
-- `web-push` — Web Push notification sending
-- `@react-pdf/renderer` — Financial Report PDF generation
-- `ethers` (or equivalent) — Polygon hash-anchoring transaction submission
-- `zod` — Schema validation
-- `lucide-react` — Icons
-- `tailwindcss` — Styling
-- `shadcn/ui` components — UI primitives
+| Dependency | Purpose | Notes |
+|---|---|---|
+| `@insforge/sdk` | InsForge client (auth, DB, storage, realtime) | SSR subpath `@insforge/sdk/ssr` |
+| none (plain fetch) | Gemini receipt OCR | Direct via `lib/gemini.ts`, free tier — no SDK |
+| `web-push` | Web Push notification sending | Server-side only |
+| `@react-pdf/renderer` | Financial Report PDF generation | Server-side only, `renderToBuffer` |
+| `ethers` | Polygon hash-anchoring | v6 API, `JsonRpcProvider` |
+| `zod` | Schema validation | Use `safeParse`, never `parse` |
+| `framer-motion` | Micro-interactions — spring, stagger, layout animations | Tier 2 in animation selection |
+| `gsap` | Heavy/timeline animation — ScrollTrigger, SVG, complex sequences | Tier 3, reserved for advanced use |
+| `lottie-web` | Lottie JSON animation rendering | Loading states only |
+| `lucide-react` | Icons | Direct imports, never barrel-exported |
+| `@base-ui/react` | Headless UI primitives (fallback when shadcn doesn't cover it) | Last resort after shadcn/ui |
+| `tailwindcss` | Styling utility framework | v4 `@theme` directive |
+| `shadcn/ui` | UI primitives (first choice) | Added via `npx shadcn@latest add` |
+| `class-variance-authority` | Component variant helpers | Used by shadcn/ui + custom components |
+| `clsx` + `tailwind-merge` | Class merging utility | Via `cn()` helper in `lib/utils.ts` |
 
 Do not install any other packages without updating this list first.
