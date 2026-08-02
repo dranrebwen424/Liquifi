@@ -571,7 +571,7 @@ Last updated: 2026-07-26 (hover animation, click-to-detail, reference design mat
 | Property       | Class |
 | -------------- | ----- |
 | Card           | `rounded-xl border border-border bg-surface shadow-sm cursor-pointer` + `transition-[shadow,transform] duration-200 hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]` |
-| Preview area   | `h-32 w-full relative` — receipt: styled receipt placeholder; manual: centered `Pencil` icon on `bg-surface-secondary` |
+| Preview area   | `h-32 w-full relative` — receipt: real image (`img` → `GET /api/entries/{id}/image`, `loading="lazy"` `object-cover`, `onError` → styled receipt placeholder); manual: centered `Pencil` icon on `bg-surface-secondary` |
 | Status badge   | `absolute right-2 top-2` — overlaid on preview area |
 | Content area   | `flex-1 flex-col justify-between p-3` — fills remaining space, pushes amount to bottom |
 | Supplier name  | `text-sm font-medium text-text-primary line-clamp-1` |
@@ -579,7 +579,7 @@ Last updated: 2026-07-26 (hover animation, click-to-detail, reference design mat
 | Amount         | `text-xl font-bold tabular-nums text-text-primary` (most prominent) |
 | Void state     | `opacity-60` card + `line-through` on amount + void attribution below |
 
-**Pattern notes:** Grid card matching reference design (`entrycard.png`). Large preview area (~60% of card) with status badge overlay. Supplier name and amount are visual highlights. Card is clickable — opens `EntryDetailModal` showing all parsed content. Hover: 2px lift + shadow deepening. Press: scale 0.98 feedback.
+**Pattern notes:** Grid card matching reference design (`entrycard.png`). Large preview area (~60% of card) with status badge overlay. Supplier name and amount are visual highlights. Card is clickable — opens `EntryDetailModal` showing all parsed content. Hover: 2px lift + shadow deepening. Press: scale 0.98 feedback. Receipt image loads via the session-authed proxy route (`app/api/entries/[entryId]/image/route.ts`) — `image_url` holds the storage **key** only; `onError` (missing/deleted file, expired session) swaps back to the styled placeholder. `"use client"` (uses `useState` for the image-failed fallback).
 
 ### EntryDetailModal
 
@@ -589,13 +589,14 @@ Last updated: 2026-07-26 (new component)
 | Property       | Class |
 | -------------- | ----- |
 | Overlay        | `fixed inset-0 z-50 bg-overlay-alpha` |
-| Modal (desktop)| `hidden sm:flex` — `max-h-[85vh] max-w-lg overflow-y-auto rounded-xl border border-border bg-surface p-6 shadow-card` centered |
-| Sheet (mobile) | `sm:hidden` — `max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-border bg-surface p-6 pb-8 shadow-card` slides up |
+| Modal (desktop)| `hidden sm:flex` — `max-h-[85vh] max-w-lg overflow-y-auto scrollbar-hide rounded-xl border border-border bg-surface p-6 shadow-card` centered |
+| Sheet (mobile) | `sm:hidden` — `max-h-[85vh] overflow-y-auto scrollbar-hide rounded-t-2xl border-t border-border bg-surface p-6 pb-8 shadow-card` slides up |
 | Close button   | `absolute right-4 top-4 h-7 w-7 rounded-full text-text-muted hover:bg-surface-secondary` |
+| Receipt image  | `h-48 w-full cursor-pointer rounded-lg border border-border object-cover hover:opacity-90` — `img` → `GET /api/entries/{id}/image`, `onError` → icon placeholder |
 | Detail rows    | `divide-y divide-border rounded-lg border border-border bg-surface-secondary/50 px-4` |
 | Item breakdown | `overflow-hidden rounded-lg border border-border` table |
 
-**Pattern notes:** Shows all parsed entry content: receipt image (placeholder for now), supplier name, category, amount, status badge, document type/number, date/time, item breakdown table (receipt only), void info (if voided). Desktop: centered modal with `dialogContent` animation. Mobile: bottom sheet with `sheetSlideUp` animation. Image viewer: full-screen overlay with dark backdrop (click receipt to view). Reuses `dialogOverlay`, `dialogContent`, `sheetSlideUp` from `lib/motion-variants.ts`.
+**Pattern notes:** Shows all parsed entry content: receipt image (real photo via session-authed proxy route — `image_url` stores the storage key, never a URL; missing image/file deleted → icon placeholder via `onError`), supplier name, category, amount, status badge, document type/number, date/time, item breakdown table (receipt only), void info (if voided). Desktop: centered modal with `dialogContent` animation. Mobile: bottom sheet with `sheetSlideUp` animation. Image viewer: full-screen overlay (`z-[60]` dark backdrop) that takes `src?: string` — renders the image (`max-h-[80vh] w-auto max-w-[90vw] rounded-xl object-contain`) when present, "No image available" box when absent; `onError` also falls back to that box; Escape closes. Reuses `dialogOverlay`, `dialogContent`, `sheetSlideUp` from `lib/motion-variants.ts`. Both scroll containers use the `scrollbar-hide` utility (plain CSS class in `app/globals.css`: `scrollbar-width: none` + `::-webkit-scrollbar { display: none }` — scrollability untouched, verified via stub harness: `scrollHeight > clientHeight`, `scrollbarWidth: "none"`, programmatic scroll moves) — for hiding scrollbars on any scrollable surface; note: an `@utility` definition of the same rule did NOT compile under Turbopack dev, plain class is the working pattern.
 
 ### EntryList
 
@@ -610,26 +611,53 @@ Last updated: 2026-07-26 (click-to-detail modal, expanded entry type)
 
 **Pattern notes:** Card grid layout — 5 columns on desktop (`xl:`), 4 on large (`lg:`), 3 on tablet (`md:`), 2 on mobile. Header shows "EXPENSES (count)" title with filter chips (desktop) or filter icon (mobile) + ViewToggle on far right. Each card is clickable — opens `EntryDetailModal` with full entry details. Manages `selectedEntry` state. Exported `EntryListItem` type includes all parsed fields for the modal.
 
+### CameraViewfinder
+
+File: components/entries/CameraViewfinder.tsx (+ camera-analysis.ts)
+Last updated: 2026-08-02
+
+| Property           | Class |
+| ------------------ | ----- |
+| Overlay            | `fixed inset-0 z-50 bg-surface-inverse` — rendered via `createPortal` to `document.body` (breaks free of parent `motion.div` scale transforms) |
+| Video              | `h-full w-full object-cover`, `autoPlay playsInline muted`, `pointer-events-none` |
+| Guide corners      | Four 48px corner divs — `border-[3px]` (no shadow, deliberately minimal), inset `left/right-6 top-24` / `left/right-6 bottom-40`, `rounded-tl/tr/bl/br-lg` (bottom inset clears the shutter zone with 24px margin vs the 72px shutter). `border-text-inverse` normally; `border-success` (green `#10b981`) while the frame reads clean |
+| Back button        | `flex h-10 w-10 items-center justify-center rounded-full bg-surface-inverse/60 text-text-inverse hover:bg-surface-inverse` — top-left, `ArrowLeft` icon, aria "Back" |
+| Flash toggle       | Same 40px circular style — `Flashlight` icon, sits right of Back in a `flex gap-2` cluster, rendered only when `track.getCapabilities()?.torch === true` (hidden on iOS etc). On: `bg-text-inverse text-surface-inverse`; off: standard dark pill. `aria-pressed`; `applyConstraints({advanced:[{torch}]})` in try/catch with silent revert (some devices advertise torch but reject it). `flashOn` resets on flip/reopen |
+| Flip button        | Same style — top-right, `SwitchCamera` icon, rendered only while stream is active |
+| Hint chip          | `absolute inset-x-0 top-16 flex justify-center px-4` + `aria-live="polite"` — pill `rounded-full bg-surface-inverse/70 px-4 py-2 text-xs font-medium text-text-inverse backdrop-blur-sm`; icon + label; only rendered while a problem persists (all-clean → nothing). Variants: dim+torch available → tappable pill "Too dark — enable flash" (`Zap`); dim otherwise → "Too dark — move to better lighting" (`Sun`); "Too close — pull back" (`ZoomIn`); "Too far — move closer" (`ZoomOut`); "Photo is blurry — hold steady" (`Focus`) |
+| Shutter            | 72px outer ring (`h-18 w-18`) `rounded-full border-[3px] border-text-inverse` with 56px inner (`h-14 w-14`) `bg-text-inverse` circle holding a `Camera` icon `h-7 w-7` (icon `text-surface-inverse`) — centered, wrapper `absolute inset-x-0 bottom-16 z-10 flex justify-center` (64px lift: thumb-comfort zone, clears gesture home bar, 8px clear of the guide brackets' `bottom-36` edge) |
+| Library button     | Icon-only 56px circle (`h-14 w-14`): `flex h-14 w-14 items-center justify-center rounded-full bg-surface-inverse/60 text-text-inverse hover:bg-surface-inverse`, `Image` icon `h-7 w-7`, `aria-label="Use Photo Library"`. Wrapper `absolute bottom-16 left-4 z-10 flex h-18 w-18 items-center justify-center` — same 72px height as the shutter, so its center sits exactly on the shutter's center line (verified: both centers Y-equal in-browser) |
+| Error card         | `rounded-xl bg-surface p-5 text-text-primary` — message + "Try Again" (`RotateCcw`) + "Use Photo Library" |
+
+**Pattern notes:** Fullscreen mobile capture overlay (also usable on desktop). Stream via `getUserMedia({ video: { facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } } })`; bare `{video:true}` retry once per open/flip (old iOS). Errors mapped from DOMException name → friendly copy (`NotAllowedError` permission, `NotFoundError` no camera, `NotReadableError` in-use). Capture: `canvas.toBlob("image/jpeg", 0.92)` → `new File([blob], "receipt-capture.jpg")` — JPEG passes ReceiptUpload validation and ManualQuickForm's `image/*` + 10MB gate. Escape handled via container `onKeyDownCapture` with `stopPropagation()` so LogEntryModal's document-level Escape listener never fires while the camera is open. Container is `tabIndex={-1}` + autofocused to receive key events; body scroll locked while open; all tracks stopped on unmount. `shutterLockRef` guards double-capture. Props: `onCapture(file: File)`, `onClose()`, `onUseLibrary()` (parent opens its own hidden input — no `capture` attr, chooser stays a plain library picker).
+
+**Live quality hints** (`camera-analysis.ts`, pure + dependency-free): every 500ms while the stream is active the viewfinder samples the live frame — `analyzeFrame` draws it to one reused 96×128 offscreen canvas, grayscales, and computes `{ luminance, sharpness (Laplacian variance), edgeCoverage, edgeBounds }`; `interpret` classifies with priority dim → close → far → blur (blur last because dark frames read as low variance; far requires in-focus sharpness so it fires before blur). Thresholds: dim `< 60` luminance, close `> 0.45` coverage, far `< 0.06` coverage + bbox `< 0.25` + sharpness `> 400`, blur `< 250`. A hint only surfaces on 2-of-3 sample agreement (no flicker) and clears after 2 clean samples; brackets go green after 2+ consecutive clean samples, reset on flip/reopen. Torch capability is probed per stream from `getCapabilities().torch` (typed via cast — TS DOM lib lacks `torch`). Guidance only — never blocks capture.
+
 ### ReceiptUpload
 
 File: components/entries/ReceiptUpload.tsx
-Last updated: 2026-07-18
+Last updated: 2026-08-02
 
-| Property        | Class |
-| --------------- | ----- |
-| Upload zone     | `rounded-xl border-2 border-dashed p-12` — drag: `border-accent bg-accent-muted`; idle: `border-border-strong bg-surface hover:border-accent hover:bg-accent-muted` |
+**Behavior:** Images are downscaled client-side before upload (`prepareImage`: ≤1600px JPEG q0.8 via canvas + `createImageBitmap` with `imageOrientation: "from-image"`; white-composited; HEIC and <1MB images pass through untouched; any failure falls back to the original). Speeds up upload + Gemini ingest — accuracy gate passed (fields match original parse).
+
+| Property          | Class |
+| ----------------- | ----- |
+| Mobile chooser    | `flex flex-col gap-3 md:hidden` — "Take a Photo" (`rounded-full bg-accent` pill, `Camera` icon) + "Choose from Library" (outline pill, `Image` icon); rendered only while `!file` |
+| Upload zone       | `hidden md:flex rounded-xl border-2 border-dashed p-12` — drag: `border-accent bg-accent-muted`; idle: `border-border-strong bg-surface hover:border-accent hover:bg-accent-muted` |
 | Icon circle     | `flex h-12 w-12 items-center justify-center rounded-full bg-accent-light text-accent` |
 | File row        | `flex items-center gap-3 text-sm` with `FileImage` icon |
 | Remove button   | `absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-surface text-text-secondary shadow` |
 | Upload button   | `rounded-full bg-accent px-6 py-3 text-accent-foreground hover:bg-accent-hover disabled:opacity-50` |
 | Progress bar    | `h-1.5 w-full overflow-hidden rounded-full bg-border-light` with `animate-pulse rounded-full bg-accent` fill |
+| Fallback banner | `rounded-xl border border-warning bg-warning-lightest p-4` — "Enter Entry Manually" (accent pill) + "Try Another Photo" (outline pill) |
+| Verdict banners  | `invalid_document`: warning shell (`border-warning bg-warning-lightest`), title "No receipt details found", primary "Log as No Receipt Entry" (`Pencil`) + secondary "Try Another Photo"; `borderline`: info shell (`border-info bg-info-lightest`), title "Photo needs a retake", primary "Try Another Photo" (`RefreshCw`) + secondary "Log as No Receipt Entry" |
 
-**Pattern notes:** Drag/drop zone with click-to-browse fallback. Validates file type (JPEG/PNG/WebP) and size (10MB). Shows image preview after selection. Mock 1s parse delay via `setTimeout(1000)`. Calls `onParsed(mock)` with `MockParsedReceipt` shape. `resetFile` clears selection for re-upload.
+**Pattern notes:** Drag/drop zone with click-to-browse fallback. Validates file type (JPEG/PNG/WebP/HEIC) and size (10MB). Shows image preview after selection. Real parse via `POST /api/entries/receipt` (FormData: `eventId` + `image`); on success calls `onParsed({ entryId, parsed })`. Failures are kinded (`FailureKind`): model verdicts `invalid_document`/`borderline` render their guidance banner immediately and never count toward `MAX_ATTEMPTS = 3`; `parse_failed` counts toward the ceiling then shows the fallback banner (`onExhausted` → switch to manual flow); generic (validation/network/business) show inline red text. Mobile (<md): dropzone hidden, replaced by a two-button source chooser — "Take a Photo" opens `CameraViewfinder` (capture → `validateAndSet` same as file pick), "Choose from Library" clicks the hidden input (no `capture` attr — chooser stays a plain picker). Camera `onUseLibrary` → `inputRef.click()` too. Props: `eventId`, `onParsed`, `onExhausted`, `onNoReceipt` (verdict CTAs → manual flow). Exports `ParsedUploadResult` type.
 
 ### ReceiptReview
 
 File: components/entries/ReceiptReview.tsx
-Last updated: 2026-07-18
+Last updated: 2026-08-01
 
 | Property          | Class |
 | ----------------- | ----- |
@@ -642,7 +670,7 @@ Last updated: 2026-07-18
 | Confirm button    | `rounded-full bg-accent px-6 py-3 text-accent-foreground hover:bg-accent-hover` with `Check` icon |
 | Discard button    | `rounded-full border border-error px-6 py-3 text-error hover:bg-error-lightest` with `X` icon |
 
-**Pattern notes:** AnimatePresence overlay + two render branches (`hidden sm:flex` modal / `sm:hidden` bottom sheet). Closes on Escape or overlay click (only when not confirming). Uses `dialogOverlay` / `dialogContent` from framer-motion variants. Exported `ReadOnlyField` atom for reuse. Props: `open`, `data: MockParsedReceipt`, `onConfirm`, `onDiscard`, `onClose`, `confirming?`.
+**Pattern notes:** AnimatePresence overlay + two render branches (`hidden sm:flex` modal / `sm:hidden` bottom sheet). Closes on Escape or overlay click (only when not confirming). Uses `dialogOverlay` / `dialogContent` from framer-motion variants. Exported `ReadOnlyField` atom for reuse. Props: `open`, `data: ParsedReceipt` (from `@/agent/types`), `onConfirm`, `onDiscard`, `onClose`, `confirming?`.
 
 ### UsePeopleReuse
 
@@ -711,11 +739,11 @@ Last updated: 2026-07-29
 | Other sub-mode pills | `rounded-lg px-4 py-2 text-sm` — active: `bg-accent text-accent-foreground shadow-sm`; inactive: `border border-border bg-surface text-text-secondary hover:border-accent` |
 | Suggestion chip      | `rounded-md bg-accent-muted px-2.5 py-1 text-xs text-accent` |
 | Live total           | `rounded-lg border border-border-strong bg-surface-secondary px-4 py-3 flex justify-between` — total value: `text-lg font-semibold tabular-nums` |
-| Photo row            | Inline flex with `Paperclip` icon, thumbnail `h-10 w-10 rounded-md object-cover` |
+| Photo row         | Desktop: inline flex with `Paperclip` icon + thumbnail `h-10 w-10 rounded-md object-cover`. Mobile (`md:hidden`): "Take Photo" (accent pill, `Camera`) + "Choose from Library" (outline pill) pair; desktop shows single Paperclip attachment button |
 | Justification textarea | `rounded-lg border border-border-strong bg-surface px-4 py-3 text-sm` |
 | Submit button        | `rounded-full bg-accent px-6 py-3 text-accent-foreground disabled:opacity-50` |
 
-**Pattern notes:** Second step of the no-receipt manual flow. Uses `FloatingInput` for all main fields (matching auth-style floating labels). Form restructured into 3 visual sections with headers: "Trip Details" (category-specific fields), "Extra Information" (witness + photo), "Additional Details" (justification). Section dividers use `border-t border-border`. Per-field error state via `submitted` flag — errors shown after first submit attempt. Item rows (supplies/other-itemized) remain compact inline inputs (no floating labels) since they're inside card-like containers. Live running total updated on every field change.
+**Pattern notes:** Second step of the no-receipt manual flow. Uses `FloatingInput` for all main fields (matching auth-style floating labels). Form restructured into 3 visual sections with headers: "Trip Details" (category-specific fields), "Extra Information" (witness + photo), "Additional Details" (justification). Section dividers use `border-t border-border`. Per-field error state via `submitted` flag — errors shown after first submit attempt. Item rows (supplies/other-itemized) remain compact inline inputs (no floating labels) since they're inside card-like containers. Live running total updated on every field change. Photo attachment is source-split by viewport: mobile shows "Take Photo" (opens `CameraViewfinder` → `applyPhoto`) + "Choose from Library" (hidden input, `image/*` + 10MB gate); desktop keeps a single `Paperclip` attachment button. Shared `applyPhoto(file)` validates and sets `photoFile`/`photoPreview`.
 
 ### LogEntryModal
 
@@ -729,14 +757,14 @@ Last updated: 2026-07-29
 | Sheet (mobile) | `max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-border bg-surface p-6 pb-8 shadow-card` + `mx-auto mb-5 h-1 w-10 rounded-full bg-border-strong` drag handle |
 | Toggle         | `rounded-xl border border-border bg-surface p-1` — active: `bg-accent text-accent-foreground shadow-sm`; inactive: `text-text-secondary hover:text-text-primary` |
 
-**Pattern notes:** AnimatePresence modal/sheet shell. Method toggle stays `[Upload Receipt] [No Receipt]`. Receipt flow unchanged (ReceiptUpload → ReceiptReview → Confirm/Discard). Manual flow replaced with 3-screen state machine: `picker` (ManualCategoryPicker) → `form` (ManualQuickForm) → `success` (inline success state with "Log another [category]?" and "Close"). State resets on open via `useEffect`. Mobile sheet cancel button now only shows for receipt flow (manual has its own back/close). No method toggle or receipt-review cancel on mobile during manual success.
+**Pattern notes:** AnimatePresence modal/sheet shell. Method toggle stays `[Upload Receipt] [No Receipt]`. Receipt flow: ReceiptUpload (real parse → `onParsed({entryId, parsed})`) → inline review (read-only fields + itemized table, Confirm/Discard). Discard calls `discardReceiptEntry` server action (deletes the ai_parsed row + audit). Confirm closes + `router.refresh()` (budget deduction lands in Step 15). ReceiptUpload's `onExhausted` (3× parse_failed) and `onNoReceipt` (invalid/borderline verdict CTAs) both switch to the manual flow via the shared `switchToManual` handler. Manual flow: 3-screen state machine `picker` (ManualCategoryPicker) → `form` (ManualQuickForm) → `success`. State resets on open via `useEffect`. Mobile sheet cancel button only shows for receipt flow. Body scroll locked while open.
 
 ### NewEntryPage (standalone fallback)
 
 File: app/treasurer/events/[eventId]/entries/new/page.tsx
-Last updated: 2026-07-29
+Last updated: 2026-08-01
 
-**Layout:** Centered `mx-auto max-w-2xl flex flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10`. Method toggle + content card. Manual flow uses same 3-screen state machine as the modal (picker → form → success). Receipt flow unchanged. Replaces the old `ManualEntryForm` import with `ManualCategoryPicker` + `ManualQuickForm`.
+**Layout:** Centered `mx-auto max-w-2xl flex flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10`. Method toggle + content card. Manual flow uses same 3-screen state machine as the modal (picker → form → success). Receipt flow: ReceiptUpload real parse → ReceiptReview modal (Confirm = `router.push` back to event, Discard = `discardReceiptEntry` action). `onExhausted` switches to manual method.
 
 | Property        | Class |
 | --------------- | ----- |

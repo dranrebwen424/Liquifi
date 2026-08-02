@@ -50,41 +50,26 @@ export async function uploadReceipt(
 }
 
 /**
- * Get presigned URL for receipt.
+ * Download a receipt image blob for an entry.
+ * Ownership is enforced by the caller (route-level requireRole) — the stored
+ * `image_url` key is used as-is, so this stays valid if the key pattern changes.
  */
-export async function getReceiptUrl(
-  eventId: string,
-  entryId: string,
-): Promise<string> {
-  const deptId = await getUserDeptId();
-  if (!deptId) throw new Error("Authentication required");
-
+export async function getReceiptBlob(entryId: string): Promise<Blob> {
   const insforge = await createInsforgeServer();
   const { data: entry, error } = await insforge.database
     .from("entries")
-    .select("id, event_id")
+    .select("id, image_url")
     .eq("id", entryId)
-    .eq("event_id", eventId)
     .single();
 
-  if (error || !entry) throw new Error("Entry not found");
+  if (error || !entry || !entry.image_url) throw new Error("Entry not found");
 
-  // Verify event belongs to user's department
-  const { data: evt } = await insforge.database
-    .from("events")
-    .select("department_id")
-    .eq("id", eventId)
-    .single();
-  if (!evt || evt.department_id !== deptId) throw new Error("Unauthorized");
-
-  const key = `${deptId}/events/${eventId}/receipts/${entryId}.jpg`;
-  const { data: blob } = await insforge.storage
+  const { data: blob, error: downloadError } = await insforge.storage
     .from(RECEIPT_BUCKET)
-    .download(key);
+    .download(entry.image_url);
 
-  // ponytail: client-side Blob URL for display — swap to presigned URL when auth is in place
-  if (blob) return URL.createObjectURL(blob);
-  throw new Error("Receipt not found");
+  if (downloadError || !blob) throw new Error("Receipt not found");
+  return blob;
 }
 
 // ─── Signed Reports ────────────────────────────────────────────────

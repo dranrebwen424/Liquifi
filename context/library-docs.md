@@ -207,9 +207,9 @@ channel.subscribe();
 
 ---
 
-## OpenRouter
+## Google Gemini (Receipt Parsing)
 
-**Check first:** Check AGENTS.md for an installed OpenRouter skill. OpenRouter is our AI gateway for receipt OCR/parsing and signed-document verification — we never call OpenAI directly.
+**Check first:** `lib/gemini.ts` — receipt OCR/parsing calls Google Gemini directly (free tier, `gemini-3.5-flash-lite`). OpenRouter is used only for signed-document verification. We never call OpenAI directly.
 
 ### Receipt Parsing (`agent/receipt-parser.ts`)
 
@@ -218,39 +218,47 @@ One document per upload — AI never auto-splits multiple documents from one ima
 ```typescript
 // agent/receipt-parser.ts
 // A failed/malformed parse never creates an Entry row — the image stays client-side
-const response = await openrouter.chat.completions.create({
-  model: "gpt-4o", // or equivalent OpenRouter model
+const content = await geminiChatCompletion({
+  model: GEMINI_MODEL, // gemini-3.5-flash-lite — pinned in lib/gemini.ts
   messages: [
     { role: "system", content: RECEIPT_EXTRACTION_PROMPT },
     {
       role: "user",
-      content: [
-        { type: "image_url", image_url: { url: imageUrl } },
-      ],
+      content: [{ type: "image_url", image_url: { url: imageUrl } }],
     },
   ],
+  responseFormat: { type: "json_object" }, // mapped to responseMimeType: application/json
 });
 
-const parsed = JSON.parse(response.choices[0].message.content!);
+const parsed = JSON.parse(content);
 ```
 
 **Extracted fields:**
 
 | Field | Rule | Notes |
 |---|---|---|
-| `document_type_raw` | Verbatim printed label, never forced into an enum | "Official Receipt", "Sales Invoice", "Cash Invoice", etc. |
+| `document_type_raw` | Verbatim printed label, never forced into an enum; `""` when none exists (handwritten slips) | "Official Receipt", "Sales Invoice", "Cash Invoice", etc. |
 | `document_type_category` | System-normalized enum | "official_receipt" / "sales_invoice" / "cash_invoice" / "other" — for reporting only |
-| `document_number` | Tied to the `document_type_raw` label — Rule A | Never detached from its source label |
+| `document_number` | Tied to the `document_type_raw` label — Rule A; `""` when no label-tied number exists — never null, never made up | Never detached from its source label |
 | `issue_date` / `issue_time` | `issue_time` optional, never date+time combined | |
 | `supplier_name` | | |
 | `amount` | Final Amount Due — Rule B — never sub-total | |
 | `item_breakdown` | Required — description, qty, unit price, line amount | |
 
+**Classification (guided-upload outcomes):** every response self-classifies via `classification: { outcome, reason }` — `valid` (vendor + amount readable, printed or handwritten, any doc type, number optional), `borderline` (clearly a document but blurry/cropped/low-contrast), `invalid` (blank, illegible, or nothing traceable). Doubt → `borderline`, never `invalid`. Never guess: unreadable fields are `null` — if vendor or amount is unreadable, outcome must be `borderline` (added after a heavy-blur fixture returned hallucinated values). `parseReceipt` returns a discriminated `ParseOutcome`: verdicts short-circuit `{ outcome, reason }` — no row, no retry; only `valid` carries the strict `ReceiptParseResult` (supplier + amount + ≥1 item guaranteed by `superRefine`).
+
 **Error handling:**
 
-- After **3 failed attempts**, the UI surfaces the manual-entry fallback — the treasurer fills the fields by hand
-- Log every failure to `audit_logs` with enough context to trace back to the upload attempt
+- Verdicts → 422 with guidance: `invalid_document` (No Receipt Entry fallback) / `borderline` (retake photo first) — audited, never counted against the 3-attempt ceiling
+- After **3 failed attempts** (zod-inconsistent responses only), the UI surfaces the manual-entry fallback — the treasurer fills the fields by hand
+- Log every failure/verdict to `audit_logs` with enough context to trace back to the upload attempt
 - Never create an `Entry` row on failure — the image stays client-side as a retryable upload
+
+---
+
+## OpenRouter (Document Verification)
+
+**Check first:** Check AGENTS.md for an installed OpenRouter skill. OpenRouter is used only for signed-document verification — receipt parsing calls Google Gemini directly.
 
 ### Document Verification (`agent/document-verifier.ts`)
 

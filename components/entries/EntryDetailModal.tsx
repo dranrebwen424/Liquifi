@@ -10,6 +10,7 @@ import { dialogOverlay, dialogContent, sheetSlideUp } from "@/lib/motion-variant
 import type { EntryType, EntryStatus } from "@/types";
 
 type EntryDetail = {
+  id: string;
   type: EntryType;
   status: EntryStatus;
   amount: number;
@@ -115,12 +116,24 @@ function EntryDetailContent({
   const displayName = entry.supplierName || entry.description || "Untitled entry";
   const title = entry.supplierName ? entry.description : null;
   const itemBreakdown = isItemBreakdown(entry.itemBreakdown) ? entry.itemBreakdown : null;
+  const [imgFailed, setImgFailed] = useState(false);
+  const showImage = Boolean(entry.imageUrl) && !imgFailed;
 
   return (
     <div className="flex flex-col gap-4">
       {/* Image area */}
       {entry.type === "receipt" ? (
-        <ReceiptImagePlaceholder onClick={onViewImage} />
+        showImage ? (
+          <img
+            src={`/api/entries/${entry.id}/image`}
+            alt={displayName}
+            onClick={onViewImage}
+            onError={() => setImgFailed(true)}
+            className="h-48 w-full cursor-pointer rounded-lg border border-border object-cover hover:opacity-90"
+          />
+        ) : (
+          <ReceiptImagePlaceholder onClick={onViewImage} />
+        )
       ) : (
         <ManualImagePlaceholder />
       )}
@@ -242,9 +255,11 @@ function EntryDetailContent({
 /** Full-screen image viewer. */
 function ImageViewer({
   open,
+  src,
   onClose,
 }: {
   open: boolean;
+  src?: string;
   onClose: () => void;
 }) {
   useEffect(() => {
@@ -255,6 +270,10 @@ function ImageViewer({
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
+
+  // Reset error state when a new image is shown
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [src, open]);
 
   return (
     <AnimatePresence>
@@ -273,14 +292,23 @@ function ImageViewer({
           >
             <X className="h-4 w-4" />
           </button>
-          {/* Placeholder — would be actual image */}
-          <div className="flex h-[70vh] w-[80vw] max-w-2xl flex-col items-center justify-center rounded-xl bg-white p-8">
-            <FileText className="mb-4 h-20 w-20 text-text-muted/30" />
-            <p className="text-sm text-text-muted">Receipt image preview</p>
-            <p className="mt-1 text-xs text-text-muted">
-              Full image will render here when receipt is uploaded
-            </p>
-          </div>
+          {src && !failed ? (
+            <img
+              src={src}
+              alt="Receipt"
+              onError={() => setFailed(true)}
+              className="max-h-[80vh] w-auto max-w-[90vw] rounded-xl object-contain"
+            />
+          ) : (
+            /* Placeholder — when no image is available */
+            <div className="flex h-[70vh] w-[80vw] max-w-2xl flex-col items-center justify-center rounded-xl bg-white p-8">
+              <FileText className="mb-4 h-20 w-20 text-text-muted/30" />
+              <p className="text-sm text-text-muted">Receipt image preview</p>
+              <p className="mt-1 text-xs text-text-muted">
+                No image available for this entry
+              </p>
+            </div>
+          )}
         </motion.div>
       )}
     </AnimatePresence>
@@ -305,7 +333,11 @@ export function EntryDetailModal({ open, onClose, entry }: EntryDetailModalProps
   return (
     <>
       {/* Image viewer */}
-      <ImageViewer open={imageOpen} onClose={() => setImageOpen(false)} />
+      <ImageViewer
+        open={imageOpen}
+        src={entry.type === "receipt" && entry.imageUrl ? `/api/entries/${entry.id}/image` : undefined}
+        onClose={() => setImageOpen(false)}
+      />
 
       <AnimatePresence>
         {open && (
@@ -337,7 +369,7 @@ export function EntryDetailModal({ open, onClose, entry }: EntryDetailModalProps
                   <X className="h-4 w-4" />
                 </button>
 
-                <div className="max-h-[85vh] overflow-y-auto rounded-xl p-6 pt-12">
+                <div className="max-h-[85vh] scrollbar-hide overflow-y-auto rounded-xl p-6 pt-12">
                   <EntryDetailContent
                     entry={entry}
                     onViewImage={() => setImageOpen(true)}
@@ -352,7 +384,7 @@ export function EntryDetailModal({ open, onClose, entry }: EntryDetailModalProps
               initial="hidden"
               animate="show"
               exit="exit"
-              className="fixed inset-x-0 bottom-0 z-50 max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-border bg-surface shadow-card sm:hidden"
+              className="fixed inset-x-0 bottom-0 z-50 max-h-[85vh] scrollbar-hide overflow-y-auto rounded-t-2xl border-t border-border bg-surface shadow-card sm:hidden"
             >
               {/* Drag handle */}
               <div className="mx-auto mb-5 mt-3 h-1 w-10 rounded-full bg-border-strong" />

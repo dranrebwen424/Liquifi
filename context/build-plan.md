@@ -246,12 +246,12 @@ Build the complete entry logging UI (both methods) with mock data.
 
 ---
 
-### 14 Receipt Parsing — OpenRouter Integration
+### 14 Receipt Parsing — Gemini Integration
 
 **Logic:**
 
 - API route `app/api/entries/receipt` receives the uploaded image
-- Calls `agent/receipt-parser.ts` (OpenRouter): extracts `document_type_raw` (verbatim, never forced into an enum), `document_type_category` (normalized, falls to `other`), `document_number` (Rule A — tied to the label matching `document_type_raw`, not incidental POS metadata), `issue_date`/`issue_time` (time optional, never combined), `supplier_name`, `amount` (Rule B — final Amount Due, never sub-total), `item_breakdown` (required)
+- Calls `agent/receipt-parser.ts` (Gemini direct): extracts `document_type_raw` (verbatim, never forced into an enum), `document_type_category` (normalized, falls to `other`), `document_number` (Rule A — tied to the label matching `document_type_raw`, not incidental POS metadata), `issue_date`/`issue_time` (time optional, never combined), `supplier_name`, `amount` (Rule B — final Amount Due, never sub-total), `item_breakdown` (required)
 - Duplicate check: reject if `(document_type_raw + document_number)` already exists for an entry in the same event
 - A failed/malformed parse **never creates an `Entry` row** — image stays client-side as a retryable upload
 - Only a successful parse creates the `Entry` row, directly at `ai_parsed` status

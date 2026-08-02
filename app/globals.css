@@ -177,3 +177,12 @@
     -moz-osx-font-smoothing: grayscale;
   }
 }
+
+/* Hide the scrollbar visually while keeping the element scrollable (modals, bottom sheets) */
+.scrollbar-hide {
+  -ms-overflow-style: none; /* legacy Edge */
+  scrollbar-width: none; /* Firefox */
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome / Safari */
+}

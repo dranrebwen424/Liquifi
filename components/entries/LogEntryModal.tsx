@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Check,
@@ -13,11 +14,12 @@ import {
 import { cn } from "@/lib/utils";
 import { formatPHP } from "@/lib/format";
 import { dialogOverlay, dialogContent, sheetSlideUp } from "@/lib/motion-variants";
-import { ReceiptUpload } from "@/components/entries/ReceiptUpload";
+import { ReceiptUpload, type ParsedUploadResult } from "@/components/entries/ReceiptUpload";
 import { ManualCategoryPicker } from "@/components/entries/ManualCategoryPicker";
 import { ManualQuickForm, type ManualSubmitPayload } from "@/components/entries/ManualQuickForm";
 import LottiePlayer from "@/components/LottiePlayer";
-import type { MockParsedReceipt } from "@/components/entries/ReceiptUpload";
+import { discardReceiptEntry } from "@/actions/entries";
+import type { ParsedReceipt } from "@/agent/types";
 import type { ExpenseType } from "@/components/entries/manual-categories";
 
 // ─── Types ─────────────────────────────────────────────────────────
@@ -34,12 +36,15 @@ type LogEntryModalProps = {
 // ─── Component ─────────────────────────────────────────────────────
 
 export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
+  const router = useRouter();
   const [method, setMethod] = useState<Method>("receipt");
 
   // Receipt flow state
-  const [parsedData, setParsedData] = useState<MockParsedReceipt | null>(null);
+  const [parsedData, setParsedData] = useState<ParsedReceipt | null>(null);
+  const [entryId, setEntryId] = useState<string | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [discarding, setDiscarding] = useState(false);
 
   // Manual flow state
   const [manualScreen, setManualScreen] = useState<ManualScreen>("picker");
@@ -50,8 +55,10 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
     if (open) {
       setMethod("receipt");
       setParsedData(null);
+      setEntryId(null);
       setReviewOpen(false);
       setConfirming(false);
+      setDiscarding(false);
       setManualScreen("picker");
       setSelectedCategory(null);
     }
@@ -60,9 +67,9 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
   // Close on Escape (not during confirm or submit)
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !confirming) onClose();
+      if (e.key === "Escape" && !confirming && !discarding) onClose();
     },
-    [onClose, confirming],
+    [onClose, confirming, discarding],
   );
 
   useEffect(() => {
@@ -78,15 +85,20 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
 
   // ─── Receipt flow ──────────────────────────────────────────────
 
-  const handleParsed = useCallback((data: MockParsedReceipt) => {
-    setParsedData(data);
+  const handleParsed = useCallback(({ entryId: id, parsed }: ParsedUploadResult) => {
+    setEntryId(id);
+    setParsedData(parsed);
     setReviewOpen(true);
   }, []);
 
-  const handleDiscard = useCallback(() => {
+  const handleDiscard = useCallback(async () => {
+    if (!entryId) return;
+    setDiscarding(true);
+    await discardReceiptEntry(entryId, eventId);
+    setDiscarding(false);
     setReviewOpen(false);
     setTimeout(() => setParsedData(null), 150);
-  }, []);
+  }, [entryId, eventId]);
 
   const handleConfirm = useCallback(async () => {
     if (!parsedData) return;
@@ -95,7 +107,8 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
     setConfirming(false);
     setReviewOpen(false);
     onClose();
-  }, [parsedData, onClose]);
+    router.refresh();
+  }, [parsedData, onClose, router]);
 
   // ─── Manual flow ───────────────────────────────────────────────
 
@@ -121,6 +134,13 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
   const handleLogAnother = useCallback(() => {
     setManualScreen("form");
     // Keep same category — ManualQuickForm resets its own fields via useEffect on category
+  }, []);
+
+  /** Jump from the receipt flow into Method 2 (exhausted fallback and invalid/borderline guidance). */
+  const switchToManual = useCallback(() => {
+    setMethod("manual");
+    setManualScreen("picker");
+    setSelectedCategory(null);
   }, []);
 
   // ─── Content: screens ──────────────────────────────────────────
@@ -171,7 +191,12 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
 
       {/* Receipt flow */}
       {method === "receipt" && (
-        <ReceiptUpload onParsed={handleParsed} />
+        <ReceiptUpload
+          eventId={eventId}
+          onParsed={handleParsed}
+          onExhausted={switchToManual}
+          onNoReceipt={switchToManual}
+        />
       )}
 
       {/* Manual flow — screen state machine */}
@@ -313,11 +338,11 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
         </button>
         <button
           onClick={handleDiscard}
-          disabled={confirming}
+          disabled={confirming || discarding}
           className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-error px-6 py-3.5 text-sm font-medium text-error transition-colors hover:bg-error-lightest disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
         >
           <X className="h-4 w-4" />
-          Discard & Re-upload
+          {discarding ? "Discarding…" : "Discard & Re-upload"}
         </button>
       </div>
     </div>
@@ -337,7 +362,7 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
             animate="show"
             exit="hidden"
             className="fixed inset-0 z-50 bg-overlay-alpha"
-            onClick={() => { if (!confirming) onClose(); }}
+            onClick={() => { if (!confirming && !discarding) onClose(); }}
           />
 
           {/* Web: centered modal */}

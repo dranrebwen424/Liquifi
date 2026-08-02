@@ -179,7 +179,7 @@ export async function parseReceipt(
   eventId: string,
 ): Promise<{ success: boolean; entry?: ParsedEntry; error?: string }> {
   try {
-    // implementation — OpenRouter call
+    // implementation — Gemini call (lib/gemini.ts)
     return { success: true, entry };
   } catch (error) {
     console.error("[agent/receipt-parser]", error);
@@ -190,7 +190,7 @@ export async function parseReceipt(
 
 - Every agent function returns `{ success: boolean, error?: string }`
 - Every agent function has a try/catch — never let one failure crash the flow
-- A failed OpenRouter parse never creates an `Entry` row — this must be enforced in the calling API route, not assumed
+- A failed AI parse never creates an `Entry` row — this must be enforced in the calling API route, not assumed
 - Agent functions never import from `components/` or `actions/`
 - Agent functions never use React hooks or browser APIs
 - Polygon anchoring logic (`agent/report-anchor.ts`) only ever runs at the single point defined in `architecture.md` — a `Report` transitioning to `approved` — never call it from any other trigger
@@ -237,7 +237,7 @@ These are project-specific and non-negotiable:
 - Never use empty catch blocks — always log or handle
 - Console errors always include context prefix: `[component/function name]`
 - User-facing errors must be human readable — never expose raw error messages
-- Agent errors (OpenRouter, Polygon) are always logged with enough context to trace back to the entry/report/event — never surface raw agent errors to the UI
+- Agent errors (Gemini/OpenRouter, Polygon) are always logged with enough context to trace back to the entry/report/event — never surface raw agent errors to the UI
 - API route errors return `status: 500` with a generic message — never expose internals
 
 ---
@@ -301,7 +301,7 @@ import { Button } from "../../../components/ui/button";
 
 - No comments explaining what the code does — code must be self-explanatory
 - Comments only for why — explaining a non-obvious decision (e.g. why `budget_locked` is derived rather than stored, why void authority is department-wide rather than creator-scoped)
-- Agent functions may have a brief comment explaining the OpenRouter prompt strategy or Polygon anchoring approach
+- Agent functions may have a brief comment explaining the AI prompt strategy or Polygon anchoring approach
 - Never leave TODO comments in committed code
 
 ---
@@ -432,7 +432,7 @@ Approved dependencies for this project:
 | Dependency | Purpose | Notes |
 |---|---|---|
 | `@insforge/sdk` | InsForge client (auth, DB, storage, realtime) | SSR subpath `@insforge/sdk/ssr` |
-| `openai` / OpenRouter-compatible SDK | Receipt OCR, document verification | Via OpenRouter gateway |
+| none (plain fetch) | Gemini receipt OCR | Direct via `lib/gemini.ts`, free tier — no SDK |
 | `web-push` | Web Push notification sending | Server-side only |
 | `@react-pdf/renderer` | Financial Report PDF generation | Server-side only, `renderToBuffer` |
 | `ethers` | Polygon hash-anchoring | v6 API, `JsonRpcProvider` |

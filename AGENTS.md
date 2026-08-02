@@ -31,7 +31,7 @@ Read in this exact order before any implementation:
 - **Never use hardcoded hex values or raw Tailwind color classes** — always use `@theme` tokens from `ui-tokens.md` via generated utility classes (`bg-surface`, `text-text-primary`, `border-border`)
 - **State machines are law** — `Event.status`, `Event.budget_locked`, `Event.is_locked`, `Entry.status`, `Report.status` each have strict transition rules. Never shortcut a precondition check, even if it seems safe in one case.
 - **`budget_locked` and `is_locked` are derived** — never persist them as independent booleans. `budget_locked` = EXISTS(entry WHERE event_id = X AND status = 'deducted'). `is_locked` = EXISTS(report WHERE event_id = X AND status IN ('pending_adviser_approval','approved')).
-- **A failed OpenRouter parse never creates an Entry row** — the image stays client-side as a retryable upload. Only a successful parse creates the row at `ai_parsed`.
+- **A failed AI parse never creates an Entry row** — the image stays client-side as a retryable upload. Only a successful parse creates the row at `ai_parsed`.
 - **Reports are never overwritten** — every regeneration after rejection/cancellation creates a new `Report` row reusing the same `fs_document_number` with `revision_count` incremented.
 - **Polygon anchoring happens exactly once** — at the moment `Report.status` transitions to `approved`. Never call it from any other trigger.
 - **Once `Event.status = archived`**, every mutation under that event is rejected at the guard layer, regardless of role.
@@ -296,21 +296,22 @@ signed-reports/{department_id}/reports/{report_id}/page-{n}.jpg
 avatars/{user_id}.jpg
 ```
 
-**All storage access goes through `lib/storage.ts` helpers** — never call SDK storage directly. Helpers handle auth, ownership verification, and presigned URLs.
+**All storage access goes through `lib/storage.ts` helpers** — never call SDK storage directly. Helpers handle auth, ownership verification, and blob download.
 
 ```typescript
 // Upload receipt (treasurer only, ownership verified via event)
-import { uploadReceipt, getReceiptUrl } from "@/lib/storage";
+import { uploadReceipt } from "@/lib/storage";
 
 const { url, key } = await uploadReceipt(eventId, entryId, file);
 
-// Get presigned URL (treasurer/adviser, ownership verified via entry)
-const presignedUrl = await getReceiptUrl(eventId, entryId);
+// Download receipt blob (auth enforced by the caller via requireRole)
+const blob = await getReceiptBlob(entryId);
 ```
 
 **Rules:**
 - `upsert: false` everywhere — never overwrite existing files
-- Private buckets use presigned URLs (expire ~1hr) — never cache long-term
+- Private bucket reads go through `GET /api/entries/{entryId}/image` — a session-authed proxy (`requireRole(["treasurer","adviser"], event.department_id)`) that streams the blob; `image_url` stores the storage **key**, never a browser-loadable URL (no signed-URL support in the SDK)
+- Never use `URL.createObjectURL` server-side — it produces a server-only object URL
 - Ownership verified via DB joins: `entries → event → department_id`
 - `deptId` never passed as parameter — derived from authenticated user
 - Never write files to disk — always upload buffer directly to storage
@@ -354,23 +355,24 @@ channel.subscribe();
 
 ---
 
-# OpenRouter (AI Gateway)
+# AI Gateway
 
-OpenRouter is our AI gateway for receipt OCR/parsing and signed-document verification. We never call OpenAI directly.
+**Receipt OCR/parsing calls Google Gemini directly** (`lib/gemini.ts`, free tier, `gemini-3.5-flash-lite`). Signed-document verification goes through OpenRouter. We never call OpenAI directly.
 
-**Credentials:** `OPENROUTER_API_KEY` in `.env.local` — server-side only, never exposed to the client.
+**Credentials:** `GOOGLE_GENERATIVE_AI_API_KEY` (Gemini, receipt parsing) and `OPENROUTER_API_KEY` (document verification) in `.env.local` — server-side only, never exposed to the client.
 
 ## Receipt Parsing (`agent/receipt-parser.ts`)
 
 One document per upload — AI never auto-splits multiple documents from one image.
 
 ```typescript
-const response = await openrouter.chat.completions.create({
-  model: "gpt-4o", // via OpenRouter
+const content = await geminiChatCompletion({
+  model: GEMINI_MODEL, // gemini-3.5-flash-lite — pinned in lib/gemini.ts
   messages: [
     { role: "system", content: RECEIPT_EXTRACTION_PROMPT },
     { role: "user", content: [{ type: "image_url", image_url: { url: imageUrl } }] },
   ],
+  responseFormat: { type: "json_object" }, // mapped to responseMimeType: application/json
 });
 ```
 
@@ -378,20 +380,24 @@ const response = await openrouter.chat.completions.create({
 
 | Field | Rule |
 |---|---|
-| `document_type_raw` | Verbatim printed label, never forced into an enum |
+| `document_type_raw` | Verbatim printed label, never forced into an enum; `""` when none exists (handwritten slips) |
 | `document_type_category` | System-normalized enum — for reporting only |
-| `document_number` | Tied to `document_type_raw` label (Rule A) |
+| `category` | Expense category inferred from supplier + line items: one of `transportation`, `meals`, `honorarium`, `supplies`, `printing`, `rental`, `others` — normalized; falls back to `others` when unclear |
+| `document_number` | Tied to `document_type_raw` label (Rule A); `""` when no label-tied number exists — never null, never made up |
 | `issue_date` / `issue_time` | `issue_time` optional, never combined |
 | `supplier_name` | |
 | `amount` | Final Amount Due (Rule B) — never sub-total |
 | `item_breakdown` | Required — description, qty, unit price, line amount |
 
+**Classification (guided-upload outcomes):** every response self-classifies before extraction — `valid` (vendor + amount readable, printed or handwritten, any doc type, number optional), `borderline` (clearly a document but blurry/cropped/low-contrast), `invalid` (blank, illegible, or nothing traceable). Doubt → `borderline`, never `invalid`. Never guess: unreadable fields are `null` — if vendor or amount is unreadable, outcome must be `borderline`.
+
 **Rules:**
-- A failed/malformed parse never creates an `Entry` row — image stays client-side
+- Verdicts short-circuit: `borderline`/`invalid` → 422 `entry.receipt_borderline` / `entry.receipt_invalid_document` with guidance + audit — no `Entry` row, no retry
+- A failed/malformed parse never creates an `Entry` row — image stays client-side; 3-attempt retry applies only to zod-inconsistent responses
 - After 3 failed attempts, UI surfaces manual-entry fallback
-- Duplicate check: reject if `(document_type_raw + document_number)` already exists in the same event
+- Duplicate check: reject if `(document_type_raw + document_number)` already exists in the same event (`""` numbers skip the check)
 - Always wrap in try/catch; always validate parsed JSON with zod before using
-- Log every failure to `audit_logs` with enough context to trace back
+- Log every failure/verdict to `audit_logs` with enough context to trace back
 
 ## Document Verification (`agent/document-verifier.ts`)
 
@@ -477,6 +483,7 @@ const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600", "700
 | `NEXT_PUBLIC_INSFORGE_URL` | `lib/insforge-client.ts`, `lib/insforge-server.ts` |
 | `NEXT_PUBLIC_INSFORGE_ANON_KEY` | `lib/insforge-client.ts`, `lib/insforge-server.ts` |
 | `OPENROUTER_API_KEY` | `agent/` functions |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | `lib/gemini.ts` (receipt parsing) |
 | `WEB_PUSH_PUBLIC_KEY` | `lib/web-push.ts`, client subscription |
 | `WEB_PUSH_PRIVATE_KEY` | `lib/web-push.ts` |
 | `WEB_PUSH_SUBJECT` | `lib/web-push.ts` |

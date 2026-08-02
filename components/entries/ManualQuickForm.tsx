@@ -12,12 +12,14 @@ import {
   Check,
   Users,
   Paperclip,
+  Camera,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatPHP, formatNumberInput } from "@/lib/format";
 import { CATEGORIES, type ExpenseType, type ComputeField } from "@/components/entries/manual-categories";
 import { FloatingInput } from "@/components/entries/FloatingInput";
 import { usePeopleReuse } from "@/hooks/usePeopleReuse";
+import { CameraViewfinder } from "@/components/entries/CameraViewfinder";
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -78,6 +80,7 @@ export function ManualQuickForm({
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
 
   // People reuse
   const { read, write } = usePeopleReuse(eventId);
@@ -179,23 +182,39 @@ export function ManualQuickForm({
 
   // ─── Photo attachment ──────────────────────────────────────────
 
+  /** Validate + attach a photo — shared by the library input and the camera shutter. */
+  const applyPhoto = useCallback((file: File) => {
+    if (!file.type.startsWith("image/")) {
+      setError("Only image files are accepted.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError("File too large (max 10 MB).");
+      return;
+    }
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+    setError("");
+  }, []);
+
   const handlePhotoSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
-      if (!file) return;
-      if (!file.type.startsWith("image/")) {
-        setError("Only image files are accepted.");
-        return;
+      if (file) {
+        setShowCamera(false); // picked via the camera overlay's "Use Photo Library"
+        applyPhoto(file);
       }
-      if (file.size > 10 * 1024 * 1024) {
-        setError("File too large (max 10 MB).");
-        return;
-      }
-      setPhotoFile(file);
-      setPhotoPreview(URL.createObjectURL(file));
-      setError("");
     },
-    [],
+    [applyPhoto],
+  );
+
+  /** Camera shutter → same validate + preview path as the library input. */
+  const handleCameraCapture = useCallback(
+    (file: File) => {
+      setShowCamera(false);
+      applyPhoto(file);
+    },
+    [applyPhoto],
   );
 
   const clearPhoto = useCallback(() => {
@@ -726,14 +745,36 @@ export function ManualQuickForm({
         {/* Photo attachment (always visible, optional) */}
         <div className="flex items-center gap-3">
           {!photoFile ? (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-text-secondary transition-colors hover:text-text-primary"
-            >
-              <Paperclip className="h-3.5 w-3.5" />
-              Attach screenshot (optional)
-            </button>
+            <>
+              {/* Desktop — single library picker */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="hidden items-center gap-1.5 text-xs font-medium text-text-secondary transition-colors hover:text-text-primary md:inline-flex"
+              >
+                <Paperclip className="h-3.5 w-3.5" />
+                Attach screenshot (optional)
+              </button>
+              {/* Mobile — camera + library pair */}
+              <div className="flex gap-2 md:hidden">
+                <button
+                  type="button"
+                  onClick={() => setShowCamera(true)}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent-hover"
+                >
+                  <Camera className="h-3.5 w-3.5" />
+                  Take Photo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary"
+                >
+                  <Image className="h-3.5 w-3.5" />
+                  Choose from Library
+                </button>
+              </div>
+            </>
           ) : (
             <div className="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2">
               {photoPreview && (
@@ -850,6 +891,15 @@ export function ManualQuickForm({
       <p className="text-center text-xs text-text-muted">
         This entry will be reviewed by your department adviser before it is deducted from the budget.
       </p>
+
+      {/* Full-screen camera — portaled to document.body */}
+      {showCamera && (
+        <CameraViewfinder
+          onCapture={handleCameraCapture}
+          onClose={() => setShowCamera(false)}
+          onUseLibrary={() => fileInputRef.current?.click()}
+        />
+      )}
     </form>
   );
 }

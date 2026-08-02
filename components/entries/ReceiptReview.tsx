@@ -5,11 +5,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Check, X, FileText } from "lucide-react";
 import { formatPHP } from "@/lib/format";
 import { dialogOverlay, dialogContent, sheetSlideUp } from "@/lib/motion-variants";
-import type { MockParsedReceipt } from "@/components/entries/ReceiptUpload";
+import { CATEGORIES } from "@/components/entries/manual-categories";
+import type { ParsedReceipt } from "@/agent/types";
 
 type ReceiptReviewProps = {
   open: boolean;
-  data: MockParsedReceipt;
+  data: ParsedReceipt;
   onConfirm: () => void;
   onDiscard: () => void;
   onClose: () => void;
@@ -64,6 +65,10 @@ export function ReceiptReview({
       <div className="flex flex-col gap-4">
         {/* Two-column grid for basic fields */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <ReadOnlyField
+            label="Category"
+            value={CATEGORIES[data.category as keyof typeof CATEGORIES]?.label ?? data.category}
+          />
           <ReadOnlyField label="Document Type" value={data.documentTypeRaw} />
           <ReadOnlyField label="Document Number" value={data.documentNumber} />
           <ReadOnlyField label="Issue Date" value={data.issueDate} />

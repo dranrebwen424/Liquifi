@@ -4,11 +4,12 @@ import { useState, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Camera, Pencil, Check, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ReceiptUpload } from "@/components/entries/ReceiptUpload";
+import { ReceiptUpload, type ParsedUploadResult } from "@/components/entries/ReceiptUpload";
 import { ReceiptReview } from "@/components/entries/ReceiptReview";
 import { ManualCategoryPicker } from "@/components/entries/ManualCategoryPicker";
 import { ManualQuickForm, type ManualSubmitPayload } from "@/components/entries/ManualQuickForm";
-import type { MockParsedReceipt } from "@/components/entries/ReceiptUpload";
+import { discardReceiptEntry } from "@/actions/entries";
+import type { ParsedReceipt } from "@/agent/types";
 import type { ExpenseType } from "@/components/entries/manual-categories";
 
 type Method = "receipt" | "manual";
@@ -35,9 +36,11 @@ export default function NewEntryPage({ params }: Props) {
   const [method, setMethod] = useState<Method>("receipt");
 
   // Receipt flow
-  const [parsedData, setParsedData] = useState<MockParsedReceipt | null>(null);
+  const [parsedData, setParsedData] = useState<ParsedReceipt | null>(null);
+  const [entryId, setEntryId] = useState<string | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [discarding, setDiscarding] = useState(false);
 
   // Manual flow
   const [manualScreen, setManualScreen] = useState<ManualScreen>("picker");
@@ -45,15 +48,20 @@ export default function NewEntryPage({ params }: Props) {
 
   // ─── Receipt flow ──────────────────────────────────────────────
 
-  const handleParsed = useCallback((data: MockParsedReceipt) => {
-    setParsedData(data);
+  const handleParsed = useCallback(({ entryId: id, parsed }: ParsedUploadResult) => {
+    setEntryId(id);
+    setParsedData(parsed);
     setReviewOpen(true);
   }, []);
 
-  const handleDiscard = useCallback(() => {
+  const handleDiscard = useCallback(async () => {
+    if (!entryId) return;
+    setDiscarding(true);
+    await discardReceiptEntry(entryId, eventId);
+    setDiscarding(false);
     setReviewOpen(false);
     setTimeout(() => setParsedData(null), 150);
-  }, []);
+  }, [entryId, eventId]);
 
   const handleConfirm = useCallback(async () => {
     if (!parsedData) return;
@@ -148,7 +156,20 @@ export default function NewEntryPage({ params }: Props) {
       {/* Content area */}
       <div className="rounded-xl border border-border-strong bg-surface p-5 sm:p-6">
         {method === "receipt" ? (
-          <ReceiptUpload onParsed={handleParsed} />
+          <ReceiptUpload
+            eventId={eventId}
+            onParsed={handleParsed}
+            onExhausted={() => {
+              setMethod("manual");
+              setManualScreen("picker");
+              setSelectedCategory(null);
+            }}
+            onNoReceipt={() => {
+              setMethod("manual");
+              setManualScreen("picker");
+              setSelectedCategory(null);
+            }}
+          />
         ) : manualScreen === "picker" ? (
           <ManualCategoryPicker onSelect={handleCategorySelect} />
         ) : manualScreen === "form" && selectedCategory ? (
@@ -202,7 +223,7 @@ export default function NewEntryPage({ params }: Props) {
           onConfirm={handleConfirm}
           onDiscard={handleDiscard}
           onClose={handleDiscard}
-          confirming={confirming}
+          confirming={confirming || discarding}
         />
       )}
     </div>

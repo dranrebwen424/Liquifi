@@ -483,7 +483,7 @@ This project uses Tailwind v4. Tokens are defined with `@theme` in `globals.css`
 - Never define colors in `tailwind.config.ts` — use `@theme` in `globals.css`
 - Never add gradients to card backgrounds
 - Never use more than one font weight in a single UI element
-- Never show raw error messages to users — always show human-readable text (e.g. a failed OpenRouter parse never surfaces a stack trace, it surfaces "Couldn't read this receipt — try again or use manual entry")
+- Never show raw error messages to users — always show human-readable text (e.g. a failed AI parse never surfaces a stack trace, it surfaces "Couldn't read this receipt — try again or use manual entry")
 - Never stack more than 2 levels of border radius inside each other
 - Never use `position: fixed` for UI elements — use normal flow layout (this includes the batch-approval action bar — use sticky within the scroll container, not fixed to viewport)
 - Never hide a disabled/unavailable action without explaining why (locked event, archived event, wrong role) — always pair with a banner or tooltip

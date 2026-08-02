@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { FileText, Pencil, CircleMinus } from "lucide-react";
 import { formatPHP } from "@/lib/format";
 import { StatusBadge, entryStatusMap } from "@/components/ui/StatusBadge";
@@ -5,6 +8,7 @@ import { cn } from "@/lib/utils";
 import type { EntryType, EntryStatus } from "@/types";
 
 type EntryCardProps = {
+  id: string;
   type: EntryType;
   status: EntryStatus;
   amount: number;
@@ -61,6 +65,19 @@ function ReceiptPlaceholder() {
   );
 }
 
+/** Real receipt image — served through the session-authed proxy route. */
+function EntryImage({ id, onError }: { id: string; onError: () => void }) {
+  return (
+    <img
+      src={`/api/entries/${id}/image`}
+      alt="Receipt"
+      loading="lazy"
+      onError={onError}
+      className="h-full w-full object-cover"
+    />
+  );
+}
+
 /** Manual entry icon placeholder. */
 function ManualPlaceholder() {
   return (
@@ -71,11 +88,13 @@ function ManualPlaceholder() {
 }
 
 export function EntryCard({
+  id,
   type,
   status,
   amount,
   description,
   supplierName,
+  imageUrl,
   voidReason,
   voidedBy,
   onClick,
@@ -83,6 +102,8 @@ export function EntryCard({
   const isVoided = status === "voided";
   const displayName = supplierName || description || "Untitled entry";
   const category = supplierName ? description : null;
+  const [imgFailed, setImgFailed] = useState(false);
+  const showImage = type === "receipt" && Boolean(imageUrl) && !imgFailed;
 
   return (
     <div
@@ -94,7 +115,9 @@ export function EntryCard({
     >
       {/* Preview area — receipt image or manual icon */}
       <div className="relative h-32 w-full">
-        {type === "receipt" ? (
+        {showImage ? (
+          <EntryImage id={id} onError={() => setImgFailed(true)} />
+        ) : type === "receipt" ? (
           <ReceiptPlaceholder />
         ) : (
           <ManualPlaceholder />
