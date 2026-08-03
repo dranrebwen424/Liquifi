@@ -145,6 +145,8 @@ export default async function EventDashboardPage({ params }: Props) {
           issueTime: e.issue_time ?? null,
           imageUrl: e.image_url ?? null,
           itemBreakdown: e.item_breakdown ?? null,
+          formPayload: e.form_payload_json ?? null,
+          rejectionReason: e.rejection_reason,
           createdAt: e.created_at,
           voidReason: e.void_reason,
           voidedBy: e.voided_by,

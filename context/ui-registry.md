@@ -657,7 +657,7 @@ Last updated: 2026-08-02
 ### ReceiptReview
 
 File: components/entries/ReceiptReview.tsx
-Last updated: 2026-08-01
+Last updated: 2026-08-03
 
 | Property          | Class |
 | ----------------- | ----- |
@@ -667,10 +667,12 @@ Last updated: 2026-08-01
 | Read field        | `rounded-lg border border-border bg-surface-secondary px-3 py-2 text-sm text-text-primary` |
 | Highlighted field | `rounded-lg bg-info-lightest px-3 py-2 text-sm font-semibold text-info-foreground` (amount) |
 | Item table        | `rounded-lg border border-border` with thead `bg-surface-secondary`, tbody rows `border-b border-border last:border-0`, tfoot `border-t border-border-strong bg-surface-secondary font-medium` |
-| Confirm button    | `rounded-full bg-accent px-6 py-3 text-accent-foreground hover:bg-accent-hover` with `Check` icon |
+| Confirm button    | `rounded-full bg-accent px-6 py-3 text-accent-foreground hover:bg-accent-hover` with `Check` icon; label "Confirm Overspend" while `overspend` is set |
 | Discard button    | `rounded-full border border-error px-6 py-3 text-error hover:bg-error-lightest` with `X` icon |
+| Overspend callout | `rounded-xl border border-warning bg-warning-lightest p-4` + `AlertTriangle` icon (`text-warning-foreground`); explanation textarea `rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm` with `focus:border-accent` |
+| Inline error      | `text-xs font-medium text-error` with `role="alert"` |
 
-**Pattern notes:** AnimatePresence overlay + two render branches (`hidden sm:flex` modal / `sm:hidden` bottom sheet). Closes on Escape or overlay click (only when not confirming). Uses `dialogOverlay` / `dialogContent` from framer-motion variants. Exported `ReadOnlyField` atom for reuse. Props: `open`, `data: ParsedReceipt` (from `@/agent/types`), `onConfirm`, `onDiscard`, `onClose`, `confirming?`.
+**Pattern notes:** AnimatePresence overlay + two render branches (`hidden sm:flex` modal / `sm:hidden` bottom sheet). Closes on Escape or overlay click (only when not confirming). Uses `dialogOverlay` / `dialogContent` from framer-motion variants. Exported `ReadOnlyField` atom for reuse. Props: `open`, `data: ParsedReceipt` (from `@/agent/types`), `onConfirm`, `onDiscard`, `onClose`, `confirming?`, `overspend?` (`{ overshoot, explanation, error }` — parent owns state), `onOverspendChange?`, `confirmError?`. Standalone `/entries/new` page passes these; `LogEntryModal` keeps its own inline copy (see debt note).
 
 ### UsePeopleReuse
 
@@ -701,7 +703,7 @@ Last updated: 2026-07-29
 File: components/entries/manual-categories.ts
 Last updated: 2026-07-29
 
-**Pattern notes:** Shared `CATEGORIES` config map and `ExpenseType` type used by both `ManualCategoryPicker` and `ManualQuickForm`. Defines icon, label, hint, compute fields, and compute function for all 7 expense types. Supplies and Others have empty compute (handled inline in `ManualQuickForm` via dynamic item rows). Imported by both consumer components and `LogEntryModal`.
+**Pattern notes:** Shared `CATEGORIES` config map and `ExpenseType` type used by both `ManualCategoryPicker` and `ManualQuickForm`. Defines icon, label, hint, compute fields, and compute function for all 7 expense types. Supplies and Others have empty compute (handled inline in `ManualQuickForm` via dynamic item rows). Imported by both consumer components and `LogEntryModal`. **Step 16:** each `CategoryConfig` also carries `pctOfBudget` + `minCeiling` (see `context/progress-tracker.md` Step 16 for the full floor table) used by `manualGateThresholdCents(budgetTotal, config)` — the single source of truth for the explanation gate; imported by `actions/entries.ts` `submitManualEntry`.
 
 ### ManualCategoryPicker
 
@@ -724,7 +726,7 @@ Last updated: 2026-07-29
 ### ManualQuickForm
 
 File: components/entries/ManualQuickForm.tsx
-Last updated: 2026-07-29
+Last updated: 2026-08-03
 
 | Property             | Class |
 | -------------------- | ----- |
@@ -741,14 +743,15 @@ Last updated: 2026-07-29
 | Live total           | `rounded-lg border border-border-strong bg-surface-secondary px-4 py-3 flex justify-between` — total value: `text-lg font-semibold tabular-nums` |
 | Photo row         | Desktop: inline flex with `Paperclip` icon + thumbnail `h-10 w-10 rounded-md object-cover`. Mobile (`md:hidden`): "Take Photo" (accent pill, `Camera`) + "Choose from Library" (outline pill) pair; desktop shows single Paperclip attachment button |
 | Justification textarea | `rounded-lg border border-border-strong bg-surface px-4 py-3 text-sm` |
-| Submit button        | `rounded-full bg-accent px-6 py-3 text-accent-foreground disabled:opacity-50` |
+| Gate callout (Step 16) | `rounded-lg border border-warning bg-warning-lightest p-4` — `AlertTriangle` (`text-warning`), heading `text-sm font-semibold`, body `text-sm text-text-secondary`, required explanation textarea (maxLength 500, warning tokens), warning tokens `text-warning` |
+| Submit button        | `rounded-full bg-accent px-6 py-3 text-accent-foreground disabled:opacity-50` — gate branch relabels "Submit with Explanation" (with `AlertTriangle` icon) while `explanationRequired` is pending |
 
-**Pattern notes:** Second step of the no-receipt manual flow. Uses `FloatingInput` for all main fields (matching auth-style floating labels). Form restructured into 3 visual sections with headers: "Trip Details" (category-specific fields), "Extra Information" (witness + photo), "Additional Details" (justification). Section dividers use `border-t border-border`. Per-field error state via `submitted` flag — errors shown after first submit attempt. Item rows (supplies/other-itemized) remain compact inline inputs (no floating labels) since they're inside card-like containers. Live running total updated on every field change. Photo attachment is source-split by viewport: mobile shows "Take Photo" (opens `CameraViewfinder` → `applyPhoto`) + "Choose from Library" (hidden input, `image/*` + 10MB gate); desktop keeps a single `Paperclip` attachment button. Shared `applyPhoto(file)` validates and sets `photoFile`/`photoPreview`.
+**Pattern notes:** Second step of the no-receipt manual flow. Uses `FloatingInput` for all main fields (matching auth-style floating labels). Form restructured into 3 visual sections with headers: "Trip Details" (category-specific fields), "Extra Information" (witness + photo), "Additional Details" (justification). Section dividers use `border-t border-border`. Per-field error state via `submitted` flag — errors shown after first submit attempt. Item rows (supplies/other-itemized) remain compact inline inputs (no floating labels) since they're inside card-like containers. Live running total updated on every field change. Photo attachment is source-split by viewport: mobile shows "Take Photo" (opens `CameraViewfinder` → `applyPhoto`) + "Choose from Library" (hidden input, `image/*` + 10MB gate); desktop keeps a single `Paperclip` attachment button. Shared `applyPhoto(file)` validates and sets `photoFile`/`photoPreview`. **Step 16 wiring:** `onSubmit` returns `Promise<ManualSubmitResult>`; the server action decides — `{ explanationRequired, overAmount, threshold }` renders the gate callout (form + fields stay filled; caller re-submits with `aboveRangeExplanation`), confirmed success advances to the success screen, `{ success: false, error }` renders inline `text-error`. `submitLockRef` (sync) disables the button during flight, reset in `finally` so the explanation retry path can submit again.
 
 ### LogEntryModal
 
 File: components/entries/LogEntryModal.tsx
-Last updated: 2026-07-29
+Last updated: 2026-08-03
 
 | Property       | Class |
 | -------------- | ----- |
@@ -757,14 +760,14 @@ Last updated: 2026-07-29
 | Sheet (mobile) | `max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-border bg-surface p-6 pb-8 shadow-card` + `mx-auto mb-5 h-1 w-10 rounded-full bg-border-strong` drag handle |
 | Toggle         | `rounded-xl border border-border bg-surface p-1` — active: `bg-accent text-accent-foreground shadow-sm`; inactive: `text-text-secondary hover:text-text-primary` |
 
-**Pattern notes:** AnimatePresence modal/sheet shell. Method toggle stays `[Upload Receipt] [No Receipt]`. Receipt flow: ReceiptUpload (real parse → `onParsed({entryId, parsed})`) → inline review (read-only fields + itemized table, Confirm/Discard). Discard calls `discardReceiptEntry` server action (deletes the ai_parsed row + audit). Confirm closes + `router.refresh()` (budget deduction lands in Step 15). ReceiptUpload's `onExhausted` (3× parse_failed) and `onNoReceipt` (invalid/borderline verdict CTAs) both switch to the manual flow via the shared `switchToManual` handler. Manual flow: 3-screen state machine `picker` (ManualCategoryPicker) → `form` (ManualQuickForm) → `success`. State resets on open via `useEffect`. Mobile sheet cancel button only shows for receipt flow. Body scroll locked while open.
+**Pattern notes:** AnimatePresence modal/sheet shell. Method toggle stays `[Upload Receipt] [No Receipt]`. Receipt flow: ReceiptUpload (real parse → `onParsed({entryId, parsed})`) → inline review (read-only fields + itemized table, Confirm/Discard). Review fields: Category (first, label via local `CATEGORY_LABELS` map, fallback to raw value) + Document Type / Number / Issue Date / Issue Time / Supplier / Total Amount (highlighted) + Itemized Breakdown. Note: `reviewContent` is an **inline duplicate** of `ReceiptReview.tsx` (modal renders `reviewContent`, not the component) — keep the two field lists in sync; dedup by rendering `<ReceiptReview>` is planned cleanup. **Step 15 wiring:** Confirm calls `confirmReceiptEntry` server action (real deduction, `ai_parsed → deducted`); overspend branch renders inline warning callout (same classes as ReceiptReview: `border-warning bg-warning-lightest` + `AlertTriangle` + required explanation textarea) and relabels the button "Confirm Overspend"; server errors render inline `text-error`; mock confirm deleted. **Abandoned-review cleanup:** all close paths (X / overlay / Escape / mobile drag / Cancel) go through `closeModal` — if an unconfirmed `entryId` exists it fires `discardReceiptEntry` fire-and-forget (safe after confirm via `confirmed` flag, after discard via cleared `entryId`). Discard calls `discardReceiptEntry` server action (deletes the ai_parsed row + audit). ReceiptUpload's `onExhausted` (3× parse_failed) and `onNoReceipt` (invalid/borderline verdict CTAs) both switch to the manual flow via the shared `switchToManual` handler. Manual flow: 3-screen state machine `picker` (ManualCategoryPicker) → `form` (ManualQuickForm) → `success`. State resets on open via `useEffect`. Mobile sheet cancel button only shows for receipt flow. Body scroll locked while open.
 
 ### NewEntryPage (standalone fallback)
 
 File: app/treasurer/events/[eventId]/entries/new/page.tsx
-Last updated: 2026-08-01
+Last updated: 2026-08-03
 
-**Layout:** Centered `mx-auto max-w-2xl flex flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10`. Method toggle + content card. Manual flow uses same 3-screen state machine as the modal (picker → form → success). Receipt flow: ReceiptUpload real parse → ReceiptReview modal (Confirm = `router.push` back to event, Discard = `discardReceiptEntry` action). `onExhausted` switches to manual method.
+**Layout:** Centered `mx-auto max-w-2xl flex flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10`. Method toggle + content card. Manual flow uses same 3-screen state machine as the modal (picker → form → success). Receipt flow: ReceiptUpload real parse → ReceiptReview modal. **Step 15 wiring:** Confirm calls `confirmReceiptEntry` server action; overspend branch passes `overspend` state + `onOverspendChange` + `confirmError` into `ReceiptReview` (parent owns state); success = `router.push` back to event. Discard = `discardReceiptEntry` action. `onExhausted` switches to manual method.
 
 | Property        | Class |
 | --------------- | ----- |

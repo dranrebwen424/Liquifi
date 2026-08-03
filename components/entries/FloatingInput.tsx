@@ -76,7 +76,8 @@ export function FloatingInput({
           value={value}
           onChange={(e) => {
             if (type === "number") {
-              onChange(Math.max(0, Number(e.target.value) || 0));
+              // Empty → pass "" through so the field can be cleared (0 snaps back otherwise)
+              onChange(e.target.value === "" ? "" : Math.max(0, Number(e.target.value) || 0));
             } else {
               onChange(e.target.value);
             }

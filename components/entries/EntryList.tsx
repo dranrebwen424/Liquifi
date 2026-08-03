@@ -24,6 +24,8 @@ export type EntryListItem = {
   issueTime?: string | null;
   imageUrl?: string | null;
   itemBreakdown?: unknown;
+  formPayload?: unknown;
+  rejectionReason?: string | null;
   createdAt?: string;
   voidReason?: string | null;
   voidedBy?: string | null;

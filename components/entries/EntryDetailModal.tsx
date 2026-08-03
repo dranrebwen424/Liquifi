@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, FileText, Pencil, ZoomIn, CircleMinus } from "lucide-react";
 import { formatPHP } from "@/lib/format";
 import { StatusBadge, entryStatusMap } from "@/components/ui/StatusBadge";
+import { entryTitle } from "@/components/entries/entry-title";
 import { cn } from "@/lib/utils";
 import { dialogOverlay, dialogContent, sheetSlideUp } from "@/lib/motion-variants";
 import type { EntryType, EntryStatus } from "@/types";
@@ -23,6 +24,8 @@ type EntryDetail = {
   issueTime?: string | null;
   imageUrl?: string | null;
   itemBreakdown?: unknown;
+  formPayload?: unknown;
+  rejectionReason?: string | null;
   createdAt?: string;
   voidReason?: string | null;
   voidedBy?: string | null;
@@ -113,7 +116,7 @@ function EntryDetailContent({
   onViewImage?: () => void;
 }) {
   const isVoided = entry.status === "voided";
-  const displayName = entry.supplierName || entry.description || "Untitled entry";
+  const displayName = entryTitle(entry);
   const title = entry.supplierName ? entry.description : null;
   const itemBreakdown = isItemBreakdown(entry.itemBreakdown) ? entry.itemBreakdown : null;
   const [imgFailed, setImgFailed] = useState(false);
@@ -235,6 +238,14 @@ function EntryDetailContent({
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* Rejection info */}
+      {entry.status === "rejected" && entry.rejectionReason && (
+        <div className="rounded-lg border border-error/30 bg-error-lightest p-3">
+          <p className="text-xs font-medium text-error-foreground">Rejected</p>
+          <p className="mt-1 text-sm text-text-primary">{entry.rejectionReason}</p>
         </div>
       )}
 

@@ -41,6 +41,8 @@ export type EntryForDashboard = {
   category?: string | null;
   image_url?: string | null;
   item_breakdown?: unknown;
+  form_payload_json?: unknown;
+  rejection_reason?: string | null;
   created_at?: string;
   void_reason?: string | null;
   voided_by?: string | null;
@@ -151,7 +153,7 @@ export async function getEventDashboard(eventId: string) {
   const { data: entries } = await insforge.database
     .from("entries")
     .select(
-      "id, type, status, amount, supplier_name, document_type_raw, document_number, issue_date, issue_time, category, image_url, item_breakdown, created_at, void_reason, voided_by, voided_at",
+      "id, type, status, amount, supplier_name, document_type_raw, document_number, issue_date, issue_time, category, image_url, item_breakdown, form_payload_json, rejection_reason, created_at, void_reason, voided_by, voided_at",
     )
     .eq("event_id", eventId)
     .order("created_at", { ascending: false });
