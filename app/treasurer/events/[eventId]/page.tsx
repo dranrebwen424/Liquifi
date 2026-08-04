@@ -147,13 +147,16 @@ export default async function EventDashboardPage({ params }: Props) {
           itemBreakdown: e.item_breakdown ?? null,
           formPayload: e.form_payload_json ?? null,
           rejectionReason: e.rejection_reason,
+          resubmissionExplanation: e.resubmission_explanation,
           createdAt: e.created_at,
           voidReason: e.void_reason,
           voidedBy: e.voided_by,
           voidedAt: e.voided_at ?? null,
+          voidedByName: e.voidedByName ?? null,
         }))}
         categories={categories}
         isArchived={isArchived}
+        canMutate={canMutate}
       />
     </div>
   );

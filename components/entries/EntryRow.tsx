@@ -15,6 +15,8 @@ type EntryRowProps = {
   formPayload?: unknown;
   itemBreakdown?: unknown;
   createdAt?: string;
+  voidedAt?: string | null;
+  voidedByName?: string | null;
   onClick?: () => void;
 };
 
@@ -41,6 +43,8 @@ export function EntryRow({
   formPayload,
   itemBreakdown,
   createdAt,
+  voidedAt,
+  voidedByName,
   onClick,
 }: EntryRowProps) {
   const isVoided = status === "voided";
@@ -74,10 +78,18 @@ export function EntryRow({
           >
             {displayName}
           </p>
-          {/* Mobile: category + date on one muted line */}
-          <p className="truncate text-xs text-text-muted md:hidden">
-            {[category, dateStr].filter(Boolean).join(" \u00B7 ") || "\u00A0"}
-          </p>
+          {/* Voided: who/when; otherwise mobile category + date */}
+          {isVoided ? (
+            <p className="truncate text-xs text-text-muted">
+              {[voidedByName ? `Voided by ${voidedByName}` : "Voided", formatDate(voidedAt)]
+                .filter(Boolean)
+                .join(" \u00B7 ")}
+            </p>
+          ) : (
+            <p className="truncate text-xs text-text-muted md:hidden">
+              {[category, dateStr].filter(Boolean).join(" \u00B7 ") || "\u00A0"}
+            </p>
+          )}
         </div>
       </div>
 

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createInsforgeServer } from "@/lib/insforge-server";
 import { requireRole } from "@/lib/auth-guard";
 import { uploadReceipt } from "@/lib/storage";
+import { VOID_REASON_MAX } from "@/lib/limits";
 import { CATEGORIES, manualGateThresholdCents } from "@/components/entries/manual-categories";
 import type { ManualSubmitPayload } from "@/components/entries/ManualQuickForm";
 
@@ -487,5 +488,260 @@ export async function submitManualEntry(
     }
     console.error("[actions/entries] submitManualEntry:", error);
     return { success: false, error: "Something went wrong." };
+  }
+}
+
+// ─── Rejected-entry resubmit / discard (treasurer) ─────────────────────
+
+/** Shared guard: treasurer, own dept, event open, not report-locked. Resolves to the user. */
+async function assertTreasurerCanMutateEvent(eventId: string) {
+  return requireRole("treasurer", undefined, async ({ user: guardUser }) => {
+    const insforge = await createInsforgeServer();
+    const { data: event, error } = await insforge.database
+      .from("events")
+      .select("id, department_id, status")
+      .eq("id", eventId)
+      .single();
+    if (error || !event) throw new Error("Event not found.");
+    if (event.department_id !== guardUser?.departmentId) throw new Error("Event not found.");
+    if (event.status !== "open") throw new Error("Event is archived.");
+    // All entry actions are blocked while a report is pending/approved (derived is_locked)
+    const { data: activeReport, error: reportErr } = await insforge.database
+      .from("reports")
+      .select("id")
+      .eq("event_id", eventId)
+      .in("status", ["pending_adviser_approval", "approved"])
+      .maybeSingle();
+    if (reportErr || activeReport) throw new Error("Event is locked by an active report.");
+  });
+}
+
+/**
+ * Resubmit a rejected entry for adviser review with a required explanation.
+ * `rejected → resubmitted` — resubmitted entries appear in the adviser's
+ * approvals list; approving moves them to deducted, rejecting starts the loop again.
+ */
+export async function resubmitEntry(entryId: string, explanation: string) {
+  try {
+    if (!entryId.trim()) {
+      return { success: false as const, error: "Entry is required." };
+    }
+    const note = (explanation ?? "").trim();
+    if (!note) {
+      return { success: false as const, error: "An explanation is required to resubmit." };
+    }
+    if (note.length > MANUAL_EXPLANATION_MAX) {
+      return { success: false as const, error: "Explanation is too long." };
+    }
+
+    const insforge = await createInsforgeServer();
+    const { data: entry, error: fetchErr } = await insforge.database
+      .from("entries")
+      .select("id, event_id, status, resubmission_explanation")
+      .eq("id", entryId)
+      .maybeSingle();
+    if (fetchErr) throw new Error("Failed to load the entry.");
+    if (!entry) return { success: false as const, error: "Entry not found." };
+
+    const user = await assertTreasurerCanMutateEvent(entry.event_id);
+
+    if (entry.status !== "rejected") {
+      return { success: false as const, error: "Only rejected entries can be resubmitted." };
+    }
+    // Invariant: resubmission_explanation is only written by resubmitEntry and
+    // never cleared — a rejected entry that has one was already resubmitted once,
+    // so this is the second rejection: terminal, no further resubmissions.
+    if (entry.resubmission_explanation) {
+      return {
+        success: false as const,
+        error: "This entry was rejected after resubmission and can no longer be resubmitted.",
+      };
+    }
+
+    const { error: updateErr } = await insforge.database
+      .from("entries")
+      .update({ status: "resubmitted", resubmission_explanation: note })
+      .eq("id", entryId)
+      .eq("status", "rejected");
+    if (updateErr) {
+      console.error("[actions/entries] resubmit failed:", updateErr);
+      return { success: false as const, error: "Failed to resubmit the entry." };
+    }
+
+    await insforge.database.from("audit_logs").insert([{
+      actor_id: user.id,
+      department_id: user.departmentId,
+      action: "entry.resubmitted",
+      target_type: "entry",
+      target_id: entryId,
+      metadata_json: { event_id: entry.event_id, explanation: note },
+    }]);
+
+    revalidatePath("/treasurer/home");
+    revalidatePath(`/treasurer/events/${entry.event_id}`);
+    revalidatePath("/adviser/approvals");
+    return { success: true as const };
+  } catch (error) {
+    if (error instanceof Error && "code" in error) {
+      return { success: false as const, error: error.message };
+    }
+    console.error("[actions/entries] resubmitEntry:", error);
+    return { success: false as const, error: "Something went wrong." };
+  }
+}
+
+/**
+ * Permanently discard a rejected entry (`discarded`, terminal — the row is kept for audit).
+ */
+export async function discardRejectedEntry(entryId: string) {
+  try {
+    if (!entryId.trim()) {
+      return { success: false as const, error: "Entry is required." };
+    }
+
+    const insforge = await createInsforgeServer();
+    const { data: entry, error: fetchErr } = await insforge.database
+      .from("entries")
+      .select("id, event_id, status")
+      .eq("id", entryId)
+      .maybeSingle();
+    if (fetchErr) throw new Error("Failed to load the entry.");
+    if (!entry) return { success: false as const, error: "Entry not found." };
+
+    const user = await assertTreasurerCanMutateEvent(entry.event_id);
+
+    if (entry.status !== "rejected") {
+      return { success: false as const, error: "Only rejected entries can be discarded." };
+    }
+
+    const { error: updateErr } = await insforge.database
+      .from("entries")
+      .update({ status: "discarded" })
+      .eq("id", entryId)
+      .eq("status", "rejected");
+    if (updateErr) {
+      console.error("[actions/entries] discard rejected failed:", updateErr);
+      return { success: false as const, error: "Failed to discard the entry." };
+    }
+
+    await insforge.database.from("audit_logs").insert([{
+      actor_id: user.id,
+      department_id: user.departmentId,
+      action: "entry.discarded",
+      target_type: "entry",
+      target_id: entryId,
+      metadata_json: { event_id: entry.event_id },
+    }]);
+
+    revalidatePath("/treasurer/home");
+    revalidatePath(`/treasurer/events/${entry.event_id}`);
+    revalidatePath("/adviser/approvals");
+    return { success: true as const };
+  } catch (error) {
+    if (error instanceof Error && "code" in error) {
+      return { success: false as const, error: error.message };
+    }
+    console.error("[actions/entries] discardRejectedEntry:", error);
+    return { success: false as const, error: "Something went wrong." };
+  }
+}
+
+// ─── Void entry (treasurer) ─────────────────────────────────────────
+
+/**
+ * Void a deducted entry — the expense is removed from spend totals while the
+ * row stays visible for audit (`voided` is terminal; nothing can revive it).
+ *
+ * Void authority belongs to the CURRENT ACTIVE treasurer of the department,
+ * verified fresh at void time — never assumed from `created_by`.
+ * Voiding never unlocks `budget_locked` (that flag means "ever deducted").
+ */
+export async function voidEntry(entryId: string, reason: string) {
+  try {
+    if (!entryId.trim()) {
+      return { success: false as const, error: "Entry is required." };
+    }
+    const note = (reason ?? "").trim();
+    if (!note) {
+      return { success: false as const, error: "A reason is required to void an entry." };
+    }
+    if (note.length > VOID_REASON_MAX) {
+      return { success: false as const, error: "Reason is too long." };
+    }
+
+    const insforge = await createInsforgeServer();
+    const { data: entry, error: fetchErr } = await insforge.database
+      .from("entries")
+      .select("id, event_id, status")
+      .eq("id", entryId)
+      .maybeSingle();
+    if (fetchErr) throw new Error("Failed to load the entry.");
+    if (!entry) return { success: false as const, error: "Entry not found." };
+
+    const user = await assertTreasurerCanMutateEvent(entry.event_id);
+
+    // Void authority is re-verified fresh against the users table (AGENTS.md:
+    // current ACTIVE treasurer — never assumed from entry.created_by)
+    const { data: actor, error: actorErr } = await insforge.database
+      .from("users")
+      .select("id, role, department_id, account_status")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (actorErr || !actor || actor.role !== "treasurer" || actor.account_status !== "active") {
+      throw new Error("Only the department's active treasurer can void entries.");
+    }
+    if (user.departmentId && actor.department_id !== user.departmentId) {
+      throw new Error("Only the department's active treasurer can void entries.");
+    }
+
+    if (entry.status !== "deducted") {
+      return {
+        success: false as const,
+        error: "Only deducted entries can be voided.",
+      };
+    }
+
+    // Conditional update — a concurrent confirm/re-void can't double-apply
+    const { data: updated, error: updateErr } = await insforge.database
+      .from("entries")
+      .update({
+        status: "voided",
+        voided_by: user.id,
+        voided_at: new Date().toISOString(),
+        void_reason: note,
+      })
+      .eq("id", entryId)
+      .eq("status", "deducted")
+      .select("id, event_id")
+      .maybeSingle();
+    if (updateErr) {
+      console.error("[actions/entries] void failed:", updateErr);
+      return { success: false as const, error: "Failed to void the entry." };
+    }
+    if (!updated) {
+      return {
+        success: false as const,
+        error: "This entry was already changed — refresh and try again.",
+      };
+    }
+
+    await insforge.database.from("audit_logs").insert([{
+      actor_id: user.id,
+      department_id: user.departmentId,
+      action: "entry.voided",
+      target_type: "entry",
+      target_id: entryId,
+      metadata_json: { event_id: entry.event_id, reason: note },
+    }]);
+
+    revalidatePath("/treasurer/home");
+    revalidatePath(`/treasurer/events/${entry.event_id}`);
+    return { success: true as const };
+  } catch (error) {
+    if (error instanceof Error && "code" in error) {
+      return { success: false as const, error: error.message };
+    }
+    console.error("[actions/entries] voidEntry:", error);
+    return { success: false as const, error: "Something went wrong." };
   }
 }

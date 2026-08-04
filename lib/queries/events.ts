@@ -1,4 +1,5 @@
 import { createInsforgeServer } from "@/lib/insforge-server";
+import { deriveBudgetLocked } from "@/lib/budget-lock";
 import type { EventStatus } from "@/types";
 
 // ─── Computed event type (what the UI needs) ─────────────────────────
@@ -43,10 +44,12 @@ export type EntryForDashboard = {
   item_breakdown?: unknown;
   form_payload_json?: unknown;
   rejection_reason?: string | null;
+  resubmission_explanation?: string | null;
   created_at?: string;
   void_reason?: string | null;
   voided_by?: string | null;
   voided_at?: string | null;
+  voidedByName?: string | null;
 };
 
 /** Fetch all events for a department with computed `total_spent` and `is_locked`. */
@@ -76,11 +79,15 @@ export async function getDepartmentEvents(
 
   const spentMap: Record<string, number> = {};
   const entryCountMap: Record<string, number> = {};
+  const everDeductedIds = new Set<string>();
   if (entryRows) {
     for (const row of entryRows) {
       entryCountMap[row.event_id] = (entryCountMap[row.event_id] ?? 0) + 1;
       if (row.status === "deducted") {
         spentMap[row.event_id] = (spentMap[row.event_id] ?? 0) + Number(row.amount);
+      }
+      if (deriveBudgetLocked([row.status])) {
+        everDeductedIds.add(row.event_id);
       }
     }
   }
@@ -100,8 +107,8 @@ export async function getDepartmentEvents(
     }
   }
 
-  // Check which events have at least one deducted entry (budget_locked)
-  const budgetLockedIds = new Set(Object.keys(spentMap));
+  // Check which events have at least one ever-deducted entry (budget_locked)
+  const budgetLockedIds = everDeductedIds;
 
   // Batch-fetch creator names
   const creatorIds = [...new Set(events.map((e: { created_by: string }) => e.created_by).filter(Boolean))];
@@ -153,7 +160,7 @@ export async function getEventDashboard(eventId: string) {
   const { data: entries } = await insforge.database
     .from("entries")
     .select(
-      "id, type, status, amount, supplier_name, document_type_raw, document_number, issue_date, issue_time, category, image_url, item_breakdown, form_payload_json, rejection_reason, created_at, void_reason, voided_by, voided_at",
+      "id, type, status, amount, supplier_name, document_type_raw, document_number, issue_date, issue_time, category, image_url, item_breakdown, form_payload_json, rejection_reason, resubmission_explanation, created_at, void_reason, voided_by, voided_at",
     )
     .eq("event_id", eventId)
     .order("created_at", { ascending: false });
@@ -162,6 +169,23 @@ export async function getEventDashboard(eventId: string) {
   const totalSpent = (entries ?? [])
     .filter((r: { status: string }) => r.status === "deducted")
     .reduce((acc: number, r: { amount: number }) => acc + Number(r.amount), 0);
+
+  // Resolve voided_by names in one batch (entries may reference multiple users)
+  const voidedByIds = [
+    ...new Set((entries ?? []).map((r: { voided_by?: string | null }) => r.voided_by).filter(Boolean)),
+  ];
+  const voidedNameMap: Record<string, string> = {};
+  if (voidedByIds.length > 0) {
+    const { data: voiders } = await insforge.database
+      .from("users")
+      .select("id, first_name, last_name")
+      .in("id", voidedByIds);
+    if (voiders) {
+      for (const v of voiders) {
+        voidedNameMap[v.id] = [v.first_name, v.last_name].filter(Boolean).join(" ") || "Unknown";
+      }
+    }
+  }
 
   // Check if locked by a report
   const { data: report } = await insforge.database
@@ -172,7 +196,7 @@ export async function getEventDashboard(eventId: string) {
     .maybeSingle();
 
   const isLocked = !!report;
-  const budgetLocked = totalSpent > 0;
+  const budgetLocked = deriveBudgetLocked((entries ?? []).map((r: { status: string }) => r.status));
 
   // Fetch creator name
   let createdByName = "Unknown";
@@ -198,6 +222,9 @@ export async function getEventDashboard(eventId: string) {
     budget_locked: budgetLocked,
     created_at: event.created_at,
     created_by_name: createdByName,
-    entries: (entries ?? []) as EntryForDashboard[],
+    entries: (entries ?? []).map((e) => ({
+      ...e,
+      voidedByName: e.voided_by ? (voidedNameMap[e.voided_by] ?? null) : null,
+    })) as EntryForDashboard[],
   };
 }

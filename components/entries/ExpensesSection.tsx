@@ -23,12 +23,14 @@ type Entry = {
   voidReason?: string | null;
   voidedBy?: string | null;
   voidedAt?: string | null;
+  voidedByName?: string | null;
 };
 
 type Props = {
   entries: Entry[];
   categories: { name: string }[];
   isArchived: boolean;
+  canMutate: boolean;
 };
 
 const DEFAULT_FILTERS: ExpenseFiltersState = {
@@ -38,7 +40,7 @@ const DEFAULT_FILTERS: ExpenseFiltersState = {
   category: "all",
 };
 
-export function ExpensesSection({ entries, categories, isArchived }: Props) {
+export function ExpensesSection({ entries, categories, isArchived, canMutate }: Props) {
   const [filters, setFilters] = useState<ExpenseFiltersState>(DEFAULT_FILTERS);
 
   const filtered = useMemo(() => {
@@ -91,6 +93,7 @@ export function ExpensesSection({ entries, categories, isArchived }: Props) {
     <EntryList
       entries={filtered as EntryListItem[]}
       isArchived={isArchived}
+      canMutate={canMutate}
       filters={{
         state: filters,
         onChange: setFilters,

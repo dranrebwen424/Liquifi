@@ -413,8 +413,12 @@ export async function batchApproveEntries(entryIds: string[]) {
 
     // Validate every entry
     for (const entry of entries) {
-      const eventsArr = entry.events as Array<{ department_id: string; status: string }> | null;
-      const ev = eventsArr?.[0];
+      // To-one embed may come back as object or array depending on PostgREST version
+      const eventsRow = entry.events as
+        | { department_id: string; status: string }
+        | Array<{ department_id: string; status: string }>
+        | null;
+      const ev = Array.isArray(eventsRow) ? eventsRow[0] : eventsRow;
       if (!ev) {
         return { success: false as const, error: `Entry ${entry.id} has no event.` };
       }
@@ -424,8 +428,8 @@ export async function batchApproveEntries(entryIds: string[]) {
       if (ev.status === "archived") {
         return { success: false as const, error: "Cannot approve entries for an archived event." };
       }
-      if (entry.status !== "pending_approval") {
-        return { success: false as const, error: `Entry ${entry.id} is not pending approval.` };
+      if (entry.status !== "pending_approval" && entry.status !== "resubmitted") {
+        return { success: false as const, error: `Entry ${entry.id} is not awaiting approval.` };
       }
       if (entry.type !== "manual") {
         return { success: false as const, error: "Only manual entries can be approved from this page." };
@@ -505,8 +509,12 @@ export async function rejectEntry(entryId: string, rejectionReason: string) {
       return { success: false as const, error: "Entry not found." };
     }
 
-    const eventsArr = entry.events as Array<{ department_id: string; status: string }> | null;
-    const ev = eventsArr?.[0];
+    // To-one embed may come back as object or array depending on PostgREST version
+    const eventsRow = entry.events as
+      | { department_id: string; status: string }
+      | Array<{ department_id: string; status: string }>
+      | null;
+    const ev = Array.isArray(eventsRow) ? eventsRow[0] : eventsRow;
     if (!ev) {
       return { success: false as const, error: "Entry has no event." };
     }
@@ -516,8 +524,8 @@ export async function rejectEntry(entryId: string, rejectionReason: string) {
     if (ev.status === "archived") {
       return { success: false as const, error: "Cannot reject entries for an archived event." };
     }
-    if (entry.status !== "pending_approval") {
-      return { success: false as const, error: "Entry is not pending approval." };
+    if (entry.status !== "pending_approval" && entry.status !== "resubmitted") {
+      return { success: false as const, error: "Entry is not awaiting approval." };
     }
     if (entry.type !== "manual") {
       return { success: false as const, error: "Only manual entries can be rejected from this page." };

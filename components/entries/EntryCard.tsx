@@ -27,6 +27,7 @@ type EntryCardProps = {
   voidReason?: string | null;
   voidedBy?: string | null;
   voidedAt?: string | null;
+  voidedByName?: string | null;
   onClick?: () => void;
 };
 
@@ -102,6 +103,8 @@ export function EntryCard({
   imageUrl,
   voidReason,
   voidedBy,
+  voidedAt,
+  voidedByName,
   onClick,
 }: EntryCardProps) {
   const isVoided = status === "voided";
@@ -110,6 +113,9 @@ export function EntryCard({
   const subtitle = supplierName ? description : (category ?? null);
   const [imgFailed, setImgFailed] = useState(false);
   const showImage = type === "receipt" && Boolean(imageUrl) && !imgFailed;
+  const voidDate = voidedAt
+    ? new Date(voidedAt).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })
+    : null;
 
   return (
     <div
@@ -154,7 +160,11 @@ export function EntryCard({
 
           {/* Category — always takes space for consistent height */}
           <p className="text-xs text-text-muted line-clamp-1">
-            {subtitle ?? "\u00A0"}
+            {isVoided
+              ? [voidedByName ? `Voided by ${voidedByName}` : "Voided", voidDate]
+                  .filter(Boolean)
+                  .join(" \u00B7 ")
+              : (subtitle ?? "\u00A0")}
           </p>
         </div>
 

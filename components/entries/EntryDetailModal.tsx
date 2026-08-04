@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, FileText, Pencil, ZoomIn, CircleMinus } from "lucide-react";
+import { X, FileText, Pencil, ZoomIn, CircleMinus, CircleX } from "lucide-react";
 import { formatPHP } from "@/lib/format";
 import { StatusBadge, entryStatusMap } from "@/components/ui/StatusBadge";
 import { entryTitle } from "@/components/entries/entry-title";
+import { Button } from "@/components/ui/button";
+import { resubmitEntry, discardRejectedEntry } from "@/actions/entries";
 import { cn } from "@/lib/utils";
 import { dialogOverlay, dialogContent, sheetSlideUp } from "@/lib/motion-variants";
 import type { EntryType, EntryStatus } from "@/types";
@@ -26,16 +29,22 @@ type EntryDetail = {
   itemBreakdown?: unknown;
   formPayload?: unknown;
   rejectionReason?: string | null;
+  resubmissionExplanation?: string | null;
   createdAt?: string;
   voidReason?: string | null;
   voidedBy?: string | null;
   voidedAt?: string | null;
+  voidedByName?: string | null;
 };
 
 type EntryDetailModalProps = {
   open: boolean;
   onClose: () => void;
   entry: EntryDetail;
+  /** Treasurer with mutate rights on this event — enables the void action. */
+  canMutate?: boolean;
+  /** Opens the void confirmation modal for this entry. */
+  onVoid?: () => void;
 };
 
 function formatDate(dateStr: string | null | undefined): string {
@@ -107,12 +116,148 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
   );
 }
 
+/** Resubmit / discard actions for a rejected entry (treasurer). */
+function RejectedEntryActions({ entryId, terminal }: { entryId: string; terminal: boolean }) {
+  const router = useRouter();
+  const [mode, setMode] = useState<"idle" | "resubmit" | "discard">("idle");
+  const [explanation, setExplanation] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState<string | null>(null);
+
+  const run = async (
+    action: () => Promise<{ success: boolean; error?: string }>,
+    successMessage: string,
+  ) => {
+    setBusy(true);
+    setError(null);
+    const result = await action();
+    setBusy(false);
+    if (!result.success) {
+      setError(result.error ?? "Something went wrong.");
+      return;
+    }
+    setDone(successMessage);
+  };
+
+  const doResubmit = () =>
+    run(() => resubmitEntry(entryId, explanation.trim()), "Entry resubmitted — sent back to your adviser for review.");
+
+  const doDiscard = () =>
+    run(() => discardRejectedEntry(entryId), "Entry discarded.");
+
+  if (done) {
+    return (
+      <div className="mt-3 rounded-lg border border-border bg-surface-secondary p-3">
+        <p className="text-sm font-medium text-text-primary">{done}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 space-y-3">
+      {error && <p className="text-xs font-medium text-destructive">{error}</p>}
+
+      {mode === "idle" && terminal && (
+        <div className="space-y-3">
+          <div className="rounded-lg border border-error/30 bg-error-lightest p-3">
+            <p className="text-xs font-medium text-error-foreground">Rejected permanently</p>
+            <p className="mt-1 text-sm text-text-primary">
+              This entry was rejected after resubmission and can no longer be submitted.
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-destructive/30 text-destructive hover:bg-destructive/10"
+            onClick={() => setMode("discard")}
+            disabled={busy}
+          >
+            Discard
+          </Button>
+        </div>
+      )}
+
+      {mode === "idle" && !terminal && (
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" onClick={() => setMode("resubmit")} disabled={busy}>
+            Resubmit with explanation
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-destructive/30 text-destructive hover:bg-destructive/10"
+            onClick={() => setMode("discard")}
+            disabled={busy}
+          >
+            Discard
+          </Button>
+        </div>
+      )}
+
+      {mode === "resubmit" && (
+        <div className="space-y-2 rounded-lg border border-border bg-surface-secondary p-3">
+          <label htmlFor="resubmit-explanation" className="text-xs font-medium text-text-primary">
+            Explain why this entry should be reconsidered
+          </label>
+          <textarea
+            id="resubmit-explanation"
+            value={explanation}
+            onChange={(e) => setExplanation(e.target.value)}
+            rows={3}
+            maxLength={500}
+            placeholder="Address the adviser's reason for rejection…"
+            className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary outline-none focus:border-primary"
+          />
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              onClick={doResubmit}
+              disabled={busy || explanation.trim().length === 0}
+            >
+              {busy ? "Submitting…" : "Submit resubmission"}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setMode("idle")} disabled={busy}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {mode === "discard" && (
+        <div className="space-y-2 rounded-lg border border-error/30 bg-error-lightest p-3">
+          <p className="text-sm text-text-primary">
+            Discard this entry permanently? This cannot be undone.
+          </p>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={doDiscard}
+              disabled={busy}
+            >
+              {busy ? "Discarding…" : "Yes, discard"}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setMode("idle")} disabled={busy}>
+              Keep entry
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Full detail content — shared between modal and sheet. */
 function EntryDetailContent({
   entry,
+  canMutate,
+  onVoid,
   onViewImage,
 }: {
   entry: EntryDetail;
+  canMutate?: boolean;
+  onVoid?: () => void;
   onViewImage?: () => void;
 }) {
   const isVoided = entry.status === "voided";
@@ -249,15 +394,43 @@ function EntryDetailContent({
         </div>
       )}
 
+      {/* Resubmission note */}
+      {entry.status === "resubmitted" && entry.resubmissionExplanation && (
+        <div className="rounded-lg border border-border bg-surface-secondary p-3">
+          <p className="text-xs font-medium text-text-muted">Resubmission note</p>
+          <p className="mt-1 text-sm text-text-primary">{entry.resubmissionExplanation}</p>
+        </div>
+      )}
+
+      {/* Resubmit / discard actions — rejected entries only */}
+      {entry.status === "rejected" && (
+        <RejectedEntryActions
+          entryId={entry.id}
+          terminal={Boolean(entry.resubmissionExplanation)}
+        />
+      )}
+
       {/* Void info */}
       {isVoided && entry.voidReason && (
         <div className="rounded-lg border border-error/30 bg-error-lightest p-3">
           <p className="text-xs font-medium text-error-foreground">
-            Voided{entry.voidedBy ? ` by ${entry.voidedBy}` : ""}
+            Voided{entry.voidedByName ? ` by ${entry.voidedByName}` : ""}
             {entry.voidedAt ? ` on ${formatDate(entry.voidedAt)}` : ""}
           </p>
           <p className="mt-1 text-sm text-text-primary">{entry.voidReason}</p>
         </div>
+      )}
+
+      {/* Void action — deducted entries only, treasurer only */}
+      {canMutate && !isVoided && entry.status === "deducted" && (
+        <Button
+          variant="destructive"
+          className="w-full rounded-full"
+          onClick={onVoid}
+        >
+          <CircleX className="h-4 w-4" />
+          Void entry
+        </Button>
       )}
     </div>
   );
@@ -326,7 +499,7 @@ function ImageViewer({
   );
 }
 
-export function EntryDetailModal({ open, onClose, entry }: EntryDetailModalProps) {
+export function EntryDetailModal({ open, onClose, entry, canMutate, onVoid }: EntryDetailModalProps) {
   const [imageOpen, setImageOpen] = useState(false);
 
   // Lock body scroll when open
@@ -383,6 +556,8 @@ export function EntryDetailModal({ open, onClose, entry }: EntryDetailModalProps
                 <div className="max-h-[85vh] scrollbar-hide overflow-y-auto rounded-xl p-6 pt-12">
                   <EntryDetailContent
                     entry={entry}
+                    canMutate={canMutate}
+                    onVoid={onVoid}
                     onViewImage={() => setImageOpen(true)}
                   />
                 </div>
@@ -403,6 +578,8 @@ export function EntryDetailModal({ open, onClose, entry }: EntryDetailModalProps
               <div className="p-6 pb-8 pt-0">
                 <EntryDetailContent
                   entry={entry}
+                  canMutate={canMutate}
+                  onVoid={onVoid}
                   onViewImage={() => setImageOpen(true)}
                 />
               </div>
