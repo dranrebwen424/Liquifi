@@ -115,8 +115,9 @@ export default function NewEntryPage({ params }: Props) {
   const handleFormSubmit = useCallback(
     async (data: ManualSubmitPayload) => {
       const result = await submitManualEntry(eventId, data);
-      // explanationRequired is handled inside ManualQuickForm (zero-write gate)
-      if (result.success && !("explanationRequired" in result)) {
+      // Both gates (explanationRequired, overspendRequired) are handled inside
+      // ManualQuickForm — a success is only real when neither is present.
+      if (result.success && !("explanationRequired" in result) && !("overspendRequired" in result)) {
         setManualScreen("success");
       }
       return result;

@@ -8,7 +8,7 @@ import { formatPHP } from "@/lib/format";
 import { StatusBadge, entryStatusMap } from "@/components/ui/StatusBadge";
 import { entryTitle } from "@/components/entries/entry-title";
 import { Button } from "@/components/ui/button";
-import { resubmitEntry, discardRejectedEntry } from "@/actions/entries";
+import { resubmitEntry, withdrawPendingEntry } from "@/actions/entries";
 import { cn } from "@/lib/utils";
 import { dialogOverlay, dialogContent, sheetSlideUp } from "@/lib/motion-variants";
 import type { EntryType, EntryStatus } from "@/types";
@@ -116,10 +116,11 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
   );
 }
 
-/** Resubmit / discard actions for a rejected entry (treasurer). */
+/** Resubmit action for a rejected entry (treasurer). No discard/withdraw — a
+ *  decided entry is a permanent record; the only path forward is resubmit. */
 function RejectedEntryActions({ entryId, terminal }: { entryId: string; terminal: boolean }) {
   const router = useRouter();
-  const [mode, setMode] = useState<"idle" | "resubmit" | "discard">("idle");
+  const [mode, setMode] = useState<"idle" | "resubmit">("idle");
   const [explanation, setExplanation] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -138,13 +139,11 @@ function RejectedEntryActions({ entryId, terminal }: { entryId: string; terminal
       return;
     }
     setDone(successMessage);
+    router.refresh(); // list badge rejected → resubmitted
   };
 
   const doResubmit = () =>
     run(() => resubmitEntry(entryId, explanation.trim()), "Entry resubmitted — sent back to your adviser for review.");
-
-  const doDiscard = () =>
-    run(() => discardRejectedEntry(entryId), "Entry discarded.");
 
   if (done) {
     return (
@@ -159,40 +158,19 @@ function RejectedEntryActions({ entryId, terminal }: { entryId: string; terminal
       {error && <p className="text-xs font-medium text-destructive">{error}</p>}
 
       {mode === "idle" && terminal && (
-        <div className="space-y-3">
-          <div className="rounded-lg border border-error/30 bg-error-lightest p-3">
-            <p className="text-xs font-medium text-error-foreground">Rejected permanently</p>
-            <p className="mt-1 text-sm text-text-primary">
-              This entry was rejected after resubmission and can no longer be submitted.
-            </p>
-          </div>
-          <Button
-            size="sm"
-            variant="outline"
-            className="border-destructive/30 text-destructive hover:bg-destructive/10"
-            onClick={() => setMode("discard")}
-            disabled={busy}
-          >
-            Discard
-          </Button>
+        <div className="rounded-lg border border-error/30 bg-error-lightest p-3">
+          <p className="text-xs font-medium text-error-foreground">Rejected permanently</p>
+          <p className="mt-1 text-sm text-text-primary">
+            This entry was rejected after resubmission and can no longer be submitted. It stays
+            on record for audit.
+          </p>
         </div>
       )}
 
       {mode === "idle" && !terminal && (
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" onClick={() => setMode("resubmit")} disabled={busy}>
-            Resubmit with explanation
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="border-destructive/30 text-destructive hover:bg-destructive/10"
-            onClick={() => setMode("discard")}
-            disabled={busy}
-          >
-            Discard
-          </Button>
-        </div>
+        <Button size="sm" onClick={() => setMode("resubmit")} disabled={busy}>
+          Resubmit with explanation
+        </Button>
       )}
 
       {mode === "resubmit" && (
@@ -223,22 +201,81 @@ function RejectedEntryActions({ entryId, terminal }: { entryId: string; terminal
           </div>
         </div>
       )}
+    </div>
+  );
+}
 
-      {mode === "discard" && (
+/** Withdraw action for a manual entry awaiting first adviser review (treasurer).
+ *  Withdrawing hard-deletes the row — nothing irreversible had happened yet. */
+function WithdrawEntryActions({
+  entryId,
+  onWithdrawn,
+}: {
+  entryId: string;
+  onWithdrawn?: () => void;
+}) {
+  const router = useRouter();
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+
+  const doWithdraw = async () => {
+    setBusy(true);
+    setError(null);
+    const result = await withdrawPendingEntry(entryId);
+    setBusy(false);
+    if (!result.success) {
+      setError(result.error ?? "Something went wrong.");
+      return;
+    }
+    router.refresh(); // row is gone — drop it from the list behind
+    if (onWithdrawn) {
+      onWithdrawn(); // close the detail modal — the entry no longer exists
+      return;
+    }
+    setDone(true);
+  };
+
+  if (done) {
+    return (
+      <div className="mt-3 rounded-lg border border-border bg-surface-secondary p-3">
+        <p className="text-sm font-medium text-text-primary">Entry withdrawn and removed.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 space-y-3">
+      {error && <p className="text-xs font-medium text-destructive">{error}</p>}
+
+      {!confirming ? (
+        <Button
+          size="sm"
+          variant="outline"
+          className="border-destructive/30 text-destructive hover:bg-destructive/10"
+          onClick={() => setConfirming(true)}
+          disabled={busy}
+        >
+          <CircleX className="h-3.5 w-3.5" />
+          Withdraw entry
+        </Button>
+      ) : (
         <div className="space-y-2 rounded-lg border border-error/30 bg-error-lightest p-3">
           <p className="text-sm text-text-primary">
-            Discard this entry permanently? This cannot be undone.
+            Withdraw this entry permanently? It will be deleted and removed from your
+            adviser&apos;s review queue. This cannot be undone.
           </p>
           <div className="flex gap-2">
             <Button
               size="sm"
               variant="destructive"
-              onClick={doDiscard}
+              onClick={doWithdraw}
               disabled={busy}
             >
-              {busy ? "Discarding…" : "Yes, discard"}
+              {busy ? "Withdrawing…" : "Yes, withdraw"}
             </Button>
-            <Button size="sm" variant="outline" onClick={() => setMode("idle")} disabled={busy}>
+            <Button size="sm" variant="outline" onClick={() => setConfirming(false)} disabled={busy}>
               Keep entry
             </Button>
           </div>
@@ -254,11 +291,13 @@ function EntryDetailContent({
   canMutate,
   onVoid,
   onViewImage,
+  onWithdrawn,
 }: {
   entry: EntryDetail;
   canMutate?: boolean;
   onVoid?: () => void;
   onViewImage?: () => void;
+  onWithdrawn?: () => void;
 }) {
   const isVoided = entry.status === "voided";
   const displayName = entryTitle(entry);
@@ -410,6 +449,12 @@ function EntryDetailContent({
         />
       )}
 
+      {/* Withdraw — manual entry awaiting first adviser review, treasurer only.
+          Rejected/resubmitted entries are NOT withdrawable (permanent audit record). */}
+      {canMutate && entry.status === "pending_approval" && (
+        <WithdrawEntryActions entryId={entry.id} onWithdrawn={onWithdrawn} />
+      )}
+
       {/* Void info */}
       {isVoided && entry.voidReason && (
         <div className="rounded-lg border border-error/30 bg-error-lightest p-3">
@@ -559,6 +604,7 @@ export function EntryDetailModal({ open, onClose, entry, canMutate, onVoid }: En
                     canMutate={canMutate}
                     onVoid={onVoid}
                     onViewImage={() => setImageOpen(true)}
+                    onWithdrawn={onClose}
                   />
                 </div>
               </div>
@@ -581,6 +627,7 @@ export function EntryDetailModal({ open, onClose, entry, canMutate, onVoid }: En
                   canMutate={canMutate}
                   onVoid={onVoid}
                   onViewImage={() => setImageOpen(true)}
+                  onWithdrawn={onClose}
                 />
               </div>
             </motion.div>

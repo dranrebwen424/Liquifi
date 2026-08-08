@@ -74,13 +74,18 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
    * Abandoned-review cleanup: an unconfirmed ai_parsed row is provisional —
    * closing the modal without confirming discards it (server-guarded).
    * entryId is nulled on confirm/discard, so post-action closes never discard.
+   * Close waits for the delete so the refresh below lands after it — otherwise
+   * the list behind re-renders before the row is gone and "discard does nothing".
    */
-  const closeModal = useCallback(() => {
+  const closeModal = useCallback(async () => {
     if (entryId && !discarding) {
-      void discardReceiptEntry(entryId, eventId);
+      setDiscarding(true);
+      await discardReceiptEntry(entryId, eventId);
+      setDiscarding(false);
+      router.refresh();
     }
     onClose();
-  }, [entryId, discarding, eventId, onClose]);
+  }, [entryId, discarding, eventId, onClose, router]);
 
   // Close on Escape (not during confirm or submit)
   const handleKeyDown = useCallback(
@@ -118,8 +123,9 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
     setReviewOpen(false);
     setOverspend(null);
     setConfirmError(null);
+    router.refresh(); // row deleted (or raced a confirm) — sync the list behind
     setTimeout(() => setParsedData(null), 150);
-  }, [entryId, eventId]);
+  }, [entryId, eventId, router]);
 
   const handleConfirm = useCallback(async () => {
     if (!entryId || !parsedData) return;
@@ -169,8 +175,9 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
   const handleFormSubmit = useCallback(
     async (data: ManualSubmitPayload) => {
       const result = await submitManualEntry(eventId, data);
-      // explanationRequired is handled inside ManualQuickForm (zero-write gate)
-      if (result.success && !("explanationRequired" in result)) {
+      // Both gates (explanationRequired, overspendRequired) are handled inside
+      // ManualQuickForm — a success is only real when neither is present.
+      if (result.success && !("explanationRequired" in result) && !("overspendRequired" in result)) {
         setManualScreen("success");
         router.refresh();
       }

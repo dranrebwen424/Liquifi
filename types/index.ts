@@ -125,6 +125,13 @@ export type ReportSignatory = {
   sort_order: number;
 };
 
+// ─── Client-side Report Flow Types ─────────────────────────────────
+/** Signatory row as entered by the treasurer; `sort_order` is assigned server-side. */
+export type ReportSignatoryRow = {
+  position: string;
+  full_name: string;
+};
+
 export type EntryComment = {
   id: string;
   entry_id: string;

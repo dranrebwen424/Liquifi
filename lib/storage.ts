@@ -50,6 +50,45 @@ export async function uploadReceipt(
 }
 
 /**
+ * Delete a receipt image by entry id. Best-effort by design: a failed or
+ * orphaned delete logs and never throws — the caller must not fail the
+ * discard because the blob is gone. Uses the stored `image_url` key as-is.
+ *
+ * `knownImageUrl` skips the DB re-read — required when the caller has already
+ * deleted the entry row (the key captured before the delete must be passed in,
+ * otherwise the re-read finds no row and the blob silently orphans).
+ */
+export async function deleteReceiptBlob(
+  entryId: string,
+  knownImageUrl?: string | null,
+): Promise<void> {
+  try {
+    const insforge = await createInsforgeServer();
+    let key: string | null | undefined = knownImageUrl;
+    if (!key) {
+      const { data: entry } = await insforge.database
+        .from("entries")
+        .select("image_url")
+        .eq("id", entryId)
+        .maybeSingle();
+      key = entry?.image_url;
+    }
+
+    if (!key) return; // nothing to delete — already gone or never uploaded
+
+    const { error } = await insforge.storage
+      .from(RECEIPT_BUCKET)
+      .remove(key);
+    if (error) {
+      // ponytail: orphaned blob is acceptable; audit trail keeps the entry history
+      console.error("[storage] deleteReceiptBlob: blob delete failed:", key, error);
+    }
+  } catch (error) {
+    console.error("[storage] deleteReceiptBlob:", error);
+  }
+}
+
+/**
  * Download a receipt image blob for an entry.
  * Ownership is enforced by the caller (route-level requireRole) — the stored
  * `image_url` key is used as-is, so this stays valid if the key pattern changes.
@@ -144,4 +183,47 @@ export async function getSignedReportUrl(
 
   if (blob) return URL.createObjectURL(blob);
   throw new Error("Report page not found");
+}
+
+/**
+ * Upload the generated report PDF (Step 20). Lives in the same
+ * signed-reports folder as the signed pages: {deptId}/reports/{reportId}/report.pdf.
+ * Ownership was verified by the calling route — helper stays thin.
+ */
+export async function uploadReportPdf(
+  deptId: string,
+  reportId: string,
+  file: Blob,
+): Promise<string> {
+  const insforge = await createInsforgeServer();
+  const key = `${deptId}/reports/${reportId}/report.pdf`;
+  const { error } = await insforge.storage
+    .from(SIGNED_REPORT_BUCKET)
+    .upload(key, file); // content type rides on the Blob (see route)
+
+  if (error) throw new Error("Upload failed");
+  return key;
+}
+
+/**
+ * Download the generated report PDF by report id. `pdf_url` stores the storage
+ * key (never a browser-loadable URL — no signed-URL support in the SDK), so
+ * reads go through the authed proxy route. Ownership is enforced by the caller.
+ */
+export async function getReportPdfBlob(reportId: string): Promise<Blob> {
+  const insforge = await createInsforgeServer();
+  const { data: report, error } = await insforge.database
+    .from("reports")
+    .select("id, pdf_url")
+    .eq("id", reportId)
+    .single();
+
+  if (error || !report || !report.pdf_url) throw new Error("Report not found");
+
+  const { data: blob, error: downloadError } = await insforge.storage
+    .from(SIGNED_REPORT_BUCKET)
+    .download(report.pdf_url);
+
+  if (downloadError || !blob) throw new Error("Report PDF not found");
+  return blob;
 }

@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { requireRole } from "@/lib/auth-guard";
-import { getEventDashboard, type EntryForDashboard } from "@/lib/queries/events";
+import { getEventDashboard } from "@/lib/queries/events";
+import { computeSpendingBreakdown } from "@/lib/spending-breakdown";
 import { LockedBanner } from "@/components/events/LockedBanner";
 import { BudgetSummary } from "@/components/events/BudgetSummary";
 import { SpendingBreakdownCard } from "@/components/events/SpendingBreakdownCard";
@@ -13,28 +14,6 @@ import { ExpensesSection } from "@/components/entries/ExpensesSection";
 type Props = {
   params: Promise<{ eventId: string }>;
 };
-
-// Real per-category spend from deducted entries (receipts fall back to their verbatim label)
-function computeSpendingBreakdown(entries: EntryForDashboard[]) {
-  const deducted = entries.filter((e) => e.status === "deducted");
-  if (deducted.length === 0) return [];
-
-  const total = deducted.reduce((sum, e) => sum + Number(e.amount), 0);
-  const byName = new Map<string, number>();
-  for (const e of deducted) {
-    const name = e.category ?? e.document_type_raw;
-    if (!name) continue;
-    byName.set(name, (byName.get(name) ?? 0) + Number(e.amount));
-  }
-
-  return [...byName.entries()]
-    .map(([name, amount]) => ({
-      name,
-      amount,
-      percentage: Math.round((amount / total) * 100),
-    }))
-    .sort((a, b) => b.amount - a.amount);
-}
 
 export default async function EventDashboardPage({ params }: Props) {
   const { eventId } = await params;
@@ -115,6 +94,7 @@ export default async function EventDashboardPage({ params }: Props) {
         {/* Spending Breakdown — desktop only, real data (empty state until entries are deducted) */}
         <SpendingBreakdownCard
           categories={breakdown}
+          eventId={eventId}
           className="hidden lg:flex lg:w-2/5"
         />
       </div>

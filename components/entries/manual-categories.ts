@@ -7,7 +7,7 @@ import {
   CalendarDays,
   Ellipsis,
 } from "lucide-react";
-import { formatPHP } from "@/lib/format";
+import { formatPHP, toNumber } from "@/lib/format";
 
 export type ExpenseType =
   | "transportation"
@@ -49,9 +49,9 @@ export const CATEGORIES: Record<ExpenseType, CategoryConfig> = {  transportation
       { key: "passengers", label: "Passengers", suffix: "persons", type: "number", placeholder: "0" },
     ],
     compute: (v) => {
-      const fare = Number(v.fare ?? 0);
-      const pax = Number(v.passengers ?? 0);
-      const trips = Number(v.trips ?? 0);
+      const fare = toNumber(v.fare ?? 0);
+      const pax = toNumber(v.passengers ?? 0);
+      const trips = toNumber(v.trips ?? 0);
       const multiplier = trips > 0 ? trips : v.roundTrip ? 2 : 1;
       return {
         total: fare * pax * multiplier,
@@ -74,8 +74,8 @@ export const CATEGORIES: Record<ExpenseType, CategoryConfig> = {  transportation
       { key: "headcount", label: "Headcount", suffix: "persons", type: "number", placeholder: "0" },
     ],
     compute: (v) => {
-      const r = Number(v.rate ?? 0);
-      const h = Number(v.headcount ?? 0);
+      const r = toNumber(v.rate ?? 0);
+      const h = toNumber(v.headcount ?? 0);
       return {
         total: r * h,
         parts: [`${formatPHP(r)}`, `${h} person${h !== 1 ? "s" : ""}`],
@@ -91,7 +91,7 @@ export const CATEGORIES: Record<ExpenseType, CategoryConfig> = {  transportation
     fields: [
       { key: "amount", label: "Amount", suffix: "", type: "currency", placeholder: "0.00" },
     ],
-    compute: (v) => ({ total: Number(v.amount ?? 0), parts: [] }),
+    compute: (v) => ({ total: toNumber(v.amount ?? 0), parts: [] }),
   },
   supplies: {
     icon: Package,
@@ -114,9 +114,9 @@ export const CATEGORIES: Record<ExpenseType, CategoryConfig> = {  transportation
       { key: "copies", label: "Copies", suffix: "copies", type: "number", placeholder: "0" },
     ],
     compute: (v) => {
-      const r = Number(v.rate ?? 0);
-      const p = Number(v.pages ?? 0);
-      const c = Number(v.copies ?? 0);
+      const r = toNumber(v.rate ?? 0);
+      const p = toNumber(v.pages ?? 0);
+      const c = toNumber(v.copies ?? 0);
       return {
         total: r * p * c,
         parts: [
@@ -138,8 +138,8 @@ export const CATEGORIES: Record<ExpenseType, CategoryConfig> = {  transportation
       { key: "days", label: "Days", suffix: "days", type: "number", placeholder: "0" },
     ],
     compute: (v) => {
-      const r = Number(v.rate ?? 0);
-      const d = Number(v.days ?? 0);
+      const r = toNumber(v.rate ?? 0);
+      const d = toNumber(v.days ?? 0);
       return {
         total: r * d,
         parts: [`${formatPHP(r)}`, `${d} day${d !== 1 ? "s" : ""}`],

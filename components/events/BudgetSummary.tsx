@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Plus, FileText } from "lucide-react";
 import { formatPHP } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -29,14 +30,14 @@ export function BudgetSummary({
   const remaining = budgetTotal - totalSpent;
   const pctUsed = budgetTotal > 0 ? (totalSpent / budgetTotal) * 100 : 0;
 
+  // Step 18: no text label at/over budget — negative red number is the signal
+  // (user decision). Empty string keeps the layout row for a stable height.
   const statusText =
     pctUsed >= 100
-      ? "Over Budget"
+      ? ""
       : pctUsed >= 70
         ? "Near Budget Limit"
         : `${Math.round(pctUsed)}% Budget Utilized`;
-
-  const isFullyUtilized = pctUsed >= 100;
 
   return (
     <>
@@ -101,32 +102,37 @@ export function BudgetSummary({
               New Entry
             </button>
 
-            <button
-              disabled={!canMutate}
-              className={cn(
-                "inline-flex items-center justify-center gap-2 rounded-lg border px-5 py-2.5 text-sm font-medium transition-[color,transform,shadow] hover:scale-[1.02]",
-                canMutate
-                  ? "border-white/30 text-text-inverse hover:bg-white/10 hover:shadow-sm active:scale-[0.98]"
-                  : "cursor-not-allowed border-white/10 text-text-inverse/50",
-              )}
-              title={
-                isArchived
-                  ? "Archived — no reports."
-                  : isLocked
-                    ? "Report already pending."
-                    : "Generate financial report"
-              }
-            >
-              <FileText className="h-4 w-4" />
-              Generate Report
-            </button>
+            {canMutate ? (
+              <Link
+                href={`/treasurer/reports/${eventId}`}
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/30 px-5 py-2.5 text-sm font-medium text-text-inverse transition-[color,transform,shadow] hover:bg-white/10 hover:shadow-sm hover:scale-[1.02] active:scale-[0.98]"
+                title="Generate financial report"
+              >
+                <FileText className="h-4 w-4" />
+                Generate Report
+              </Link>
+            ) : (
+              <button
+                type="button"
+                disabled
+                className="inline-flex cursor-not-allowed items-center justify-center gap-2 rounded-lg border border-white/10 px-5 py-2.5 text-sm font-medium text-text-inverse/50"
+                title={
+                  isArchived
+                    ? "Archived — no reports."
+                    : "Report already pending."
+                }
+              >
+                <FileText className="h-4 w-4" />
+                Generate Report
+              </button>
+            )}
           </div>
         </div>
 
         {/* Full-width progress bar + status text */}
         <div className="mt-6">
           <p className="mb-1.5 text-right text-xs text-text-inverse/60">
-            {isFullyUtilized ? "Budget Fully Utilized" : statusText}
+            {statusText}
           </p>
           <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
             <div

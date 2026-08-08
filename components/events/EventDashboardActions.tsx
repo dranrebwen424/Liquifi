@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Plus, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LogEntryModal } from "@/components/entries/LogEntryModal";
@@ -44,25 +45,30 @@ export function EventDashboardActions({
           Log Entry
         </button>
 
-        <button
-          disabled={!canMutate}
-          className={cn(
-            "inline-flex flex-1 items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium transition-[color,transform,shadow] hover:scale-[1.02]",
-            canMutate
-              ? "border-border text-text-primary hover:bg-surface-secondary hover:border-border-strong hover:shadow-sm active:scale-[0.98]"
-              : "cursor-not-allowed border-border bg-surface text-text-muted opacity-50",
-          )}
-          title={
-            isArchived
-              ? "Archived — no reports."
-              : isLocked
-                ? "Report already pending."
-                : "Generate financial report"
-          }
-        >
-          <FileText className="h-4 w-4" />
-          Generate Report
-        </button>
+        {canMutate ? (
+          <Link
+            href={`/treasurer/reports/${eventId}`}
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 py-3 text-sm font-medium text-text-primary transition-[color,transform,shadow] hover:bg-surface-secondary hover:border-border-strong hover:shadow-sm active:scale-[0.98]"
+            title="Generate financial report"
+          >
+            <FileText className="h-4 w-4" />
+            Generate Report
+          </Link>
+        ) : (
+          <button
+            type="button"
+            disabled
+            className="inline-flex cursor-not-allowed flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 py-3 text-sm font-medium text-text-muted opacity-50"
+            title={
+              isArchived
+                ? "Archived — no reports."
+                : "Report already pending."
+            }
+          >
+            <FileText className="h-4 w-4" />
+            Generate Report
+          </button>
+        )}
       </div>
 
       <LogEntryModal

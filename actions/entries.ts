@@ -3,9 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { createInsforgeServer } from "@/lib/insforge-server";
 import { requireRole } from "@/lib/auth-guard";
-import { uploadReceipt } from "@/lib/storage";
+import { uploadReceipt, deleteReceiptBlob } from "@/lib/storage";
 import { VOID_REASON_MAX } from "@/lib/limits";
+import { remainingAfterEntryCents, entryCausesOverspend } from "@/lib/overspend";
 import { CATEGORIES, manualGateThresholdCents } from "@/components/entries/manual-categories";
+import { toNumber } from "@/lib/format";
 import type { ManualSubmitPayload } from "@/components/entries/ManualQuickForm";
 
 /**
@@ -43,7 +45,7 @@ export async function discardReceiptEntry(entryId: string, eventId: string) {
     // Only ai_parsed entries can be discarded — anything past review is out of scope here
     const { data: entry, error: fetchErr } = await insforge.database
       .from("entries")
-      .select("id, event_id, status, document_type_raw, document_number")
+      .select("id, event_id, status, image_url, document_type_raw, document_number")
       .eq("id", entryId)
       .eq("event_id", eventId)
       .maybeSingle();
@@ -52,15 +54,28 @@ export async function discardReceiptEntry(entryId: string, eventId: string) {
       return { success: false as const, error: "Only unconfirmed parsed receipts can be discarded." };
     }
 
-    const { error: deleteErr } = await insforge.database
+    // Conditional delete — the status guard is on the delete itself, so a discard
+    // racing a confirm (which moves the entry to `deducted`) deletes 0 rows and
+    // fails cleanly instead of deleting a confirmed expense.
+    const { data: deleted, error: deleteErr } = await insforge.database
       .from("entries")
       .delete()
       .eq("id", entryId)
-      .eq("event_id", eventId);
+      .eq("event_id", eventId)
+      .eq("status", "ai_parsed")
+      .select("id");
     if (deleteErr) {
       console.error("[actions/entries] discard failed:", deleteErr);
       return { success: false as const, error: "Failed to discard the entry." };
     }
+    if (!deleted || deleted.length === 0) {
+      return { success: false as const, error: "Only unconfirmed parsed receipts can be discarded." };
+    }
+
+    // Best-effort blob cleanup — failure only orphans the file, never blocks the discard.
+    // Key captured from the pre-delete fetch: the row is already gone, so the
+    // helper's DB re-read would find nothing and the blob would silently orphan.
+    await deleteReceiptBlob(entryId, entry.image_url);
 
     await insforge.database.from("audit_logs").insert([{
       actor_id: user.id,
@@ -76,6 +91,7 @@ export async function discardReceiptEntry(entryId: string, eventId: string) {
     }]);
 
     revalidatePath("/treasurer/home");
+    revalidatePath(`/treasurer/events/${eventId}`);
     return { success: true as const };
   } catch (error) {
     if (error instanceof Error && "code" in error) {
@@ -165,7 +181,13 @@ export async function confirmReceiptEntry(
     const remainingCents =
       Math.round(Number(eventBudget.budget_total) * 100) - spentCents - amountCents;
 
-    const overspend = remainingCents < 0;
+    // Fires once — only the FIRST entry that pushes the event below zero.
+    // An event already over budget never re-triggers the explanation gate.
+    const overspend = entryCausesOverspend(
+      Number(eventBudget.budget_total),
+      spentRows ?? [],
+      amountCents / 100,
+    );
     const explanation = options?.overspendExplanation?.trim() ?? "";
 
     if (overspend && !explanation) {
@@ -175,6 +197,11 @@ export async function confirmReceiptEntry(
         overspendRequired: true,
         overshoot: Math.abs(remainingCents) / 100,
       };
+    }
+
+    // Step 18 parity: the receipt explanation is capped like the manual one
+    if (explanation.length > MANUAL_EXPLANATION_MAX) {
+      return { success: false, error: "Explanation is too long." };
     }
 
     // Conditional update — only an ai_parsed row can transition, double-submit falls out
@@ -239,6 +266,7 @@ export type ManualSubmitResult =
       overAmount: number;
       threshold: number;
     }
+  | { success: true; overspendRequired: true; overshoot: number }
   | { success: false; error: string };
 
 const MANUAL_AMOUNT_MAX = 9_999_999_999.99; // decimal(12,2) ceiling
@@ -333,13 +361,13 @@ export async function submitManualEntry(
         (i) =>
           (i.description ?? "").trim() &&
           i.qty > 0 &&
-          Number(i.price) >= 0,
+          toNumber(i.price) >= 0,
       )
       .map((i) => ({
         description: i.description.trim(),
         qty: i.qty,
-        unit_price: Number(i.price),
-        line_amount: Math.round(i.qty * Number(i.price) * 100) / 100,
+        unit_price: toNumber(i.price),
+        line_amount: Math.round(i.qty * toNumber(i.price) * 100) / 100,
       }));
     if (itemized && items.length === 0) {
       return { success: false, error: "Add at least one item." };
@@ -371,6 +399,43 @@ export async function submitManualEntry(
     }
     if (explanation.length > MANUAL_EXPLANATION_MAX) {
       return { success: false, error: "Explanation is too long." };
+    }
+
+    // ─── Step 18 gate: cumulative overspend (remaining vs SUM of deducted) ──
+    // Mirrors confirmReceiptEntry's cents math — the budget-remaining check
+    // AFTER this entry, against already-deducted entries only. Zero-write: a
+    // negative remaining with no explanation returns `overspendRequired` and
+    // nothing is persisted (no photo upload, no row). With an explanation the
+    // entry is inserted at `pending_approval` flagged causes_overspend=true —
+    // adviser review is still the gate, and rejection auto-resolves overspend
+    // because the derivation counts `deducted` rows only.
+    const overspendExplanation = (payload.overspendExplanation ?? "").trim();
+    if (overspendExplanation.length > MANUAL_EXPLANATION_MAX) {
+      return { success: false, error: "Explanation is too long." };
+    }
+    const { data: spentRows } = await insforge.database
+      .from("entries")
+      .select("amount")
+      .eq("event_id", eventId)
+      .eq("status", "deducted");
+    const remainingCents = remainingAfterEntryCents(
+      Number(eventBudget.budget_total),
+      spentRows ?? [],
+      amount,
+    );
+    // Fires once — only the FIRST entry that pushes the event below zero.
+    // An event already over budget never re-triggers the explanation gate.
+    const causesOverspend = entryCausesOverspend(
+      Number(eventBudget.budget_total),
+      spentRows ?? [],
+      amount,
+    );
+    if (causesOverspend && !overspendExplanation) {
+      return {
+        success: true,
+        overspendRequired: true,
+        overshoot: Math.abs(remainingCents) / 100,
+      };
     }
 
     // ─── Upload-first: photo before row (failure leaves no row behind) ──
@@ -423,6 +488,10 @@ export async function submitManualEntry(
         image_url: imageUrl,
         item_breakdown: items.length > 0 ? items : null,
         form_payload_json: formPayload,
+        causes_overspend: causesOverspend,
+        ...(causesOverspend && overspendExplanation
+          ? { overspend_explanation: overspendExplanation }
+          : {}),
       },
     ]);
     if (insertErr) {
@@ -445,6 +514,10 @@ export async function submitManualEntry(
           category: payload.category,
           amount,
           has_photo: Boolean(imageUrl),
+          causes_overspend: causesOverspend,
+          ...(causesOverspend && overspendExplanation
+            ? { overspend_explanation: overspendExplanation }
+            : {}),
           ...(over && explanation
             ? { above_range: { pct_of_budget: pct, explanation } }
             : {}),
@@ -591,9 +664,15 @@ export async function resubmitEntry(entryId: string, explanation: string) {
 }
 
 /**
- * Permanently discard a rejected entry (`discarded`, terminal — the row is kept for audit).
+ * Withdraw a manual entry still awaiting first adviser review — the claim
+ * never touched the ledger and no decision was made, so the row is hard-deleted
+ * (manual photo blob included). Audit `entry.withdrawn` keeps the trail.
+ *
+ * Entries the adviser has decided on (`rejected`, `resubmitted`) are NOT
+ * withdrawable — they stay as permanent records for audit; the only path
+ * forward is resubmit.
  */
-export async function discardRejectedEntry(entryId: string) {
+export async function withdrawPendingEntry(entryId: string) {
   try {
     if (!entryId.trim()) {
       return { success: false as const, error: "Entry is required." };
@@ -602,7 +681,7 @@ export async function discardRejectedEntry(entryId: string) {
     const insforge = await createInsforgeServer();
     const { data: entry, error: fetchErr } = await insforge.database
       .from("entries")
-      .select("id, event_id, status")
+      .select("id, event_id, status, image_url, amount, category")
       .eq("id", entryId)
       .maybeSingle();
     if (fetchErr) throw new Error("Failed to load the entry.");
@@ -610,27 +689,51 @@ export async function discardRejectedEntry(entryId: string) {
 
     const user = await assertTreasurerCanMutateEvent(entry.event_id);
 
-    if (entry.status !== "rejected") {
-      return { success: false as const, error: "Only rejected entries can be discarded." };
+    if (entry.status !== "pending_approval") {
+      return {
+        success: false as const,
+        error: "Only entries still awaiting review can be withdrawn.",
+      };
     }
 
-    const { error: updateErr } = await insforge.database
+    // Conditional delete — the status guard lives on the delete itself, so a
+    // withdrawal racing an adviser approval deletes 0 rows and fails cleanly
+    // instead of removing a decided entry.
+    const { data: deleted, error: deleteErr } = await insforge.database
       .from("entries")
-      .update({ status: "discarded" })
+      .delete()
       .eq("id", entryId)
-      .eq("status", "rejected");
-    if (updateErr) {
-      console.error("[actions/entries] discard rejected failed:", updateErr);
-      return { success: false as const, error: "Failed to discard the entry." };
+      .eq("status", "pending_approval")
+      .select("id");
+    if (deleteErr) {
+      console.error("[actions/entries] withdraw failed:", deleteErr);
+      return { success: false as const, error: "Failed to withdraw the entry." };
+    }
+    if (!deleted || deleted.length === 0) {
+      return {
+        success: false as const,
+        error: "This entry was already reviewed — refresh to see its current status.",
+      };
+    }
+
+    // Best-effort photo cleanup — manual entries can carry an optional photo.
+    // Key captured from the pre-delete fetch (row is gone by now).
+    if (entry.image_url) {
+      await deleteReceiptBlob(entryId, entry.image_url);
     }
 
     await insforge.database.from("audit_logs").insert([{
       actor_id: user.id,
       department_id: user.departmentId,
-      action: "entry.discarded",
+      action: "entry.withdrawn",
       target_type: "entry",
       target_id: entryId,
-      metadata_json: { event_id: entry.event_id },
+      metadata_json: {
+        event_id: entry.event_id,
+        from_status: "pending_approval",
+        amount: entry.amount,
+        category: entry.category,
+      },
     }]);
 
     revalidatePath("/treasurer/home");
@@ -641,7 +744,7 @@ export async function discardRejectedEntry(entryId: string) {
     if (error instanceof Error && "code" in error) {
       return { success: false as const, error: error.message };
     }
-    console.error("[actions/entries] discardRejectedEntry:", error);
+    console.error("[actions/entries] withdrawPendingEntry:", error);
     return { success: false as const, error: "Something went wrong." };
   }
 }

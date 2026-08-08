@@ -122,12 +122,14 @@ Sidebar (web) / Bottom nav (mobile) — icons, minimal:
 - Gemini extracts: verbatim document type label, normalized document type category, document number (tied to the matching label, not incidental POS metadata), issue date/time, supplier name, final amount paid, and a required itemized breakdown.
 - Duplicate check: rejects if (document type + document number) already exists in the same event.
 - Treasurer reviews the parse **read-only** — cannot edit. If wrong, discard and re-upload.
+- Discard (including closing the review without confirming) **hard-deletes** the `ai_parsed` row and its receipt image — the entry never touched the ledger, so no history is lost.
 - Confirm → entry deducts from budget immediately.
 
 **Method 2 — No Receipt (manual):**
 - Treasurer fills a form; system computes the total.
 - Entry goes to `pending_approval` for the adviser.
 - Adviser can multi-select and batch-approve, or reject a single entry with a reason (treasurer edits and resubmits).
+- Treasurer can **withdraw** a `pending_approval` entry out of the adviser's queue — **hard delete** (row + best-effort manual photo), nothing irreversible has happened yet. Once the adviser decided (`rejected`) or money moved (`deducted`), the entry is permanent: `rejected`/`resubmitted` entries have **no** discard/withdraw — resubmit is the only path forward (second rejection is terminal, stays on record for audit).
 - Approved → deducted from budget.
 
 ### Overspend Handling

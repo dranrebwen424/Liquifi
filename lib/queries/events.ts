@@ -1,5 +1,6 @@
 import { createInsforgeServer } from "@/lib/insforge-server";
 import { deriveBudgetLocked } from "@/lib/budget-lock";
+import { isUnresolvedOverspendEntry } from "@/lib/overspend";
 import type { EventStatus } from "@/types";
 
 // ─── Computed event type (what the UI needs) ─────────────────────────
@@ -13,6 +14,7 @@ export type EventWithMeta = {
   num_entries: number;
   is_locked: boolean;
   budget_locked: boolean;
+  has_unresolved_overspend: boolean;
   num_locked: number;
   created_at: string;
   created_by: string;
@@ -49,6 +51,9 @@ export type EntryForDashboard = {
   void_reason?: string | null;
   voided_by?: string | null;
   voided_at?: string | null;
+  causes_overspend?: boolean | null;
+  overspend_explanation?: string | null;
+  overspend_resolved_at?: string | null;
   voidedByName?: string | null;
 };
 
@@ -74,12 +79,13 @@ export async function getDepartmentEvents(
 
   const { data: entryRows } = await insforge.database
     .from("entries")
-    .select("event_id, amount, status")
+    .select("event_id, amount, status, causes_overspend, overspend_resolved_at")
     .in("event_id", eventIds);
 
   const spentMap: Record<string, number> = {};
   const entryCountMap: Record<string, number> = {};
   const everDeductedIds = new Set<string>();
+  const overspendEventIds = new Set<string>();
   if (entryRows) {
     for (const row of entryRows) {
       entryCountMap[row.event_id] = (entryCountMap[row.event_id] ?? 0) + 1;
@@ -88,6 +94,9 @@ export async function getDepartmentEvents(
       }
       if (deriveBudgetLocked([row.status])) {
         everDeductedIds.add(row.event_id);
+      }
+      if (isUnresolvedOverspendEntry(row.status, row.causes_overspend, row.overspend_resolved_at)) {
+        overspendEventIds.add(row.event_id);
       }
     }
   }
@@ -135,6 +144,7 @@ export async function getDepartmentEvents(
     num_entries: entryCountMap[e.id] ?? 0,
     is_locked: lockedEventIds.has(e.id),
     budget_locked: budgetLockedIds.has(e.id),
+    has_unresolved_overspend: overspendEventIds.has(e.id),
     num_locked: 0,
     created_at: e.created_at,
     created_by: e.created_by,
@@ -160,7 +170,7 @@ export async function getEventDashboard(eventId: string) {
   const { data: entries } = await insforge.database
     .from("entries")
     .select(
-      "id, type, status, amount, supplier_name, document_type_raw, document_number, issue_date, issue_time, category, image_url, item_breakdown, form_payload_json, rejection_reason, resubmission_explanation, created_at, void_reason, voided_by, voided_at",
+      "id, type, status, amount, supplier_name, document_type_raw, document_number, issue_date, issue_time, category, image_url, item_breakdown, form_payload_json, rejection_reason, resubmission_explanation, created_at, void_reason, voided_by, voided_at, causes_overspend, overspend_explanation, overspend_resolved_at",
     )
     .eq("event_id", eventId)
     .order("created_at", { ascending: false });
@@ -197,6 +207,10 @@ export async function getEventDashboard(eventId: string) {
 
   const isLocked = !!report;
   const budgetLocked = deriveBudgetLocked((entries ?? []).map((r: { status: string }) => r.status));
+  const hasUnresolvedOverspend = (entries ?? []).some(
+    (r: { status: string; causes_overspend?: boolean | null; overspend_resolved_at?: string | null }) =>
+      isUnresolvedOverspendEntry(r.status, r.causes_overspend, r.overspend_resolved_at),
+  );
 
   // Fetch creator name
   let createdByName = "Unknown";
@@ -220,6 +234,7 @@ export async function getEventDashboard(eventId: string) {
     total_spent: totalSpent,
     is_locked: isLocked,
     budget_locked: budgetLocked,
+    has_unresolved_overspend: hasUnresolvedOverspend,
     created_at: event.created_at,
     created_by_name: createdByName,
     entries: (entries ?? []).map((e) => ({

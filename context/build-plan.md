@@ -171,7 +171,8 @@ Build the complete adviser approvals UI with mock data.
 
 - Pending Users: same approve/reject pattern as Phase 2, scoped to the adviser's own department, routes through `account_status`
 - Pending Expenses: batch approve — each selected `Entry` transitions `pending_approval → deducted` individually, each stamped with its own `approved_by`/`approved_at` (same audit trail as single approval, batching is a UI/endpoint convenience only)
-- Single-entry reject requires `rejection_reason` → `Entry.status = rejected` → treasurer edits and resubmits (`resubmitted → pending_approval` loop) or discards (`discarded`, terminal)
+- Single-entry reject requires `rejection_reason` → `Entry.status = rejected` → treasurer edits and resubmits (`resubmitted → pending_approval` loop); second rejection is terminal — `rejected`/`resubmitted` entries are never removable (permanent audit record)
+- Treasurer may also **withdraw** a `pending_approval` entry out of the queue → **hard delete** (row + best-effort manual-photo blob), `from_status` audited; nothing irreversible has happened yet, so removal is lossless
 - Audit log entry on every approval/rejection
 
 ---
@@ -265,7 +266,8 @@ Build the complete entry logging UI (both methods) with mock data.
 
 - Confirm → `Entry.status = deducted`, budget deducted, `budget_locked` becomes true as a side effect
 - If this deduction pushes Remaining below ₱0 → `causes_overspend = true`, treasurer prompted for `overspend_explanation`
-- Discard → `Entry` row deleted, no budget impact, re-upload available
+- Discard → `Entry` row deleted (conditional on `status = ai_parsed`), receipt image blob deleted (best-effort), no budget impact, re-upload available
+- Discard races a confirm safely — the delete carries the `ai_parsed` guard, so a confirmed (`deducted`) entry is never deleted
 - Entry actions blocked entirely if `Event.is_locked = true`
 
 ---
@@ -337,7 +339,7 @@ Build the complete report generation UI with mock data.
 
 **Logic:**
 
-- Precondition: all manual entries resolved (approved/discarded/terminally rejected)
+- Precondition: all manual entries resolved (approved / rejected / withdrawn — withdrawn rows are deleted, so a deleted row counts as resolved)
 - Precondition: no existing `Report` for this event currently `pending_adviser_approval` or `approved` — "Generate Report" disabled client-side and rejected server-side otherwise
 - `fs_document_number` assigned via `DepartmentReportCounter` (read-then-increment, format `FS-{DEPTCODE}-{YYYY}-{00001}`, resets per department per calendar year) — assigned once, persists across regeneration
 - `ReportSignatory` rows saved (position, full_name, sort_order)

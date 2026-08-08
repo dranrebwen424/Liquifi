@@ -40,8 +40,9 @@ Phase 0 authorization foundation. This single artifact drives both the InsForge 
 | `/treasurer/profile` | GET | treasurer | n/a | — | DEPT |
 | `actions/events.ts → createEvent` | POST (action) | treasurer | no | — (new event `status = open` in actor's dept) | DEPT |
 | `actions/events.ts → editBudget` | POST (action) | treasurer | yes | `budget_locked = false`, `Event.status != 'archived'` | DEPT |
-| `actions/entries.ts → confirmEntry` | POST (action) | treasurer | yes | `Entry.status ∈ {ai_parsed, treasurer_reviewed}`, `Event.is_locked = false`, `Event.status != 'archived'` | DEPT |
-| `actions/entries.ts → discardEntry` | POST (action) | treasurer | yes | `Event.is_locked = false`, `Event.status != 'archived'` | DEPT |
+| `actions/entries.ts → confirmReceiptEntry` | POST (action) | treasurer | yes | `Entry.status = ai_parsed`, `Event.is_locked = false`, `Event.status != 'archived'` | DEPT |
+| `actions/entries.ts → discardReceiptEntry` | POST (action) | treasurer | yes | `Entry.status = ai_parsed` (conditional delete), `Event.is_locked = false`, `Event.status != 'archived'`; hard-deletes row + best-effort blob delete | DEPT |
+| `actions/entries.ts → withdrawPendingEntry` | POST (action) | treasurer | yes | `Entry.status = pending_approval` (conditional delete), `Event.is_locked = false`, `Event.status != 'archived'`; hard-deletes row + best-effort manual-photo blob delete; `rejected`/`resubmitted` are NOT withdrawable (permanent audit record) | DEPT |
 | `actions/entries.ts → submitManualEntry` | POST (action) | treasurer | yes | `Event.is_locked = false`, `Event.status != 'archived'` | DEPT |
 | `/api/entries/receipt` | POST | treasurer | yes | `Event.is_locked = false`, `Event.status != 'archived'`; reject if `(document_type_raw + document_number)` already exists in event | DEPT |
 | `/api/entries/manual` | POST | treasurer | yes | `Event.is_locked = false`, `Event.status != 'archived'` | DEPT |

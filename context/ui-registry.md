@@ -1,779 +1,161 @@
 # UI Registry
 
-Living document. Updated after every component is built. Read this before building any new component — match existing patterns exactly before inventing new ones.
-
----
+Living document — read before building any new component. Match existing patterns exactly before inventing new ones.
 
 ## How to Use
 
-1. **Consult** — check if a similar component already exists in this registry
-2. **If yes** — match its exact classes and patterns
-3. **If no** — build it following `ui-rules.md` (component specs) and `ui-tokens.md` (raw token values), then add it here
-4. **After building** — add a new entry with file path, date, exact classes, and pattern notes
+1. Check the registry for a similar component → copy its exact classes/patterns.
+2. Not found → build per `ui-rules.md` (component specs) + `ui-tokens.md` (raw token values), then add an entry (file, date, classes, notes).
+3. Update after every component is built.
 
 ---
 
 ## Global Conventions
 
-These are established patterns referenced by components across the app. Full behavioral specs live in `ui-rules.md`; this section tracks which patterns exist.
+Established patterns (full behavioral specs live in `ui-rules.md`):
 
-| Convention | Source of Truth | Status |
-|---|---|---|
-| Currency formatting (PHP `decimal(12,2)`) | `ui-rules.md` → Currency | Established |
-| Status badge color mapping (per state machine field) | `ui-rules.md` → Status Badge Color Mapping | Established |
-| Role-scoped read-only mode (`readOnly` prop) | `ui-rules.md` → Role-Scoped Read-Only Mode | Established |
-| Locked / archived banner | `ui-rules.md` → Locked / Archived Banner | Established |
-| Voided / struck-through entries | `ui-rules.md` → Voided / Struck-Through Entries | Established |
-| Required-reason modals (void, reject) | `ui-rules.md` → Required-Reason Modals | Established |
-| Button variants (Primary, Secondary, Ghost, Destructive) | `ui-rules.md` → Buttons | Established |
-| Card spec | `ui-rules.md` → Cards | Established |
-| Table pattern | `ui-rules.md` → Table | Established |
+| Convention | Status |
+|---|---|
+| Currency formatting (PHP `decimal(12,2)`) | Established |
+| Status badge color mapping (per state machine field) | Established |
+| Role-scoped read-only mode (`readOnly` prop) | Established |
+| Locked / archived banner | Established |
+| Voided / struck-through entries | Established |
+| Required-reason modals (void, reject) | Established |
+| Button variants (Primary, Secondary, Ghost, Destructive) | Established |
+| Card spec | Established |
+| Table pattern | Established |
+
+---
+
+## Cross-Cutting Patterns (know these first)
+
+- **Modal/sheet shell** — used by NewEventModal, LogEntryModal, EntryDetailModal, ReceiptReview, VoidEntryModal: overlay `fixed inset-0 z-50 bg-overlay-alpha`; desktop centered `relative w-full max-w-lg rounded-xl border border-border bg-surface p-6 shadow-card`; mobile bottom sheet `max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-border bg-surface p-6 pb-8 shadow-card` + drag handle `mx-auto mb-5 h-1 w-10 rounded-full bg-border-strong`. AnimatePresence; Escape + overlay click close; body scroll locked while open; reuses `dialogOverlay` / `dialogContent` / `sheetSlideUp` from `lib/motion-variants.ts`.
+- **scrollbar-hide** — plain CSS class in `app/globals.css` (`scrollbar-width: none` + `::-webkit-scrollbar { display: none }`). An `@utility` definition of the same rule did NOT compile under Turbopack — use the plain class.
+- **Entry animation** — framer-motion `staggerContainer` + `fadeUpItem` (spring, 200ms, `y: 12`) from `lib/motion-variants`. GSAP was migrated out 2026-07-18.
+- **Currency** — `formatPHP()` for all PHP amounts.
+- **Receipt images** — `image_url` stores the storage **key**, never a browser URL; render via `GET /api/entries/{id}/image` (session-authed proxy), with `onError` → styled placeholder.
+- **Tokens only** — `@theme` tokens via generated utilities (`bg-surface`, `text-text-primary`, `border-border`); no hex, no raw Tailwind color classes. Poppins via `font-sans`.
 
 ---
 
 ## Built Components
 
-Populate each entry as components are built, in build order. Use the format below.
-
-```markdown
-### ComponentName
-
-File: components/area/ComponentName.tsx
-Last updated: YYYY-MM-DD
-
-| Property         | Class |
-| ---------------- | ----- |
-| Background       |       |
-| Border           |       |
-| Border radius    |       |
-| Text — primary   |       |
-| Text — secondary |       |
-| Spacing          |       |
-| Hover state      |       |
-| Shadow           |       |
-| Accent usage     |       |
-
-**Pattern notes:**
-```
-
 ### LandingPage
+Files: app/page.tsx + components/landing/HeroSection.tsx + components/ui/AnimatedBlock.tsx · 2026-07-17 (since refactored: split into client HeroSection + framer-motion scroll reveals)
 
-File: app/page.tsx
-Last updated: 2026-07-17 (GSAP animation removed; plain server component, more whitespace + consistent card sizing)
+Public route. `app/page.tsx` (server component) = Features ×3 / How it works ×3 (accent `01/02/03` labels) / single CTA card / footer. `HeroSection.tsx` (**client**) = sticky header + centered hero + product visual. Header: `sticky top-0 z-50 w-full bg-surface/90 backdrop-blur border-b border-border`, inner `h-16 max-w-[1440px]`; mobile hamburger = `<details>/<summary>` (no JS). Hero (`pt-24 md:pt-40 pb-20 md:pb-28`): eyebrow pill `bg-accent-light text-text-dark`, H1 `text-[34px] sm:text-[48px] md:text-[56px] tracking-tight`, subcopy `text-text-secondary`, dual CTAs. Product visual: `rounded-[24px] overflow-hidden border border-border bg-surface` image-holder card → `/landing/img-1.png` 722×530 `priority`. All sections white `bg-surface` cards; `cardClass` = `flex h-full flex-col rounded-lg border border-border bg-surface p-8` (+ **hardcoded arbitrary shadow** `shadow-[0px_1px_2px_rgba(17,17,20,0.04),0px_1px_3px_rgba(17,17,20,0.06)]` — deviation from the token-only rule; same rgba values appear in the mobile dropdown + hero visual shadows). Sections `py-28 md:py-36` (whitespace exceeds ui-rules caps — pre-approved airy deviation). 3-tier hierarchy: uppercase `text-text-muted` eyebrow (`tracking-[0.08em]`) → `font-semibold text-text-primary` heading → `text-sm text-text-secondary` intro. **Animation = framer-motion (not GSAP):** `AnimatedBlock` (components/ui/AnimatedBlock.tsx) wraps every section + card — `motion.div` fade-up `y:24 → 0`, 0.5s easeOut, `whileInView once margin:"-80px"`, `delay={i*0.1}` stagger; HeroSection does its own `useState`+`setTimeout` opacity reveal (0.4s ease-out, staggered). Logo = inline monoline SVG (`--color-accent`) + 20px/700 wordmark. Font stays Poppins; Figma copy treated as layout only.
 
-- Public route (no auth). Server Component, no `"use client"` needed. (The earlier GSAP `LandingAnimations` wrapper was deleted 2026-07-17 — no animation library on the landing page.)
-- More whitespace: hero `pt-24 md:pt-40 pb-20 md:pb-28`; feature/how sections `py-28 md:py-36`; CTA `py-16 md:py-20`; intro block `mb-16`; hero CTA `mt-12`. Exceeds `ui-rules.md` 24/32px caps (pre-approved airy deviation, same as 2026-07-12).
-- Consistent card sizing: both feature + how grids use one shared `cardClass` (`flex h-full flex-col ... p-8`), grids `items-stretch` (default) so all cards match tallest in row; icon tiles `h-12 w-12`, title `mt-6`, body `leading-6` for even rhythm.
-- Structure mirrors Figma (web `#154:23` + mobile `#156:87`): sticky header (logo + nav), centered hero (eyebrow + H1 + subcopy + dual CTAs) followed by a product-visual panel, Features (×3), How it works (×3), final CTA card, footer.
-- Page max-width `max-w-[1440px]`, `px-4 md:px-8` (16px mobile / 32px desktop) per `ui-rules.md`.
-- Header: `sticky top-0` `bg-surface/90 backdrop-blur` `border-b border-border`, inner `h-16` flex. Logo = inline monoline SVG mark (`--color-accent`) + 20px/700 wordmark. Desktop nav (`md:flex`): ghost links "Features"/"How it works" (anchor `#features`/`#how`) + "Sign in" (`/login`) + "Get started" primary (`/signup`). Mobile (`md:hidden`): `<details>`/`<summary>` hamburger (3-line SVG, `list-none [&::-webkit-details-marker]:hidden`) → absolute dropdown with the same links + buttons; no client JS.
-- Hero: eyebrow pill (`bg-accent-light text-text-dark`), H1 "From receipt to signed report — all in one place." (`text-[34px] sm:text-[48px] md:text-[56px]` bold, `tracking-tight`), subcopy `text-text-secondary`, two CTAs — primary `bg-accent text-accent-foreground` + secondary `border border-border bg-surface`.
-- Hero visual: `rounded-[24px]` `overflow-hidden` `border border-border bg-surface` card acting as an **image holder** for the product screenshot — `next/image` of `/landing/img-1.png` (722×530, `priority`), `h-auto w-full`. Asset copied from `context/Design/img-1.png` into `public/landing/`. Replaces the earlier inline budget-dashboard mock.
-- Features: centered heading "Features" + `h-0.5 w-12 bg-accent` underline + intro line; 3-col grid of `bg-surface` cards, each with `bg-accent-muted text-accent` icon tile (inline monoline SVG), title, body.
-- How it works: same heading+underline pattern; 3-col cards with accent `01/02/03` labels.
-- Final CTA: single `bg-surface` card (`border border-border`), heading + primary button (replaces the earlier `bg-accent` band so every section is a white card per `ui-rules.md`).
-- Footer: `mt-auto border-t bg-surface`, logo + muted note.
-- All styling uses `@theme` tokens only — no hardcoded hex, no raw Tailwind color classes. Inline SVG icons use `currentColor` resolved to token classes.
+### Auth pages
+Files: components/auth/* · 2026-07-14 (Figma-matched restyle)
 
-**Note:** Figma copy ("Automate Student Council Liquidation…") and gray placeholder rectangles are treated as layout/structure only — real copy and token styling come from `ui-tokens.md`/`ui-rules.md`; font stays Poppins (Figma used Montserrat, but our system mandates Poppins). The earlier `RoleCard` component was deleted 2026-07-12.
+Centered form on white, no side panel. Real wiring: login → `POST /api/auth/login` (server returns `redirectTo`), signup → `POST /api/auth/signup` + `GET /api/departments`, then OTP / pending-approval / forgot / change-password flows. Signup role selector limited to treasurer/adviser (Admin excluded).
 
-**Hierarchy/whitespace (2026-07-12 refinement):** Every section uses a consistent 3-tier visual hierarchy — small uppercase `text-text-muted` eyebrow (`tracking-[0.08em]`) → `text-base font-semibold text-text-primary` heading → `text-sm text-text-secondary` intro → content. Generous whitespace: sections `py-20 md:py-28`, hero `pt-20 md:pt-32 pb-16 md:pb-24`, feature/how grids `gap-8`. This is Antigravity-inspired (structural pattern + whitespace + hierarchy) but rendered in the light, monochrome token system — no dark bands, no card-color changes. Whitespace intentionally exceeds the `ui-rules.md` 24/32px spacing caps (pre-approved deviation for the airy feel). Still token-only; `tsc --noEmit` passes; page renders with 0 console errors.
-
----
-
-### AuthShell
-
-File: components/auth/AuthShell.tsx
-Last updated: 2026-07-14 (Figma-matched restyle)
-
-- Shared layout for all `app/(auth)/*` pages. Server Component (no `"use client"`).
-- **Centered single-column** — no dark split brand panel (matches Figma `login-web` `#191:18`, which is a centered form on white with no side panel). `main` = `flex min-h-full items-center justify-center bg-background px-4 py-12`; inner `max-w-sm`.
-- Centered logo (mark `text-accent` + 20px/700 wordmark) at top, `mb-8`.
-- `subtitle` prop renders a centered `text-sm text-text-muted` line above the children. Children = the page form/card.
-
-### AuthCard
-
-File: components/auth/AuthCard.tsx
-Last updated: 2026-07-14 (Figma-matched restyle)
-
-| Property         | Class |
-| ---------------- | ----- |
-| Background       | (none — no card chrome; Figma has no bordered card) |
-| Border           | (none) |
-| Border radius    | (n/a) |
-| Text — primary   | `text-[28px] font-bold leading-9 text-text-primary` (title; Figma WELCOME is Poppins 700) |
-| Text — secondary | `text-sm font-normal text-text-secondary` (subtitle) |
-| Spacing          | `flex flex-col gap-6` |
-
-**Pattern notes:** Wraps each auth form. `title` + optional `subtitle` + `children`. No border/shadow/bg — the Figma login frame sits directly on white. Optional `center?: boolean` adds `text-center` to the root (used by `pending-approval` for a centered status layout; title + children all center).
-
-### LottiePlayer
-File: components/LottiePlayer.tsx
-Last updated: 2026-07-14 (Lottie animation renderer)
-
-- `"use client"`. Renders a Lottie JSON via `lottie-web` (dynamic `import()` inside `useEffect` so it stays out of the SSR bundle; `lottie-web` chosen over `lottie-react` to avoid React-19 peer-dep conflicts). Container `<div aria-hidden="true">` holds the injected SVG.
-- Props: `src` (URL to the `.json`, spaces encoded e.g. `/Auth%20pages/loading-time.json`), `className?` (sizing, e.g. `h-48 w-48`), `loop?` (default true), `autoplay?` (default true).
-- Cleanup destroys the animation on unmount / `src` change.
-- Used by `pending-approval` for the `loading-time.json` loading animation (big, centered).
-
-### AuthInput
-
-File: components/auth/AuthInput.tsx
-Last updated: 2026-07-14 (Figma-matched restyle)
-
-- `"use client"` (controlled `value`/`onChange`). Used by every auth form.
-- `label` is **required** and is the **floating label**: sits centered *inside* the input at rest (`top-1/2 -translate-y-1/2`), then scales down (`scale-90 text-xs`) and slides to the top-left on focus or when filled (`peer-focus:` / `peer-[:not(:placeholder-shown)]:` → `top-2`). Facebook/Material style. No label is rendered above the box anymore.
-- Input padding `pt-6 pb-2 pl-4 pr-10` (room for the floated label + right-side badge); `rounded-lg border-border-strong bg-surface`, focus `border-accent ring-1 ring-accent`, ~52px tall.
-- Props: `id`, `label` (required, floating text), `name?` (notice display name, defaults to `label`), `type`, `value`, `onChange`, `autoComplete`, `inputMode` (numeric/text/email/tel — OTP), `required`, `error?`. (No `placeholder` — the floating label replaces it; input uses `placeholder=" "` for the `:placeholder-shown` trick.)
-- `type="password"` renders a **persistent eye toggle** at `right-3` (inline SVG, `text-text-muted` → `hover:text-text-primary`). Reveal/hide uses an internal `show` state that **survives blur** — this replaces the browser's native, focus-dependent reveal (which vanished on blur). When errored, the red `!` badge sits at `right-10` (left of the eye) and the input gets `pr-16`; otherwise password uses `pr-10`. Non-password fields use `pr-4` (or `pr-10` on error).
-- `error?: boolean` → input `border-error` + `focus:ring-error` + `aria-invalid`; the floating label turns red; a red circular `!` badge (white `!`, `rounded-full bg-error`) renders **inside the input at the far right** (`right-3`, `pr-10` makes room); plus a `Please enter your <name>.` notice below. Each auth form sets `noValidate` + a `submitted` flag, so pressing Enter on an empty field triggers this (instead of native validation bubbles). Red clears as soon as the field is filled.
-- Gap to next field: `gap-2` (8px).
-
-### AuthOtpInput
-
-File: components/auth/AuthOtpInput.tsx
-Last updated: 2026-07-14 (6-digit OTP boxes)
-
-- `"use client"`. Six separate single-digit boxes for the OTP page (`h-14 w-12`, centered `text-xl font-semibold`, `rounded-lg`). Row uses `justify-between` so the first box's left edge and the last box's right edge line up with the full-width button below (both sides aligned).
-- Props: `value` (combined code string), `onChange(code)`, `length?` (default 6), `name?` (notice text, default "verification code"), `autoComplete?`, `error?`.
-- Behavior: typing a digit auto-advances focus to the next box; `Backspace` on an empty box moves back and clears the previous; arrow keys navigate; pasting/autofilling a multi-digit string distributes across boxes (all non-digits stripped).
-- `error?` → every box gets `border-error` + focus ring and a `Please enter your <name>.` notice shows below (no `!` badge — it threw the row off; boxes are `items-end` bottom-aligned).
-
-### AuthSelect
-File: components/auth/AuthSelect.tsx
-Last updated: 2026-07-14 (custom dropdown, replaces native `<select>`)
-
-- `"use client"`. Custom dropdown — **not** a native `<select>` (native arrow + popup look template-y). Renders a `<button>` control + token-themed popover `<ul role="listbox">`.
-- Control matches `AuthInput` exactly: `rounded-lg border bg-surface pb-2 pl-4 pr-10 pt-6`, floating `label` at `top-2` (always floated — selects always carry a value), custom chevron (ChevronDown SVG) at `right-3` that rotates `rotate-180` when open, `focus:border-accent focus:ring-1`. `error?` → `border-error` + red label + `Please enter your <name>.` notice.
-- Popover: `absolute z-30 mt-1 w-full rounded-lg border border-border-strong bg-surface py-1 shadow-card`. Option rows `px-4 py-2 text-sm`; selected → `bg-accent-muted font-medium text-accent`; keyboard/hovers `active` row → `bg-surface-secondary`. Closes on outside `mousedown`, `Escape`, or selection.
-- Keyboard: button opens on `ArrowDown`/`Enter`/`Space`; `Arrow` moves `active`; `Enter`/`Space` selects; `Escape` closes.
-- Props: `id`, `label` (required floating label), `value`, `onChange(value)`, `options: {value,label}[]`, `name?`, `required?`, `error?`.
-- Used by `signup` for Role + Department. Neither `AuthShell` nor `AuthCard` clips (no `overflow-hidden`), so the popover overlays fields below safely.
-
-### AuthButton
-
-File: components/auth/AuthButton.tsx
-Last updated: 2026-07-14 (Figma-matched restyle)
-
-- `"use client"`. Four variants: `primary`, `secondary`, `outline`, `ghost`.
-- **Variant classes mirror the landing page CTAs (`app/page.tsx`) exactly** so auth and marketing share one button language:
-  - Primary: `bg-accent text-accent-foreground rounded-full px-6 py-3 hover:bg-accent-hover` (matches landing "Get started").
-  - Secondary: `bg-surface border border-border text-text-primary rounded-full px-6 py-3 hover:bg-surface-secondary hover:border-border-strong` (matches landing hero "Sign in").
-  - Outline (Figma "Create an account"): `bg-surface border border-accent text-accent rounded-full px-6 py-3 hover:bg-accent-muted` — ink-outline pill, added to match Figma's outlined CTA; same padding/radius as the others.
-  - Ghost: `bg-transparent text-text-secondary rounded-md px-4 py-2 hover:bg-surface-secondary hover:text-text-primary` (matches landing nav links).
-- Shared: `w-full text-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-not-allowed disabled:opacity-50`. `loading` swaps label for "Please wait…" and forces disabled.
-- **Auth pages render their primary buttons always-enabled** (no `disabled` prop) so they are always the ink-black CTA — matching the landing page's "Get started" CTA, which is never greyed/disabled. The `disabled`/`loading` API still exists in the component for future real-validation use; it is simply not passed from the mock auth pages.
-- Padding `px-6 py-3` (not the `px-4 py-2` in `ui-rules.md` Buttons) to match the landing CTAs, which use the larger size; `w-full` spans the form width (landing buttons are auto-width).
-
-### AuthLink
-
-File: components/auth/AuthLink.tsx
-Last updated: 2026-07-14 (Figma-matched restyle)
-
-- Thin wrapper over `next/link`. `muted` prop (default false): `muted` → `text-text-muted hover:text-text-secondary` (Figma "Forget Password?" is gray); default → `text-accent hover:underline`. `className` appendable.
-- Used for "Forget Password?" (muted), "Create one" / "Sign in" toggles, "Back to sign in", and resend-style inline links.
-
-**Note (mock phase):** All five `app/(auth)/*` pages use `useState` mock submit handlers that `router.push` to the next step (signup→/otp→/pending-approval; forgot→inline success). No InsForge calls yet — real auth wiring lands in a later Phase 1 step. Signup role select is intentionally limited to `treasurer`/`adviser` (Admin excluded per `AGENTS.md`); department list is a hardcoded mock constant pending the `departments` table.
-
----
-
-### Auth & Landing (Phase 1)
-
-- [x] Landing Navbar
-- [x] Landing Hero / How-It-Works / Footer
-- [x] Login Card
-- [x] Signup Form (role selector, department picker)
-- [x] OTP Verification Screen (6-digit input, resend countdown)
-- [x] Pending Approval Screen
-- [x] Forgot Password Flow
-
-### Admin (Phase 2)
-
-- [x] Departments List (folder-grid cards + visual hierarchy + mobile bottom-nav) — 2026-07-17
-- [x] New Department Form
-- [x] Department Detail Tabs (Events / Reports folder-grid; Users / Audit responsive tables) — 2026-07-17
-- [x] Users Tab Row (deactivate/reactivate action)
-- [ ] Admin Approvals List (adviser signups)
-
-### Adviser (Phase 3)
-
-- [x] Adviser Approvals Tabs (Pending Expenses / Pending Users)
-- [x] Multi-select Batch Approve Table
-- [x] Single Reject Row (with required reason)
-
-### Treasurer — Events & Budget (Phase 4)
-
-- [x] Events List Card (status badge + Total/Spent/Remaining preview)
-- [x] New Event Form
-- [x] Event Dashboard Summary Bar
-- [x] Locked/Archived Banner
-
-### Treasurer — Entries (Phase 5)
-
-- [x] Entry Method Toggle (Receipt vs No Receipt)
-- [x] Receipt Upload Dropzone
-- [x] Receipt Review Panel (read-only extracted fields)
-- [x] Manual Entry Form
-- [x] Entry List Row (with voided/struck-through state)
-
-### Voiding & Overspend (Phase 6)
-
-- [ ] Void Reason Modal
-- [ ] Overspend Explanation Modal
-
-### Reports (Phase 7–8)
-
-- [ ] Signatory Setup Step (add/remove rows, reuse last list)
-- [ ] Report Preview (PDF preview + fs_document_number + status badge)
-- [ ] Adviser Report Review Screen (entry list + overspend surfacing)
-- [ ] Reject Modal (reason + optional per-entry comments)
-
-### Archiving (Phase 9)
-
-- [ ] Signed-Document Upload Modal
-- [ ] Post-Check Result Screen (pass/fail per check)
-
-### Notifications (Phase 10)
-
-- [ ] Notification List Item (read/unread state)
-
-### Audit (Phase 11)
-
-- [ ] Audit Log Table (expandable metadata)
-
----
+- **AuthShell** — server component; `min-h-full items-center justify-center bg-background px-4 py-12`, inner `max-w-sm`; centered logo `mb-8`; `subtitle` prop → `text-sm text-text-muted` line; also accepts `hideLogo?` + `top?` (login uses both).
+- **AuthCard** — no chrome (no border/shadow/bg); `flex flex-col gap-6`; title `text-[28px] font-bold leading-9 text-text-primary`, subtitle `text-sm text-text-secondary`; optional `center` (pending-approval).
+- **AuthInput** — floating label (Material style): label centered inside at rest, floats `scale-90 text-xs` to `top-2` on focus/fill via `peer-focus:` / `peer-[:not(:placeholder-shown)]:`; input `pt-6 pb-2 pl-4 pr-10 rounded-lg border-border-strong bg-surface`, focus `border-accent ring-1 ring-accent`, ~52px. `placeholder=" "` trick. Password: **persistent** eye toggle at `right-3` (survives blur — replaces native focus-dependent reveal). Error: `border-error focus:ring-error` + `aria-invalid` + red `!` badge inside right (`right-3`; password `pr-16`, else `pr-10`) + "Please enter your <name>." notice; forms use `noValidate` + `submitted` flag; red clears when filled. Gap to next field `gap-2`.
+- **AuthOtpInput** — 6 boxes `h-14 w-12 rounded-lg text-xl font-semibold`, row `justify-between` (edges align with full-width button). Auto-advance; Backspace on empty box moves back + clears; arrows navigate; paste distributes. Error: all boxes `border-error` + notice (no `!` badge — threw the row off).
+- **AuthSelect** — custom dropdown (not native `<select>`): button control + `role="listbox"` popover `absolute z-30 mt-1 w-full rounded-lg border border-border-strong bg-surface py-1 shadow-card`; label always floated at `top-2`; selected `bg-accent-muted font-medium text-accent`, hover `bg-surface-secondary`; full keyboard support; closes on outside/Escape.
+- **AuthButton** — 4 variants mirroring landing CTAs exactly (`rounded-full px-6 py-3`): primary `bg-accent text-accent-foreground hover:bg-accent-hover`; secondary `bg-surface border border-border text-text-primary hover:bg-surface-secondary hover:border-border-strong`; outline `border border-accent text-accent hover:bg-accent-muted`; ghost `bg-transparent text-text-secondary rounded-md px-4 py-2 hover:bg-surface-secondary hover:text-text-primary`. Shared `w-full text-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:opacity-50`. `loading` → "Please wait…". Auth pages render primary **always-enabled** (never greyed — matches landing CTA).
+- **AuthLink** — next/link wrapper; `muted` → `text-text-muted hover:text-text-secondary`, default → `text-accent hover:underline`.
+- **LottiePlayer** — client; `lottie-web` via dynamic `import()` in `useEffect` (chosen over `lottie-react` — React-19 peer-dep conflict); `aria-hidden` container; props `src`/`className`/`loop`/`autoplay`; destroys on unmount/src change. Used on login (`/Auth%20pages/Employee-content.json`) and pending-approval (`loading-time.json`).
 
 ### StatusBadge
+File: components/ui/StatusBadge.tsx · 2026-07-30
 
-File: components/ui/StatusBadge.tsx
-Last updated: 2026-07-30 (icon-only bare icons, no background)
-
-| Property         | Class |
-| ---------------- | ----- |
-| Background       | (none — bare icon, no container) |
-| Border           | (none) |
-| Border radius    | (none) |
-| Icon size        | `size={20}` |
-| Display          | `inline-flex shrink-0` |
-| Hover state      | none |
-| Shadow           | none |
-| Accent usage     | none |
-
-**Pattern notes:**
-Bare Lucide icons — no background, no border, no text. Color encoded via semantic variant tokens: `success` → `text-success`, `warning` → `text-warning`, `error` → `text-error`, `info` → `text-info`, `neutral` → `text-neutral`, `default` → `text-accent`. Each badge includes `aria-label` + `title` for accessibility. Exports preset mappers (`AccountStatusBadge`, `EventStatusBadge`, `RoleBadge`) and status maps (`entryStatusMap`, `reportStatusMap`) for direct callers. Uses `lucide-react` icons: `CircleCheckBig` (success), `Clock` (warning), `CircleDot` (info), `CircleX` (error), `CircleMinus` (neutral), `Shield` (admin), `BookOpen` (adviser), `Landmark` (treasurer).
+Bare Lucide icon — no background, no border, no text. Color via semantic variant tokens: `success`→`text-success`, `warning`→`text-warning`, `error`→`text-error`, `info`→`text-info`, `neutral`→`text-neutral`, default→`text-accent`. `size={20}`, `inline-flex shrink-0`, `aria-label` + `title`. Exports preset mappers (`AccountStatusBadge`, `EventStatusBadge`, `RoleBadge`) and maps `entryStatusMap` (ai_parsed→info, deducted→success, voided→error…) / `reportStatusMap`. Icons: `CircleCheckBig`/`Clock`/`CircleDot`/`CircleX`/`CircleMinus`/`Shield`/`BookOpen`/`Landmark`.
 
 ### EmptyState
-
-File: components/ui/EmptyState.tsx
-Last updated: 2026-07-17
-
-| Property         | Class |
-| ---------------- | ----- |
-| Background       | (none — no card chrome) |
-| Border           | (none) |
-| Border radius    | (n/a) |
-| Text — primary   | `text-sm font-medium text-text-primary` (title) |
-| Text — secondary | `text-sm text-text-muted` (description) |
-| Spacing          | `py-12` vertical, `gap-2` between elements |
-| Hover state      | none |
-| Shadow           | none |
-| Accent usage     | none |
-
-**Pattern notes:**
-Reusable empty state for any section that can be empty. Props: `icon?`, `title`, `description?`, `action?` (ReactNode for CTA button). Used in departments list (empty), department detail tabs (empty users/events/reports/audit logs). Follows `ui-rules.md` Empty States spec.
-
-### AdminSidebar
-
-File: components/admin/AdminSidebar.tsx
-Last updated: 2026-07-17
-
-| Property         | Class |
-| ---------------- | ----- |
-| Background       | `bg-surface` |
-| Border           | `border-r border-border` |
-| Border radius    | (none) |
-| Text — primary   | `text-sm font-medium` nav items |
-| Text — secondary | `text-text-secondary` inactive items |
-| Spacing          | `px-3 py-4` nav, `gap-1` items |
-| Hover state      | `hover:bg-surface-secondary hover:text-text-primary` |
-| Shadow           | none |
-| Accent usage     | active item: `bg-accent-light text-accent`; profile avatar: `bg-accent-light text-accent` |
-
-**Pattern notes:**
-Admin-only sidebar. Hidden on mobile (`hidden lg:flex`), fixed left 240px (`lg:w-60`). Visual hierarchy: **Logo** (`h-16`, mark `text-accent` + 20px/700 wordmark) → **Nav** (`flex-1 px-4 py-6`) with a small uppercase `Menu` section label (`text-xs font-medium uppercase tracking-[0.08em] text-text-muted`, `mb-3 px-3`) above the items, items spaced `gap-1.5` with `py-2.5` → **user profile block** at bottom (`relative border-t border-border p-3`). The profile row is a `button` (`aria-haspopup="menu"`) with a circular avatar tile (`h-9 w-9 rounded-full bg-accent-light text-accent`, monoline user SVG), name (`text-sm font-medium text-text-primary`, truncate) + role (`text-xs text-text-muted`), and a `ChevronUp` that rotates 180° when open. Clicking toggles a popover (`absolute bottom-16 left-3 right-3 rounded-lg border border-border bg-surface shadow-card`) with two `role="menuitem"` rows: "Profile" (`Link` to `/admin/profile`, `User` icon) and "Log out" (`text-error`, `LogOut` icon, `router.push("/login")` mock). Popover closes on outside `mousedown` or `Escape`. Balances the left side visually. Nav items: **Departments, Approvals only** — Profile was removed from the nav list (it lives in the bottom profile popover for visual balance, per 2026-07-17). Active detection via `usePathname()`. Mobile gets a top bar with logo + "Admin" pill instead. Server Component wrapped in layout; sidebar itself is `"use client"` for active-state detection. The "+ New Department" action lives on the departments page next to the search bar, not in the sidebar.
-
-### DepartmentsPage
-
-File: app/admin/departments/page.tsx
-Last updated: 2026-07-17 (visual hierarchy + mobile bottom-nav session)
-
-**Layout:** Centered column `mx-auto max-w-7xl flex flex-col gap-8 pb-28 md:pb-0`. Compact header (no eyebrow/rule): `text-xl font-semibold md:text-2xl` name + `text-xs text-text-muted` subline "Manage department accounts". Search row `flex items-center gap-3` (desktop: `hidden md:flex`; mobile: `flex md:hidden`) **outside the grid** so it stays visible behind modals/sheets. "New Department" primary button only on desktop; mobile uses a FAB → bottom sheet. **New Department** desktop modal (`fixed inset-0` + `bg-overlay-alpha`, centered `max-w-md p-8 shadow-card`) and mobile bottom sheet (`fixed inset-0 md:hidden`, `absolute inset-x-0 bottom-0 rounded-t-2xl`). Driven by `createView` (`null | "modal" | "sheet"`). Mobile bottom nav (`fixed inset-x-0 bottom-0 z-40 md:hidden`, 3 items: Departments active `text-accent` / Approvals / Profile→`/login`, each `flex-col items-center gap-1 py-2.5` icon+`text-[11px]`). FAB `fixed bottom-24 right-5 h-14 w-14 rounded-full bg-accent shadow-lg md:hidden`.
-
-| Property           | Class |
-| ------------------ | ----- |
-| Page container     | `mx-auto flex max-w-7xl flex-col gap-8 pb-28 md:pb-0` |
-| Header            | `text-xl font-semibold text-text-primary md:text-2xl` + `text-xs text-text-muted` subline |
-| Search input       | `rounded-full border border-accent bg-surface py-3 pl-11 pr-4` + focus `border-accent ring-1 ring-accent`; paired with "New Department" primary (`rounded-full bg-accent px-4 py-3`) in `flex items-center gap-3` |
-| Folder card (web)  | `h-[200px] w-full max-w-[280px] mx-auto rounded-xl border border-border-strong bg-surface p-6` — name `text-lg font-semibold line-clamp-2` primary, code `text-xs uppercase tracking-wide text-text-muted` secondary, roles `text-[11px] text-text-muted` tertiary, `StatusBadge` supporting; folder tile `h-9 w-9 rounded-lg bg-accent-light text-accent` top-right |
-| Folder grid (web)  | `hidden grid-cols-1 gap-x-5 gap-y-8 sm:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5` |
-| Card stack (mobile) | `flex flex-col gap-4 md:hidden` each `flex items-start justify-between gap-3 rounded-xl border border-border-strong bg-surface p-4` — name primary, code secondary, roles tertiary; `MoreVertical` menu + `StatusBadge` on right |
-| Mobile bottom nav  | `fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-surface md:hidden` |
-| Mobile FAB         | `fixed bottom-24 right-5 h-14 w-14 rounded-full bg-accent text-accent-foreground shadow-lg md:hidden` |
-
-**Animation:** Cards stagger-entry on mount/filter change via framer-motion `motion.div` stagger container (see `ui-rules.md` → Animation Standards). Each card is a `motion.div` with `fadeUpItem` variants (`opacity: 0, y: 12` → `opacity: 1, y: 0`, spring easing, 200ms). Container uses `staggerChildren: 0.04, delayChildren: 0.05`. Applied to both web grid and mobile stack render branches. Re-triggers on `filtered` dependency change via `key` on the container. **Migrated from GSAP 2026-07-18.**
-
-**Pattern notes:**
-Folder cards establish clear visual hierarchy (primary name → secondary code → tertiary adviser/treasurer → supporting status) so nothing shouts. Name leads, folder tile shrunk to quiet 9×9 top-right corner. Web grid `gap-x-5 gap-y-8`; mobile stack `gap-4`. Search + tabs row render unconditionally (behind modals). Mobile drops the top-tab bar in favour of a bottom nav that mirrors the sidebar (Departments/Approvals/Profile). `pb-28` clears the bottom nav on mobile. Mock data only; `tsc --noEmit` passes.
-
-### DepartmentDetailPage
-
-File: app/admin/departments/[departmentId]/page.tsx (Server Component)
-File: components/admin/DepartmentDetailClient.tsx (Client wrapper)
-Last updated: 2026-07-18 (extracted client wrapper, real data + Server Actions)
-
-**Layout:** `mx-auto flex flex-col gap-8 pb-24 md:pb-0`. Compact header (flat, no card chrome): `text-xl font-semibold md:text-2xl` name + `text-xs uppercase tracking-wide text-text-muted` code, `StatusBadge` quiet on right. Tabs: bottom-border bar `border-b border-border`, nav `overflow-x-auto`, active `border-b-2 border-accent text-accent` / inactive `border-transparent text-text-secondary hover:text-text-primary` (scrollable on mobile). Two content styles by data type:
-- **Events & Reports** → folder-grid cards (same language as DepartmentsPage): web `hidden grid-cols-1 gap-x-5 gap-y-8 sm:grid md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4`, cards `h-[180px] max-w-[280px] mx-auto rounded-xl border border-border-strong bg-surface p-6`. Event folder tile color-coded: **open** `bg-success-light text-success` + `text-success` status + `border-success/40`; **archived** `bg-accent-light text-accent` + `text-text-muted` + `border-border-strong`. Mobile stack `flex flex-col gap-4 md:hidden`.
-- **Users & Audit Logs** → real `<table>` (desktop only, `hidden md:block`) with `rounded-xl border border-border-strong bg-surface`, header row `border-b border-border text-xs uppercase tracking-wide text-text-muted`, rows `border-b border-border last:border-0`, cells `px-6 py-3`; **mobile** renders a `flex flex-col gap-4 md:hidden` card stack instead (no horizontal scroll).
-
-| Property         | Class |
-| ---------------- | ----- |
-| Header           | flat: `text-xl font-semibold md:text-2xl` name + `text-xs uppercase tracking-wide text-text-muted` code |
-| Tabs             | `border-b border-border`; active `border-b-2 border-accent text-accent`; `overflow-x-auto` |
-| Folder card      | `h-[180px] max-w-[280px] mx-auto rounded-xl border border-border-strong bg-surface p-6` |
-| Folder grid      | `hidden grid-cols-1 gap-x-5 gap-y-8 sm:grid md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4` |
-| Table (desktop)  | `hidden md:block rounded-xl border border-border-strong bg-surface`; `px-6 py-3` cells |
-| Mobile cards     | `flex flex-col gap-4 md:hidden` |
-
-**Animation:** Tab content staggers on switch via framer-motion `AnimatePresence mode="wait"` + `motion.div` stagger container (see `ui-rules.md` → Animation Standards). Tab panel `key={activeTab}` drives the remount. Uses same `fadeUpItem` variants as DepartmentsPage (spring, 200ms, y: 12). Exit animation: `opacity: 0, y: -4, duration: 0.1`. **Migrated from GSAP 2026-07-18.**
-
-**Pattern notes:**
-Mirrors the departments list visual language — calm, scannable, nothing shouts. Events/reports use folder cards (events color-coded by open/archived); users/audit use tables on desktop, stacked cards on mobile. Users tab: name primary, email/role/status secondary, right-aligned Deactivate (destructive outline) / Reactivate (secondary outline). `formatPHP()` for currency. Mock data only; `tsc --noEmit` passes.
-
-### AdminLayout
-
-File: app/admin/layout.tsx
-Last updated: 2026-07-17
-
-| Property         | Class |
-| ---------------- | ----- |
-| Background       | `bg-background` |
-| Border           | sidebar: `border-r border-border` |
-| Border radius    | (none) |
-| Text — primary   | logo: `text-lg font-bold` |
-| Spacing          | main: `px-4 py-6 md:px-8 md:py-8` |
-| Hover state      | (n/a) |
-| Shadow           | (none) |
-| Accent usage     | logo mark: `text-accent`, "Admin" pill: `bg-accent-light text-accent` |
-
-**Pattern notes:**
-Server Component with `requireLayoutRole("admin")` guard. Renders `AdminSidebar` + main content area (`lg:pl-60` to offset sidebar). Mobile gets a top bar (logo + "Admin" badge) instead of sidebar. Content wrapped in `max-w-[1440px]` centered container per `ui-rules.md`.
-
-### TreasurerSidebar
-
-File: components/treasurer/TreasurerSidebar.tsx
-Last updated: 2026-07-18
-
-| Property         | Class |
-| ---------------- | ----- |
-| Background       | `bg-surface` |
-| Border           | `border-r border-border` |
-| Nav spacing      | `px-3 py-4`, `gap-1.5` items |
-| Active item      | `bg-accent-light text-accent` |
-| Inactive item    | `text-text-secondary hover:bg-surface-secondary hover:text-text-primary` |
-| Profile avatar   | `h-9 w-9 rounded-full bg-accent-light text-accent` |
-
-**Pattern notes:** Mirrors AdminSidebar pattern exactly; 4 nav items (Home, Reports, Notifications, Profile). Same fixed 240px sidebar, mobile hidden, same bottom profile popover. Nav detection via `usePathname()`. Label order different from admin: Home is first (not Departments).
-
-### TreasurerMobileBottomNav
-
-File: components/treasurer/TreasurerMobileBottomNav.tsx
-Last updated: 2026-07-18
-
-| Property     | Class |
-| ------------ | ----- |
-| Background   | `bg-surface border-t border-border` |
-| Position     | `fixed inset-x-0 bottom-0 z-40 md:hidden` |
-| Item spacing | `flex-1 flex flex-col items-center gap-1 py-2` |
-| Active item  | `text-accent` (icon + `text-[11px]` label) |
-| Inactive     | `text-text-muted` |
-
-**Pattern notes:** 4 items, matches sidebar. Same visual language as admin mobile bottom nav.
-
-### EventCard
-
-File: components/events/EventCard.tsx
-Last updated: 2026-08-01 (info moved onto the paper sheet; grid 6-col)
-
-| Property         | Class |
-| ---------------- | ----- |
-| Root             | `MotionLink` (`motion.create(Link)`), `flex w-full flex-col gap-3`, `initial="rest" whileHover="hover"` |
-| Folder container | `relative aspect-[412/312] w-full` (prototype proportions, fluid across grid) |
-| Folder silhouette | inline SVG (2 paths, `viewBox="0 0 404 263"`), `absolute left-1 top-0 w-[calc(100%-8px)] text-neutral drop-shadow-md`, `fill="currentColor"` |
-| Paper sheet      | `absolute left-0 top-[14%] flex h-[82%] w-full flex-col gap-1.5 rounded-xl bg-surface-secondary p-3` — holds ALL card info |
-| Name             | `text-sm font-semibold leading-snug text-text-primary line-clamp-1` |
-| Budget row       | `text-[11px] text-text-muted` — `formatPHP()` "spent of total" + pct% |
-| Progress bar     | `mt-1 h-1.5 rounded-full` track `bg-border-light`, fill `bg-success`/`bg-warning`/`bg-error` by range |
-| Footer           | `mt-auto text-[11px] text-text-muted` — creator name (truncate) + `FileText` icon + entry count |
-| Hover (folder)   | variants `{ rest: { x: 0 }, hover: { x: -4 } }` |
-| Hover (paper)    | variants `{ rest: { x: 0, y: 0, width: "100%" }, hover: { x: -11, y: 8, width: "104.25%" } }` |
-| Transition       | `{ duration: 0.2, ease: "easeOut" }` shared const (prototype 300ms tightened to card-hover window) |
-| Reduced motion   | `MotionConfig reducedMotion="user"` wrapper |
-
-**Pattern notes:** Folder is an inline SVG silhouette (tabbed folder from Figma `folder 2` export, paths inline, `fill="currentColor"` mapped to `text-neutral`), with a rounded paper sheet (`bg-surface-secondary`) overlapping its lower half — on card hover the paper slides down-left and widens while the folder shifts left, via framer-motion variants propagated from `MotionLink` (whole card is the hover target). Animation values are relative to a `412×312` container so they scale across the responsive grid (2→5 cols: `grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5` in `app/treasurer/home/client.tsx`). All card info (name, budget, bar, footer) lives ON the paper sheet — nothing below the folder. Circular entry-count badge removed (footer shows count); status dot removed 2026-08-01. Registry note: 2026-07-26 entry described an outdated card layout — superseded by this design.
-
-### EventListItem
-
-File: components/events/EventListItem.tsx
-Last updated: 2026-07-26 (hover shadow + accent bar)
-
-| Property         | Class |
-| ---------------- | ----- |
-| Container        | `relative overflow-hidden rounded-xl border border-border bg-surface px-4 py-3 md:px-5` |
-| Hover            | `hover:border-border-strong hover:bg-surface-secondary hover:shadow-md` |
-| Left accent bar  | `absolute left-0 top-0 h-full w-[3px] -translate-x-full bg-success group-hover:translate-x-0` |
-| Transition       | `transition-all duration-200` |
-
-**Pattern notes:** List row with standalone folder icon, name + date, amount/budget, progress bar, entry count, status badge, chevron. Hover feedback is neutral only: `hover:bg-surface-secondary` + border/shadow deepening; green accent bar and green icon tint removed 2026-08-01. Icon is a bare `Folder` (`h-5 w-5 text-text-muted`, no tile background) that fills solid ink on hover (`group-hover:fill-current group-hover:text-text-primary`). Chevron shifts right on hover (`group-hover:translate-x-0.5`).
-
-### EventDashboardActions
-
-File: components/events/EventDashboardActions.tsx
-Last updated: 2026-07-26 (mobile-only, lg:hidden)
-
-| Property         | Class |
-| ---------------- | ----- |
-| Container        | `grid grid-cols-2 gap-3 lg:hidden` |
-| Primary button   | `flex-1 rounded-xl bg-accent px-4 py-3 text-sm font-medium` + `hover:shadow-md hover:scale-[1.02] active:scale-[0.98]` |
-| Secondary button | `flex-1 rounded-xl border border-border px-4 py-3 text-sm font-medium` + `hover:shadow-sm hover:scale-[1.02] active:scale-[0.98]` |
-
-**Pattern notes:** Mobile-only action buttons (`lg:hidden`). Desktop buttons are now inside `BudgetSummary`. Grid layout on mobile, full-width buttons with hover micro-popup.
-
-### EventForm
-
-File: components/events/EventForm.tsx
-Last updated: 2026-07-25 (stripped page chrome — now embeddable in modals)
-
-| Property         | Class |
-| ---------------- | ----- |
-| Input field      | `rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:ring-1 focus:ring-accent` |
-| Submit button    | `rounded-full bg-accent px-6 py-3 text-accent-foreground hover:bg-accent-hover disabled:opacity-50` |
-
-**Pattern notes:** Pure form component (no card wrapper, no back link). Accepts optional `onSubmit` prop — when absent, mock-simulates success. Error display inline. Used by `NewEventModal` with `createEvent` Server Action wired as `onSubmit`. Also used standalone as fallback. Changed from page-wrapped to embeddable — the modal provides its own chrome (overlay, card, close button).
-
-### NewEventModal
-
-File: components/events/NewEventModal.tsx
-Last updated: 2026-07-25
-
-| Property       | Class |
-| -------------- | ----- |
-| Overlay        | `fixed inset-0 z-50 bg-overlay-alpha` |
-| Modal (web)    | `relative w-full max-w-lg rounded-xl border border-border bg-surface p-6 shadow-card` centered via flex |
-| Sheet (mobile) | `max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-border bg-surface p-6 pb-8 shadow-card` + `mx-auto mb-5 h-1 w-10 rounded-full bg-border-strong` drag handle |
-| Close button   | `absolute right-4 top-4 flex h-7 w-7 items-center justify-center rounded-full text-text-muted hover:bg-surface-secondary hover:text-text-primary` |
-| Cancel (mobile)| `w-full rounded-full border border-border px-4 py-2.5 text-sm font-medium text-text-secondary hover:bg-surface-secondary hover:text-text-primary` |
-
-**Pattern notes:** AnimatePresence modal/sheet shell wrapping `EventForm`. Props: `open`, `onClose`. Calls `createEvent` Server Action on submit → `router.refresh()` to revalidate list. Escape key and overlay click close. Body scroll locked when open. State resets on open. Follows `LogEntryModal` pattern exactly.
-
-### BudgetSummary
-
-File: components/events/BudgetSummary.tsx
-Last updated: 2026-07-26 (rewritten — two-column with embedded buttons)
-
-| Property       | Class |
-| -------------- | ----- |
-| Card           | `rounded-xl bg-surface-inverse p-5 shadow-card sm:p-6` |
-| Hero label     | `text-xs font-medium uppercase tracking-wide text-text-inverse/60` |
-| Hero value     | `text-[32px] font-semibold leading-9 tabular-nums sm:text-[40px] sm:leading-12 text-text-inverse` |
-| Supporting label | `text-xs font-medium uppercase tracking-wide text-text-inverse/60` |
-| Supporting value | `text-sm font-semibold tabular-nums text-text-inverse` |
-| Status text    | `text-xs text-text-inverse/60` right-aligned at bottom |
-| Primary button | `bg-surface text-text-inverse rounded-lg px-5 py-2.5 text-sm font-medium` + `hover:bg-surface-secondary hover:shadow-md active:scale-[0.98]` (desktop only) |
-| Secondary button | `border border-white/30 text-text-inverse rounded-lg px-5 py-2.5 text-sm font-medium` + `hover:bg-white/10 hover:shadow-sm active:scale-[0.98]` (desktop only) |
-
-**Pattern notes:** Dark hero card with two-column flex layout. Left: EXPENSES label + remaining value + TOTAL/PAID row. Right: action buttons stacked vertically (desktop only, `hidden lg:flex`). Bottom-right: budget status text ("Budget Fully Utilized" / "Over Budget" / "{pct}% Budget Utilized"). No progress bar. Contains `LogEntryModal` for the "+ New Entry" button. Uses `bg-surface-inverse` for dark background, `text-text-inverse` for white text.
-
-### ExpenseFilters
-
-File: components/entries/ExpenseFilters.tsx
-Last updated: 2026-07-26 (new component)
-
-| Property       | Class |
-| -------------- | ----- |
-| Container      | `flex items-center gap-2` |
-| Chip (default) | via `FilterDropdown`: `rounded-lg border border-border bg-surface px-2 py-1 text-xs font-medium` |
-| Chip (active)  | via `FilterDropdown`: `border-accent bg-accent-muted text-accent` |
-
-**Pattern notes:** 4 filter chips using existing `FilterDropdown` component. Filters: Type (All/With Receipt/Manual), Sort (Newest/Oldest/Amount High-Low/Amount Low-High), Budget (All/₱0–100/₱100–500/₱500–1000/₱1000+), Category (All + dynamic from data). State managed in `ExpensesSection` parent component. **Mobile** (`ExpenseFilterIcon`, `md:hidden`): icon-only `SlidersHorizontal` pill (no "Filter" text) that opens `FilterPopover` — `absolute right-0 top-full z-30 mt-1.5 w-64 rounded-lg border border-border-strong bg-surface p-4 shadow-card`, right-aligned under the button, closes on outside `mousedown`/`Escape` (same pattern as `FilterDropdown`). Bottom sheet removed 2026-08-01.
-
-### ExpensesSection
-
-File: components/entries/ExpensesSection.tsx
-Last updated: 2026-07-26 (new component)
-
-| Property       | Class |
-| -------------- | ----- |
-| (wraps EntryList with filter logic) | |
-
-**Pattern notes:** Client component that manages filter state and passes filtered entries to `EntryList`. Filters by type, budget range, category, and sorts by newest/oldest/amount. Renders `ExpenseFilters` as a slot in the `EntryList` header. Replaces the direct `EntryList` usage on the event dashboard.
-
-### EventProgress
-
-File: components/events/EventProgress.tsx
-Last updated: 2026-07-26 (new component — horizontal step bar)
-
-| Property       | Class |
-| -------------- | ----- |
-| Card           | `rounded-xl border border-border bg-surface p-4 shadow-card` |
-| Step dot (active) | `h-7 w-7 rounded-full bg-accent text-accent-foreground` |
-| Step dot (completed) | `h-7 w-7 rounded-full bg-success text-white` |
-| Step dot (pending) | `h-7 w-7 rounded-full border-2 border-border bg-surface text-text-muted` |
-| Connector (completed) | `h-0.5 flex-1 bg-success` |
-| Connector (pending) | `h-0.5 flex-1 bg-border` |
-| Label | `text-[11px] font-medium` — active/completed: `text-text-primary`, pending: `text-text-muted` |
-
-**Pattern notes:** Horizontal 3-step progress bar showing event lifecycle: Open → Report Pending → Approved. Completed steps show `Check` icon, active shows step number, pending shows empty ring. Steps connected by thin lines. Logic: `status === "open"` → step 1 active; `isLocked` → step 2 active; `status === "archived"` → all completed.
-
-### LockedBanner
-
-File: components/events/LockedBanner.tsx
-Last updated: 2026-07-26 (icon + left border accent)
-
-| Property          | Class |
-| ----------------- | ----- |
-| Container (locked) | `flex items-center gap-3 rounded-xl border border-border border-l-[3px] border-l-info bg-info-lightest px-4 py-3` |
-| Container (archived) | `flex items-center gap-3 rounded-xl border border-border border-l-[3px] border-l-neutral bg-neutral-light px-4 py-3` |
-| Icon              | `h-4 w-4 shrink-0` — Lock / Archive from lucide-react |
-| Title             | `text-sm font-medium` — `text-info-foreground` (locked) / `text-neutral-foreground` (archived) |
-| Description       | `text-xs text-text-muted` |
-
-**Pattern notes:** Two variants: info-blue left border + Lock icon for locked (report pending/approved), neutral left border + Archive icon for archived. Left border accent (`border-l-[3px]`) adds visual weight. Icon + title + description layout for clear hierarchy. Only renders when `isLocked` or `isArchived` is true.
-
-### EntryRow
-
-File: components/entries/EntryRow.tsx
-Last updated: 2026-07-26 (hover state added)
-
-| Property      | Class |
-| ------------- | ----- |
-| Container     | `border-b border-border px-4 py-3 transition-colors last:border-0 hover:bg-surface-secondary` |
-| Type badge    | `rounded-full px-2 py-0.5 text-[11px] font-medium` — receipt: `bg-info-lightest text-info-foreground`; manual: `bg-surface-secondary text-text-secondary` |
-| Status badge  | Uses `StatusBadge` preset mapper (ai_parsed→info, deducted→success, voided→error, etc.) |
-| Void state    | `opacity-60` container + `line-through` on amount + inline void reason |
-
-**Pattern notes:** Single entry row with type indicator, description/supplier, amount, and status badge. Hover: `bg-surface-secondary` with `transition-colors`. Voided entries: dimmed, struck-through amount, always-visible void reason attribution line (not hover-revealed).
-
-### EntryCard
-
-File: components/entries/EntryCard.tsx
-Last updated: 2026-07-26 (hover animation, click-to-detail, reference design match)
-
-| Property       | Class |
-| -------------- | ----- |
-| Card           | `rounded-xl border border-border bg-surface shadow-sm cursor-pointer` + `transition-[shadow,transform] duration-200 hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]` |
-| Preview area   | `h-32 w-full relative` — receipt: real image (`img` → `GET /api/entries/{id}/image`, `loading="lazy"` `object-cover`, `onError` → styled receipt placeholder); manual: centered `Pencil` icon on `bg-surface-secondary` |
-| Status badge   | `absolute right-2 top-2` — overlaid on preview area |
-| Content area   | `flex-1 flex-col justify-between p-3` — fills remaining space, pushes amount to bottom |
-| Supplier name  | `text-sm font-medium text-text-primary line-clamp-1` |
-| Category       | `text-xs text-text-muted line-clamp-1` (or `\u00A0` placeholder for consistent height) |
-| Amount         | `text-xl font-bold tabular-nums text-text-primary` (most prominent) |
-| Void state     | `opacity-60` card + `line-through` on amount + void attribution below |
-
-**Pattern notes:** Grid card matching reference design (`entrycard.png`). Large preview area (~60% of card) with status badge overlay. Supplier name and amount are visual highlights. Card is clickable — opens `EntryDetailModal` showing all parsed content. Hover: 2px lift + shadow deepening. Press: scale 0.98 feedback. Receipt image loads via the session-authed proxy route (`app/api/entries/[entryId]/image/route.ts`) — `image_url` holds the storage **key** only; `onError` (missing/deleted file, expired session) swaps back to the styled placeholder. `"use client"` (uses `useState` for the image-failed fallback).
-
-### EntryDetailModal
-
-File: components/entries/EntryDetailModal.tsx
-Last updated: 2026-07-26 (new component)
-
-| Property       | Class |
-| -------------- | ----- |
-| Overlay        | `fixed inset-0 z-50 bg-overlay-alpha` |
-| Modal (desktop)| `hidden sm:flex` — `max-h-[85vh] max-w-lg overflow-y-auto scrollbar-hide rounded-xl border border-border bg-surface p-6 shadow-card` centered |
-| Sheet (mobile) | `sm:hidden` — `max-h-[85vh] overflow-y-auto scrollbar-hide rounded-t-2xl border-t border-border bg-surface p-6 pb-8 shadow-card` slides up |
-| Close button   | `absolute right-4 top-4 h-7 w-7 rounded-full text-text-muted hover:bg-surface-secondary` |
-| Receipt image  | `h-48 w-full cursor-pointer rounded-lg border border-border object-cover hover:opacity-90` — `img` → `GET /api/entries/{id}/image`, `onError` → icon placeholder |
-| Detail rows    | `divide-y divide-border rounded-lg border border-border bg-surface-secondary/50 px-4` |
-| Item breakdown | `overflow-hidden rounded-lg border border-border` table |
-| Void action    | `w-full rounded-full` destructive `Button` with `CircleX` icon — renders at the very bottom of the content (in-flow, scrolls with it) when `canMutate && status === "deducted"`; opens `VoidEntryModal` on top (DOM-after → wins the z-50 tie). Modal/sheet corners untouched |
-
-**Pattern notes:** Shows all parsed entry content: receipt image (real photo via session-authed proxy route — `image_url` stores the storage key, never a URL; missing image/file deleted → icon placeholder via `onError`), supplier name, category, amount, status badge, document type/number, date/time, item breakdown table (receipt only), void info (if voided). Desktop: centered modal with `dialogContent` animation. Mobile: bottom sheet with `sheetSlideUp` animation. Image viewer: full-screen overlay (`z-[60]` dark backdrop) that takes `src?: string` — renders the image (`max-h-[80vh] w-auto max-w-[90vw] rounded-xl object-contain`) when present, "No image available" box when absent; `onError` also falls back to that box; Escape closes. Reuses `dialogOverlay`, `dialogContent`, `sheetSlideUp` from `lib/motion-variants.ts`. Both scroll containers use the `scrollbar-hide` utility (plain CSS class in `app/globals.css`: `scrollbar-width: none` + `::-webkit-scrollbar { display: none }` — scrollability untouched, verified via stub harness: `scrollHeight > clientHeight`, `scrollbarWidth: "none"`, programmatic scroll moves) — for hiding scrollbars on any scrollable surface; note: an `@utility` definition of the same rule did NOT compile under Turbopack dev, plain class is the working pattern. Void entry lives HERE (bottom of the info modal, full-width pill), not on the card/row — user direction 2026-08-04: card/row buttons removed, `EntryCard`/`EntryRow` no longer take `canVoid`/`onVoid`; `EntryDetailModal` takes `canMutate` + `onVoid`; `VoidEntryModal` gained `onSuccess` so the stale detail modal closes after a successful void.
-
-### EntryList
-
-File: components/entries/EntryList.tsx
-Last updated: 2026-07-26 (click-to-detail modal, expanded entry type)
-
-| Property   | Class |
-| ---------- | ----- |
-| Header     | `flex flex-wrap items-center gap-3` — "EXPENSES (count)" + filter slot + view toggle |
-| Grid       | `grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 md:gap-5 lg:grid-cols-4 lg:gap-6 xl:grid-cols-5` |
-| Animation  | framer-motion `staggerContainer` + `fadeUpItem` from `lib/motion-variants` |
-
-**Pattern notes:** Card grid layout — 5 columns on desktop (`xl:`), 4 on large (`lg:`), 3 on tablet (`md:`), 2 on mobile. Header shows "EXPENSES (count)" title with filter chips (desktop) or filter icon (mobile) + ViewToggle on far right. Each card is clickable — opens `EntryDetailModal` with full entry details. Manages `selectedEntry` state. Exported `EntryListItem` type includes all parsed fields for the modal.
-
-### CameraViewfinder
-
-File: components/entries/CameraViewfinder.tsx (+ camera-analysis.ts)
-Last updated: 2026-08-02
-
-| Property           | Class |
-| ------------------ | ----- |
-| Overlay            | `fixed inset-0 z-50 bg-surface-inverse` — rendered via `createPortal` to `document.body` (breaks free of parent `motion.div` scale transforms) |
-| Video              | `h-full w-full object-cover`, `autoPlay playsInline muted`, `pointer-events-none` |
-| Guide corners      | Four 48px corner divs — `border-[3px]` (no shadow, deliberately minimal), inset `left/right-6 top-24` / `left/right-6 bottom-40`, `rounded-tl/tr/bl/br-lg` (bottom inset clears the shutter zone with 24px margin vs the 72px shutter). `border-text-inverse` normally; `border-success` (green `#10b981`) while the frame reads clean |
-| Back button        | `flex h-10 w-10 items-center justify-center rounded-full bg-surface-inverse/60 text-text-inverse hover:bg-surface-inverse` — top-left, `ArrowLeft` icon, aria "Back" |
-| Flash toggle       | Same 40px circular style — `Flashlight` icon, sits right of Back in a `flex gap-2` cluster, rendered only when `track.getCapabilities()?.torch === true` (hidden on iOS etc). On: `bg-text-inverse text-surface-inverse`; off: standard dark pill. `aria-pressed`; `applyConstraints({advanced:[{torch}]})` in try/catch with silent revert (some devices advertise torch but reject it). `flashOn` resets on flip/reopen |
-| Flip button        | Same style — top-right, `SwitchCamera` icon, rendered only while stream is active |
-| Hint chip          | `absolute inset-x-0 top-16 flex justify-center px-4` + `aria-live="polite"` — pill `rounded-full bg-surface-inverse/70 px-4 py-2 text-xs font-medium text-text-inverse backdrop-blur-sm`; icon + label; only rendered while a problem persists (all-clean → nothing). Variants: dim+torch available → tappable pill "Too dark — enable flash" (`Zap`); dim otherwise → "Too dark — move to better lighting" (`Sun`); "Too close — pull back" (`ZoomIn`); "Too far — move closer" (`ZoomOut`); "Photo is blurry — hold steady" (`Focus`) |
-| Shutter            | 72px outer ring (`h-18 w-18`) `rounded-full border-[3px] border-text-inverse` with 56px inner (`h-14 w-14`) `bg-text-inverse` circle holding a `Camera` icon `h-7 w-7` (icon `text-surface-inverse`) — centered, wrapper `absolute inset-x-0 bottom-16 z-10 flex justify-center` (64px lift: thumb-comfort zone, clears gesture home bar, 8px clear of the guide brackets' `bottom-36` edge) |
-| Library button     | Icon-only 56px circle (`h-14 w-14`): `flex h-14 w-14 items-center justify-center rounded-full bg-surface-inverse/60 text-text-inverse hover:bg-surface-inverse`, `Image` icon `h-7 w-7`, `aria-label="Use Photo Library"`. Wrapper `absolute bottom-16 left-4 z-10 flex h-18 w-18 items-center justify-center` — same 72px height as the shutter, so its center sits exactly on the shutter's center line (verified: both centers Y-equal in-browser) |
-| Error card         | `rounded-xl bg-surface p-5 text-text-primary` — message + "Try Again" (`RotateCcw`) + "Use Photo Library" |
-
-**Pattern notes:** Fullscreen mobile capture overlay (also usable on desktop). Stream via `getUserMedia({ video: { facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } } })`; bare `{video:true}` retry once per open/flip (old iOS). Errors mapped from DOMException name → friendly copy (`NotAllowedError` permission, `NotFoundError` no camera, `NotReadableError` in-use). Capture: `canvas.toBlob("image/jpeg", 0.92)` → `new File([blob], "receipt-capture.jpg")` — JPEG passes ReceiptUpload validation and ManualQuickForm's `image/*` + 10MB gate. Escape handled via container `onKeyDownCapture` with `stopPropagation()` so LogEntryModal's document-level Escape listener never fires while the camera is open. Container is `tabIndex={-1}` + autofocused to receive key events; body scroll locked while open; all tracks stopped on unmount. `shutterLockRef` guards double-capture. Props: `onCapture(file: File)`, `onClose()`, `onUseLibrary()` (parent opens its own hidden input — no `capture` attr, chooser stays a plain library picker).
-
-**Live quality hints** (`camera-analysis.ts`, pure + dependency-free): every 500ms while the stream is active the viewfinder samples the live frame — `analyzeFrame` draws it to one reused 96×128 offscreen canvas, grayscales, and computes `{ luminance, sharpness (Laplacian variance), edgeCoverage, edgeBounds }`; `interpret` classifies with priority dim → close → far → blur (blur last because dark frames read as low variance; far requires in-focus sharpness so it fires before blur). Thresholds: dim `< 60` luminance, close `> 0.45` coverage, far `< 0.06` coverage + bbox `< 0.25` + sharpness `> 400`, blur `< 250`. A hint only surfaces on 2-of-3 sample agreement (no flicker) and clears after 2 clean samples; brackets go green after 2+ consecutive clean samples, reset on flip/reopen. Torch capability is probed per stream from `getCapabilities().torch` (typed via cast — TS DOM lib lacks `torch`). Guidance only — never blocks capture.
-
-### ReceiptUpload
-
-File: components/entries/ReceiptUpload.tsx
-Last updated: 2026-08-02
-
-**Behavior:** Images are downscaled client-side before upload (`prepareImage`: ≤1600px JPEG q0.8 via canvas + `createImageBitmap` with `imageOrientation: "from-image"`; white-composited; HEIC and <1MB images pass through untouched; any failure falls back to the original). Speeds up upload + Gemini ingest — accuracy gate passed (fields match original parse).
-
-| Property          | Class |
-| ----------------- | ----- |
-| Mobile chooser    | `flex flex-col gap-3 md:hidden` — "Take a Photo" (`rounded-full bg-accent` pill, `Camera` icon) + "Choose from Library" (outline pill, `Image` icon); rendered only while `!file` |
-| Upload zone       | `hidden md:flex rounded-xl border-2 border-dashed p-12` — drag: `border-accent bg-accent-muted`; idle: `border-border-strong bg-surface hover:border-accent hover:bg-accent-muted` |
-| Icon circle     | `flex h-12 w-12 items-center justify-center rounded-full bg-accent-light text-accent` |
-| File row        | `flex items-center gap-3 text-sm` with `FileImage` icon |
-| Remove button   | `absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-surface text-text-secondary shadow` |
-| Upload button   | `rounded-full bg-accent px-6 py-3 text-accent-foreground hover:bg-accent-hover disabled:opacity-50` |
-| Progress bar    | `h-1.5 w-full overflow-hidden rounded-full bg-border-light` with `animate-pulse rounded-full bg-accent` fill |
-| Fallback banner | `rounded-xl border border-warning bg-warning-lightest p-4` — "Enter Entry Manually" (accent pill) + "Try Another Photo" (outline pill) |
-| Verdict banners  | `invalid_document`: warning shell (`border-warning bg-warning-lightest`), title "No receipt details found", primary "Log as No Receipt Entry" (`Pencil`) + secondary "Try Another Photo"; `borderline`: info shell (`border-info bg-info-lightest`), title "Photo needs a retake", primary "Try Another Photo" (`RefreshCw`) + secondary "Log as No Receipt Entry" |
-
-**Pattern notes:** Drag/drop zone with click-to-browse fallback. Validates file type (JPEG/PNG/WebP/HEIC) and size (10MB). Shows image preview after selection. Real parse via `POST /api/entries/receipt` (FormData: `eventId` + `image`); on success calls `onParsed({ entryId, parsed })`. Failures are kinded (`FailureKind`): model verdicts `invalid_document`/`borderline` render their guidance banner immediately and never count toward `MAX_ATTEMPTS = 3`; `parse_failed` counts toward the ceiling then shows the fallback banner (`onExhausted` → switch to manual flow); generic (validation/network/business) show inline red text. Mobile (<md): dropzone hidden, replaced by a two-button source chooser — "Take a Photo" opens `CameraViewfinder` (capture → `validateAndSet` same as file pick), "Choose from Library" clicks the hidden input (no `capture` attr — chooser stays a plain picker). Camera `onUseLibrary` → `inputRef.click()` too. Props: `eventId`, `onParsed`, `onExhausted`, `onNoReceipt` (verdict CTAs → manual flow). Exports `ParsedUploadResult` type.
-
-### ReceiptReview
-
-File: components/entries/ReceiptReview.tsx
-Last updated: 2026-08-03
-
-| Property          | Class |
-| ----------------- | ----- |
-| Overlay           | `fixed inset-0 z-50 bg-overlay-alpha` |
-| Modal (desktop)   | `relative w-full max-w-lg rounded-xl border border-border bg-surface p-6 shadow-card` centered via flex |
-| Sheet (mobile)    | `max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-border bg-surface p-6 pb-8 shadow-card` with `mx-auto mb-5 h-1 w-10 rounded-full bg-border-strong` drag handle |
-| Read field        | `rounded-lg border border-border bg-surface-secondary px-3 py-2 text-sm text-text-primary` |
-| Highlighted field | `rounded-lg bg-info-lightest px-3 py-2 text-sm font-semibold text-info-foreground` (amount) |
-| Item table        | `rounded-lg border border-border` with thead `bg-surface-secondary`, tbody rows `border-b border-border last:border-0`, tfoot `border-t border-border-strong bg-surface-secondary font-medium` |
-| Confirm button    | `rounded-full bg-accent px-6 py-3 text-accent-foreground hover:bg-accent-hover` with `Check` icon; label "Confirm Overspend" while `overspend` is set |
-| Discard button    | `rounded-full border border-error px-6 py-3 text-error hover:bg-error-lightest` with `X` icon |
-| Overspend callout | `rounded-xl border border-warning bg-warning-lightest p-4` + `AlertTriangle` icon (`text-warning-foreground`); explanation textarea `rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm` with `focus:border-accent` |
-| Inline error      | `text-xs font-medium text-error` with `role="alert"` |
-
-**Pattern notes:** AnimatePresence overlay + two render branches (`hidden sm:flex` modal / `sm:hidden` bottom sheet). Closes on Escape or overlay click (only when not confirming). Uses `dialogOverlay` / `dialogContent` from framer-motion variants. Exported `ReadOnlyField` atom for reuse. Props: `open`, `data: ParsedReceipt` (from `@/agent/types`), `onConfirm`, `onDiscard`, `onClose`, `confirming?`, `overspend?` (`{ overshoot, explanation, error }` — parent owns state), `onOverspendChange?`, `confirmError?`. Standalone `/entries/new` page passes these; `LogEntryModal` keeps its own inline copy (see debt note).
-
-### UsePeopleReuse
-
-File: hooks/usePeopleReuse.ts
-Last updated: 2026-07-29
-
-**Pattern notes:** Minimal hook for localStorage persistence of the witness/people_present field. Key: `liquifi:pp:{eventId}`. Two methods: `read()` and `write(names)` — both wrapped in try/catch for quota/availability safety. No JSON parsing needed — stores a flat comma-separated string. Created during the manual-entry UX refine (Phase 5 Step 13b).
-
-### FloatingInput
-
-File: components/entries/FloatingInput.tsx
-Last updated: 2026-07-29
-
-| Property       | Class |
-| -------------- | ----- |
-| Input          | `peer w-full rounded-lg border bg-surface pb-2 pt-6 text-sm text-text-primary outline-none transition-colors tabular-nums` |
-| Label (rest)   | `absolute left-4 top-1/2 -translate-y-1/2 text-sm text-text-muted` |
-| Label (focus)  | `peer-focus:top-2 peer-focus:translate-y-0 peer-focus:scale-90 peer-focus:text-xs` |
-| Label (value)  | `peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:translate-y-0 peer-[:not(:placeholder-shown)]:scale-90` |
-| Focus          | `focus:border-accent focus:ring-1 focus:ring-accent` |
-| Error          | `border-error focus:border-error focus:ring-1 focus:ring-error` + red "!" badge |
-| Suffix         | `text-[11px] text-text-muted` below input |
-
-**Pattern notes:** Floating-label input component matching the `AuthInput` pattern from the sign-up page. Uses the `peer` CSS trick: placeholder is `" "` (space), label floats up on focus/when value is non-empty. Supports currency prefix (`₱`), number/text input, optional Lucide icon, suffix text, and per-field error state (red border + "!" badge + error message below). Props: `label`, `value`, `onChange`, `prefix?`, `icon?`, `suffix?`, `type?`, `inputMode?`, `min?`, `step?`, `required?`, `error?`. Used by `ManualQuickForm` for all main form fields.
-
-### manual-categories (shared config)
-
-File: components/entries/manual-categories.ts
-Last updated: 2026-07-29
-
-**Pattern notes:** Shared `CATEGORIES` config map and `ExpenseType` type used by both `ManualCategoryPicker` and `ManualQuickForm`. Defines icon, label, hint, compute fields, and compute function for all 7 expense types. Supplies and Others have empty compute (handled inline in `ManualQuickForm` via dynamic item rows). Imported by both consumer components and `LogEntryModal`. **Step 16:** each `CategoryConfig` also carries `pctOfBudget` + `minCeiling` (see `context/progress-tracker.md` Step 16 for the full floor table) used by `manualGateThresholdCents(budgetTotal, config)` — the single source of truth for the explanation gate; imported by `actions/entries.ts` `submitManualEntry`.
-
-### ManualCategoryPicker
-
-File: components/entries/ManualCategoryPicker.tsx
-Last updated: 2026-07-29
-
-| Property         | Class |
-| ---------------- | ----- |
-| Container        | `flex flex-col gap-4` |
-| Grid             | `grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4` |
-| Card             | `flex flex-col items-center gap-2 rounded-xl border border-border-strong bg-surface px-3 py-5 text-center` |
-| Hover            | `hover:border-accent hover:bg-accent-muted hover:shadow-sm` |
-| Icon tile        | `flex h-9 w-9 items-center justify-center rounded-lg bg-accent-light text-accent` |
-| Label            | `text-sm font-medium text-text-primary` |
-| Hint             | `text-[11px] leading-tight text-text-muted` |
-| Animation        | framer-motion stagger container (35ms stagger, 40ms delay, y:10 fade-up per card) |
-
-**Pattern notes:** First step of the no-receipt manual flow inside `LogEntryModal`. Shows 7 category icon cards in a responsive grid. Tapping a card calls `onSelect(category)` which transitions the modal to the `ManualQuickForm` screen. Uses `CATEGORIES` config from `manual-categories.ts`. No local state — pure render.
-
-### ManualQuickForm
-
-File: components/entries/ManualQuickForm.tsx
-Last updated: 2026-08-03
-
-| Property             | Class |
-| -------------------- | ----- |
-| Back button          | `rounded-lg text-text-secondary hover:bg-surface-secondary hover:text-text-primary` |
-| Header icon tile     | `flex h-9 w-9 items-center justify-center rounded-lg bg-accent-light text-accent` |
-| Section header       | `text-[11px] font-medium uppercase tracking-wide text-text-muted` |
-| Section divider      | `border-t border-border pt-5` |
-| Input fields         | `FloatingInput` — floating-label pattern matching `AuthInput` (sign-up page) |
-| Toggle switch        | `rounded-full h-6 w-10` — active: `bg-accent`, inactive: `bg-border-strong` with 5×5 white dot `translate-x-[18px]` or `translate-x-[2px]` |
-| Item row (supplies)  | `rounded-lg border border-border bg-surface p-2.5 flex items-start gap-2` |
-| Item add button      | `rounded-lg border border-dashed border-border-strong px-3 py-2 text-xs` |
-| Other sub-mode pills | `rounded-lg px-4 py-2 text-sm` — active: `bg-accent text-accent-foreground shadow-sm`; inactive: `border border-border bg-surface text-text-secondary hover:border-accent` |
-| Suggestion chip      | `rounded-md bg-accent-muted px-2.5 py-1 text-xs text-accent` |
-| Live total           | `rounded-lg border border-border-strong bg-surface-secondary px-4 py-3 flex justify-between` — total value: `text-lg font-semibold tabular-nums` |
-| Photo row         | Desktop: inline flex with `Paperclip` icon + thumbnail `h-10 w-10 rounded-md object-cover`. Mobile (`md:hidden`): "Take Photo" (accent pill, `Camera`) + "Choose from Library" (outline pill) pair; desktop shows single Paperclip attachment button |
-| Justification textarea | `rounded-lg border border-border-strong bg-surface px-4 py-3 text-sm` |
-| Gate callout (Step 16) | `rounded-lg border border-warning bg-warning-lightest p-4` — `AlertTriangle` (`text-warning`), heading `text-sm font-semibold`, body `text-sm text-text-secondary`, required explanation textarea (maxLength 500, warning tokens), warning tokens `text-warning` |
-| Submit button        | `rounded-full bg-accent px-6 py-3 text-accent-foreground disabled:opacity-50` — gate branch relabels "Submit with Explanation" (with `AlertTriangle` icon) while `explanationRequired` is pending |
-
-**Pattern notes:** Second step of the no-receipt manual flow. Uses `FloatingInput` for all main fields (matching auth-style floating labels). Form restructured into 3 visual sections with headers: "Trip Details" (category-specific fields), "Extra Information" (witness + photo), "Additional Details" (justification). Section dividers use `border-t border-border`. Per-field error state via `submitted` flag — errors shown after first submit attempt. Item rows (supplies/other-itemized) remain compact inline inputs (no floating labels) since they're inside card-like containers. Live running total updated on every field change. Photo attachment is source-split by viewport: mobile shows "Take Photo" (opens `CameraViewfinder` → `applyPhoto`) + "Choose from Library" (hidden input, `image/*` + 10MB gate); desktop keeps a single `Paperclip` attachment button. Shared `applyPhoto(file)` validates and sets `photoFile`/`photoPreview`. **Step 16 wiring:** `onSubmit` returns `Promise<ManualSubmitResult>`; the server action decides — `{ explanationRequired, overAmount, threshold }` renders the gate callout (form + fields stay filled; caller re-submits with `aboveRangeExplanation`), confirmed success advances to the success screen, `{ success: false, error }` renders inline `text-error`. `submitLockRef` (sync) disables the button during flight, reset in `finally` so the explanation retry path can submit again.
-
-### LogEntryModal
-
-File: components/entries/LogEntryModal.tsx
-Last updated: 2026-08-03
-
-| Property       | Class |
-| -------------- | ----- |
-| Overlay        | `fixed inset-0 z-50 bg-overlay-alpha` |
-| Modal (web)    | `relative w-full max-w-lg rounded-xl border border-border bg-surface p-6 shadow-card` centered via flex |
-| Sheet (mobile) | `max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-border bg-surface p-6 pb-8 shadow-card` + `mx-auto mb-5 h-1 w-10 rounded-full bg-border-strong` drag handle |
-| Toggle         | `rounded-xl border border-border bg-surface p-1` — active: `bg-accent text-accent-foreground shadow-sm`; inactive: `text-text-secondary hover:text-text-primary` |
-
-**Pattern notes:** AnimatePresence modal/sheet shell. Method toggle stays `[Upload Receipt] [No Receipt]`. Receipt flow: ReceiptUpload (real parse → `onParsed({entryId, parsed})`) → inline review (read-only fields + itemized table, Confirm/Discard). Review fields: Category (first, label via local `CATEGORY_LABELS` map, fallback to raw value) + Document Type / Number / Issue Date / Issue Time / Supplier / Total Amount (highlighted) + Itemized Breakdown. Note: `reviewContent` is an **inline duplicate** of `ReceiptReview.tsx` (modal renders `reviewContent`, not the component) — keep the two field lists in sync; dedup by rendering `<ReceiptReview>` is planned cleanup. **Step 15 wiring:** Confirm calls `confirmReceiptEntry` server action (real deduction, `ai_parsed → deducted`); overspend branch renders inline warning callout (same classes as ReceiptReview: `border-warning bg-warning-lightest` + `AlertTriangle` + required explanation textarea) and relabels the button "Confirm Overspend"; server errors render inline `text-error`; mock confirm deleted. **Abandoned-review cleanup:** all close paths (X / overlay / Escape / mobile drag / Cancel) go through `closeModal` — if an unconfirmed `entryId` exists it fires `discardReceiptEntry` fire-and-forget (safe after confirm via `confirmed` flag, after discard via cleared `entryId`). Discard calls `discardReceiptEntry` server action (deletes the ai_parsed row + audit). ReceiptUpload's `onExhausted` (3× parse_failed) and `onNoReceipt` (invalid/borderline verdict CTAs) both switch to the manual flow via the shared `switchToManual` handler. Manual flow: 3-screen state machine `picker` (ManualCategoryPicker) → `form` (ManualQuickForm) → `success`. State resets on open via `useEffect`. Mobile sheet cancel button only shows for receipt flow. Body scroll locked while open.
-
-### NewEntryPage (standalone fallback)
-
-File: app/treasurer/events/[eventId]/entries/new/page.tsx
-Last updated: 2026-08-03
-
-**Layout:** Centered `mx-auto max-w-2xl flex flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10`. Method toggle + content card. Manual flow uses same 3-screen state machine as the modal (picker → form → success). Receipt flow: ReceiptUpload real parse → ReceiptReview modal. **Step 15 wiring:** Confirm calls `confirmReceiptEntry` server action; overspend branch passes `overspend` state + `onOverspendChange` + `confirmError` into `ReceiptReview` (parent owns state); success = `router.push` back to event. Discard = `discardReceiptEntry` action. `onExhausted` switches to manual method.
-
-| Property        | Class |
-| --------------- | ----- |
-| Method toggle   | `rounded-xl border border-border bg-surface p-1` with `flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium` — active: `bg-accent text-accent-foreground shadow-sm`; inactive: `text-text-secondary hover:text-text-primary` |
-| Content card    | `rounded-xl border border-border-strong bg-surface p-5 sm:p-6` |
+File: components/ui/EmptyState.tsx · 2026-07-17
+
+No card chrome; `py-12`, `gap-2`; title `text-sm font-medium text-text-primary`, description `text-sm text-text-muted`; props `icon?`/`title`/`description?`/`action?`. Used across departments list and detail tabs.
+
+### AnimatedBlock
+File: components/ui/AnimatedBlock.tsx · (landing refactor)
+
+`"use client"`; reusable framer-motion scroll reveal — `motion.div` `initial {opacity: 0, y: 24}` → `whileInView {opacity: 1, y: 0}` (`viewport {once: true, margin: "-80px"}`), 0.5s easeOut, `delay` prop (default 0). Used by `app/page.tsx` for every landing section + feature/how card with `delay={i * 0.1}` stagger.
+
+### Admin layout
+Files: app/admin/*, components/admin/AdminSidebar.tsx · 2026-07-17
+
+- **AdminLayout** — server component, `requireLayoutRole("admin")` guard; sidebar + main `lg:pl-60`; content `max-w-[1440px]` centered; mobile gets top bar (logo + "Admin" pill).
+- **AdminSidebar** — `bg-surface border-r border-border`, fixed left 240px (`lg:w-60`, `hidden` on mobile). Logo `h-16` → nav (uppercase section label `text-xs font-medium uppercase tracking-[0.08em] text-text-muted`, items `gap-1.5 py-2.5`; active `bg-accent-light text-accent`, inactive `text-text-secondary hover:bg-surface-secondary hover:text-text-primary`) → bottom profile popover (`border-t border-border p-3`; avatar `h-9 w-9 rounded-full bg-accent-light text-accent`, `ChevronUp` rotates when open; menuitems Profile / Log out `text-error`). Nav items: **Departments, Approvals only** (Profile lives in the popover for visual balance). Client component (`usePathname` active detection).
+- **DepartmentsPage** — centered `mx-auto max-w-7xl flex flex-col gap-8 pb-28 md:pb-0`. Compact header (name `text-xl font-semibold md:text-2xl` + `text-xs text-text-muted` subline). Search `rounded-full border border-accent bg-surface py-3 pl-11 pr-4` + focus ring, paired with "New Department" primary. Web: folder grid `hidden grid-cols-1 gap-x-5 gap-y-8 sm:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5`; folder card `h-[200px] w-full max-w-[280px] mx-auto rounded-xl border border-border-strong bg-surface p-6` (name → code `text-xs uppercase tracking-wide text-text-muted` → roles → StatusBadge; tile `h-9 w-9 rounded-lg bg-accent-light text-accent` top-right). Mobile: card stack `flex flex-col gap-4 md:hidden` + FAB `fixed bottom-24 right-5 h-14 w-14 rounded-full bg-accent shadow-lg md:hidden` → bottom sheet (`absolute inset-x-0 bottom-0 rounded-t-2xl`) + bottom nav (`fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface md:hidden`, 3 items, active `text-accent`, labels `text-[11px]`). Framer-motion stagger on mount/filter change. Real InsForge server data (`createInsforgeServer` → `departments` + `users`).
+- **DepartmentDetailPage** — tabs bar `border-b border-border overflow-x-auto`, active `border-b-2 border-accent text-accent`. Events/Reports → folder cards (same language; `h-[180px]`; open event = `bg-success-light text-success` + `border-success/40`; archived = `bg-accent-light text-accent` + muted + `border-border-strong`). Users/Audit Logs → desktop table (`hidden md:block rounded-xl border border-border-strong bg-surface`; header `border-b border-border text-xs uppercase tracking-wide text-text-muted`; cells `px-6 py-3`) / mobile card stack. AnimatePresence tab switch (`mode="wait"`). `formatPHP()` for currency.
+
+### Treasurer layout
+Files: components/treasurer/* · 2026-07-18
+
+- **TreasurerSidebar** — mirrors AdminSidebar exactly; 4 items: Home, Reports, Notifications, Profile (Home first, unlike admin).
+- **TreasurerMobileBottomNav** — `fixed inset-x-0 bottom-0 z-40 md:hidden bg-surface border-t border-border`; 4 items matching sidebar; active `text-accent`, labels `text-[11px]`.
+
+### Events
+Files: components/events/*
+
+- **EventCard** (2026-08-01) — `MotionLink` (`motion.create(Link)`, whole card is the hover target) + folder SVG silhouette (`viewBox="0 0 404 263"`, `fill="currentColor"` → `text-neutral drop-shadow-md`) with paper sheet `absolute left-0 top-[14%] h-[82%] w-full rounded-xl bg-surface-secondary p-3` holding ALL info: name `text-sm font-semibold leading-snug line-clamp-1`, budget row `text-[11px] text-text-muted` "spent of total" + pct, progress bar `mt-1 h-1.5 rounded-full` (`bg-success`/`bg-warning`/`bg-error` by range), footer `mt-auto` creator + `FileText` + count. Hover variants (0.2s easeOut): folder `x:-4`, paper `x:-11 y:8 width:104.25%`. Values relative to 412×312 container — fluid across grid (`grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5`). `MotionConfig reducedMotion="user"`. Supersedes the 2026-07-26 entry layout.
+- **EventListItem** (2026-07-26) — row `relative overflow-hidden rounded-xl border border-border bg-surface px-4 py-3 md:px-5`, hover `hover:border-border-strong hover:bg-surface-secondary hover:shadow-md`. Bare `Folder` icon (`h-5 w-5 text-text-muted`, fills solid ink on hover `group-hover:fill-current group-hover:text-text-primary`); chevron shifts right on hover. Green accent bar removed 2026-08-01.
+- **EventDashboardActions** (2026-07-26) — mobile-only `grid grid-cols-2 gap-3 lg:hidden`; buttons `rounded-xl px-4 py-3 text-sm font-medium` with `hover:shadow-md hover:scale-[1.02] active:scale-[0.98]`. Desktop buttons live in BudgetSummary.
+- **EventForm** (2026-07-25) — pure form, no chrome (embeddable in modals); input `rounded-lg border border-border bg-surface px-3 py-2.5 text-sm focus:border-accent focus:ring-1 focus:ring-accent`; submit `rounded-full bg-accent px-6 py-3 hover:bg-accent-hover disabled:opacity-50`; optional `onSubmit` (mock-simulates success when absent).
+- **NewEventModal** (2026-07-25) — modal/sheet shell wrapping EventForm; calls `createEvent` Server Action → `router.refresh()`; Escape/overlay close; body scroll locked; state resets on open.
+- **BudgetSummary** (2026-08-07) — dark hero card `rounded-xl bg-surface-inverse p-5 sm:p-6 shadow-card`. Hero value `text-[32px] sm:text-[40px] font-semibold leading-10 sm:leading-12 tabular-nums text-text-inverse` — red `text-error` + `-formatPHP(abs)` when remaining is negative; labels `text-xs font-medium uppercase tracking-wide text-text-inverse/60`. Left column: EXPENSES label + remaining + TOTAL/PAID row (`mt-4 flex gap-8`); right: stacked action buttons (desktop only `hidden lg:flex`; primary "New Entry" `bg-surface text-text-primary rounded-lg px-5 py-2.5` + `hover:bg-surface-secondary hover:shadow-md`, disabled state `bg-white/10 text-text-inverse/50`; secondary "Generate Report" `border border-white/30 text-text-inverse hover:bg-white/10`). Bottom-right status text: "Near Budget Limit" (70–99%) / "{pct}% Budget Utilized" (<70%); at ≥100% → **empty string** (empty `<p>` keeps layout) — the negative red remaining is the overspend signal; "Over Budget" labels removed 2026-08-07 (Step 18). **Full-width progress bar** under the status text: `h-2 w-full rounded-full bg-white/10` track, fill `width: min(pctUsed,100)%` colored via `var(--color-error)` ≥100 / `var(--color-warning)` ≥70 / `var(--color-success)`. Hosts the "+ New Entry" `LogEntryModal`.
+- **EventProgress** (2026-07-26) — horizontal 3-step bar Open → Report Pending → Approved: dots `h-7 w-7 rounded-full` (active `bg-accent text-accent-foreground`, completed `bg-success text-white` + Check, pending `border-2 border-border bg-surface text-text-muted`), connectors `h-0.5 flex-1` (`bg-success` completed / `bg-border` pending), labels `text-[11px] font-medium`. Logic: open→step1, `isLocked`→step2, archived→all completed.
+- **LockedBanner** (2026-07-26) — locked: `border-l-[3px] border-l-info bg-info-lightest` + Lock icon + `text-info-foreground`; archived: `border-l-neutral bg-neutral-light` + Archive icon + `text-neutral-foreground`. Icon + `text-sm font-medium` title + `text-xs text-text-muted` desc. Renders only when `isLocked`/`isArchived`.
+- **QuickStatsCard** (dashboard stat card) — `rounded-xl border border-border bg-surface p-5 shadow-card`; "Quick Stats" title `text-xs font-medium uppercase tracking-wide text-text-muted`; stats in `grid grid-cols-3 gap-4`, each value `text-3xl font-bold tabular-nums text-text-primary` + label `text-[11px] font-medium uppercase tracking-wide text-text-muted`. Props: `entryCount`, `pendingCount`, `voidedCount`, `lastActivity`, `className`.
+
+### Entries
+Files: components/entries/*
+
+- **EntryRow** (2026-07-26) — `border-b border-border px-4 py-3 transition-colors last:border-0 hover:bg-surface-secondary`; type badge pill (receipt `bg-info-lightest text-info-foreground` / manual `bg-surface-secondary text-text-secondary`); StatusBadge mapper. Voided: `opacity-60` + `line-through` amount + always-visible reason line.
+- **EntryCard** (2026-07-26) — clickable `rounded-xl border border-border bg-surface shadow-sm cursor-pointer transition-[shadow,transform] duration-200 hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]`; preview `h-32` (receipt = real image via `GET /api/entries/{id}/image` with `onError` placeholder; manual = Pencil on `bg-surface-secondary`); status badge overlaid `absolute right-2 top-2`; content `flex-1 p-3` pushing amount to bottom; amount `text-xl font-bold tabular-nums` most prominent. Click → EntryDetailModal.
+- **EntryDetailModal** (2026-08-05) — modal/sheet shell; shows receipt image (`h-48`, proxy route + onError placeholder), supplier, category, amount, status badge, doc type/number, date/time, item breakdown table, void info, rejection callout, resubmission note. Detail rows `divide-y divide-border rounded-lg border bg-surface-secondary/50 px-4`. **Actions live here** (not on card/row — user direction 2026-08-04; `EntryCard`/`EntryRow` take no `canVoid`/`onVoid`): `rejected` → `RejectedEntryActions` (resubmit / discard; terminal once `resubmissionExplanation` set); `pending_approval` (treasurer, `canMutate`) → `WithdrawEntryActions` — inline confirm, calls `withdrawPendingEntry` → hard delete (race-safe conditional delete; rejected/resubmitted NOT withdrawable — permanent audit record); `deducted` (`canMutate && !isVoided`) → Void button (`w-full rounded-full` destructive pill) → opens `VoidEntryModal` on top (DOM-after wins z-50 tie). Image viewer full-screen `z-[60]` overlay. `scrollbar-hide` scroll containers.
+- **EntryList** (2026-07-26) — header "EXPENSES (count)" + filter slot + ViewToggle; grid `grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 md:gap-5 lg:grid-cols-4 lg:gap-6 xl:grid-cols-5`; framer stagger; manages `selectedEntry` → EntryDetailModal. Exports `EntryListItem` type.
+- **ExpenseFilters** (2026-07-26) — 4 chips (Type / Sort / Budget / Category) via existing `FilterDropdown`; active `border-accent bg-accent-muted text-accent`. Mobile: icon-only `SlidersHorizontal` pill (`md:hidden`) → `FilterPopover` `absolute right-0 top-full z-30 mt-1.5 w-64 rounded-lg border border-border-strong bg-surface p-4 shadow-card`. Bottom sheet removed 2026-08-01. **ExpensesSection** wraps EntryList, owns filter/sort state.
+- **CameraViewfinder** (2026-08-02) — fullscreen mobile capture overlay `fixed inset-0 z-50 bg-surface-inverse` via `createPortal` to `document.body` (breaks free of parent motion scale). `getUserMedia` 1920×1080 (bare `{video:true}` retry once — old iOS); capture `canvas.toBlob("image/jpeg", 0.92)` → File (passes upload validation). Guide corners: four 48px `border-[3px]` divs inset `left/right-6 top-24` / `left/right-6 bottom-40`, green `border-success` while frame reads clean. Back / Flash (only when `getCapabilities()?.torch`, `aria-pressed`, silent revert on reject) / Flip (top-right) buttons — 40px circles. Hint chip `absolute inset-x-0 top-16` pill (`bg-surface-inverse/70 backdrop-blur-sm`), `aria-live="polite"`, variants: dim+torch → "enable flash", dim → lighting, close → pull back, far → move closer, blur → hold steady. Shutter: 72px outer ring + 56px inner, wrapper `absolute inset-x-0 bottom-16 z-10 flex justify-center`; Library 56px circle at `bottom-16 left-4` (center aligned with shutter). Escape via container `onKeyDownCapture` + `stopPropagation()` (LogEntryModal's document-level listener never fires); `tabIndex={-1}` autofocused; tracks stopped on unmount; `shutterLockRef` guards double-capture. **camera-analysis.ts** (pure, dependency-free): samples every 500ms → `{luminance, sharpness, edgeCoverage, edgeBounds}`; classify priority dim→close→far→blur (dim `<60`, close `>0.45` coverage, far `<0.06` + bbox `<0.25` + sharpness `>400`, blur `<250`); hints surface on 2-of-3 agreement, clear after 2 clean; brackets green after 2+ clean. Guidance only — never blocks capture.
+- **ReceiptUpload** (2026-08-02) — dropzone `hidden md:flex rounded-xl border-2 border-dashed p-12` (drag `border-accent bg-accent-muted`; idle `border-border-strong hover:border-accent hover:bg-accent-muted`); mobile (<md): two-button chooser "Take a Photo" (`rounded-full bg-accent` pill → CameraViewfinder) + "Choose from Library" (outline pill → hidden input, no `capture` attr). **Client-side downscale** (`prepareImage`): ≤1600px JPEG q0.8 via canvas + `createImageBitmap` (`imageOrientation: "from-image"`, white-composited); HEIC & <1MB pass through; failure falls back to original. Validates type (JPEG/PNG/WebP/HEIC) + 10MB. Real parse `POST /api/entries/receipt` (FormData: `eventId` + `image`); success → `onParsed({entryId, parsed})`. Failures kinded: verdicts `invalid_document`/`borderline` render guidance banner immediately (never count toward `MAX_ATTEMPTS = 3`); `parse_failed` counts toward ceiling then fallback banner ("Enter Entry Manually" / "Try Another Photo"); generic → inline red text.
+- **ReceiptReview** (2026-08-03) — modal/sheet shell; read fields `rounded-lg border border-border bg-surface-secondary px-3 py-2 text-sm`; amount highlighted `bg-info-lightest text-info-foreground font-semibold`; item table (thead `bg-surface-secondary`, tfoot `border-t border-border-strong bg-surface-secondary font-medium`); button relabels "Confirm Overspend" when overspend set; overspend callout `border-warning bg-warning-lightest` + `AlertTriangle` + explanation textarea; discard `rounded-full border border-error text-error hover:bg-error-lightest`. Exports `ReadOnlyField`. ⚠️ `LogEntryModal` keeps an **inline duplicate** of this component — keep the field lists in sync (dedup planned).
+- **usePeopleReuse** (hooks/usePeopleReuse.ts · 2026-07-29) — localStorage `liquifi:pp:{eventId}`, `read()`/`write(names)` in try/catch; flat comma-separated string, no JSON.
+- **FloatingInput** (2026-07-29) — AuthInput-style floating label (peer trick, `pt-6 pb-2`, label floats to `top-2` `scale-90 text-xs`); `focus:border-accent focus:ring-1`; error `border-error focus:ring-error` + red `!` badge; props `label/value/onChange/prefix?/icon?/suffix?/type?/inputMode?/min?/step?/required?/error?`. Used by ManualQuickForm for all main fields.
+- **manual-categories.ts** (2026-07-29) — shared `CATEGORIES` config (7 expense types: icon, label, hint, compute fields/function) + `ExpenseType`, used by ManualCategoryPicker + ManualQuickForm + LogEntryModal. **Step 16:** each config carries `pctOfBudget` + `minCeiling` → `manualGateThresholdCents(budgetTotal, config)` — single source of truth for the explanation gate; imported by `actions/entries.ts` `submitManualEntry`.
+- **ManualCategoryPicker** (2026-07-29) — step 1 of no-receipt flow; grid `grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4`; card `flex flex-col items-center gap-2 rounded-xl border border-border-strong bg-surface px-3 py-5`, hover `hover:border-accent hover:bg-accent-muted hover:shadow-sm`; icon tile `h-9 w-9 rounded-lg bg-accent-light text-accent`; framer stagger (35ms, y:10). No local state — `onSelect(category)`.
+- **ManualQuickForm** (2026-08-07) — step 2; 3 sections with headers + `border-t border-border` dividers: "Trip Details" (category-specific fields via FloatingInput), "Extra Information" (witness + photo), "Additional Details" (justification). Toggle `rounded-full h-6 w-10` (active `bg-accent`, dot `translate-x-[18px]`). Live total `rounded-lg border border-border-strong bg-surface-secondary px-4 py-3` (`text-lg font-semibold tabular-nums`). Photo: mobile Take Photo/Library pair (`md:hidden`), desktop single `Paperclip` button; shared `applyPhoto` validates + sets preview. **Step 16 gate:** server returns `{explanationRequired, overAmount, threshold}` → warning callout (`border-warning bg-warning-lightest` + `AlertTriangle`, required explanation textarea maxLength 500, warning tokens `text-warning`) — form stays filled, resubmit with `aboveRangeExplanation`. **Step 18 overspend gate:** server returns `{success: true, overspendRequired: true, overshoot}` (zero writes — gate runs before photo upload) → callout "This will put the event {formatPHP(overshoot)} over budget" + required textarea ("Why was this expense necessary?"); pre-validation blocks submit without it; resubmit inserts flagged `causes_overspend`. Gates sequential, both reset on category change; button relabels "Submit with Explanation". `submitLockRef` (sync) disables during flight, reset in `finally` so the retry path re-submits.
+- **LogEntryModal** (2026-08-03) — modal/sheet shell; method toggle `rounded-xl border border-border bg-surface p-1` (`[Upload Receipt] [No Receipt]`). Receipt flow: ReceiptUpload → inline review (⚠️ inline duplicate of ReceiptReview) → Confirm = `confirmReceiptEntry` server action (`ai_parsed → deducted`); overspend branch = inline warning callout + "Confirm Overspend"; server errors inline `text-error`. **ai_parsed discard = `discardReceiptEntry`** (hard delete row + blob): explicit "Discard & Re-upload" button on the review screen, plus **all close paths** (X/overlay/Escape/mobile drag/Cancel) → `closeModal` fires it fire-and-forget if an unconfirmed `entryId` exists (safe after confirm via `confirmed` flag, after discard via cleared id). `onExhausted` (3× parse_failed) / `onNoReceipt` (verdict CTAs) → shared `switchToManual`. Manual flow: 3-screen state machine `picker` → `form` → `success`; state resets on open; body scroll locked; mobile cancel only for receipt flow.
+- **NewEntryPage** (app/treasurer/events/[eventId]/entries/new/page.tsx · 2026-08-03) — standalone fallback (`mx-auto max-w-2xl flex flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10`); same 3-screen manual machine + receipt flow; uses real `ReceiptReview` (parent owns overspend state); success → `router.push` back to event.
+
+### Reports
+Files: components/reports/* · 2026-08-07/08
+
+- **SignatorySetup** (2026-08-07) — dumb client form section (no overlay); props `{eventId, generating, onGenerate(rows)}`; `DEFAULT_SIGNATORIES` (Adviser + Treasurer prefilled); localStorage `liquifi:signatories:{eventId}` (same pattern as usePeopleReuse); "Reuse last list" chip; Generate disabled unless ≥1 row has position AND name; persists list on generate. `ReportSignatoryRow` type lives in `@/types` (Step 20). Replaced the deleted SignatorySetupModal (flow moved to pages).
+- **PdfViewer** (2026-08-08) — client canvas PDF viewer (`pdfjs-dist@6.2.108`, worker via `new URL(...import.meta.url)`); renders each page to a `<canvas aria-label="Report page N">` (`mx-auto my-3 block rounded-lg border border-border bg-white shadow-sm`), pages fit container width (cap 800px, `OutputScale` DPR transform), scroll box `h-[70vh] w-full overflow-auto rounded-xl border border-border bg-surface-secondary/50 p-4`, `Loader2` spinner while loading, error box on failure. Replaced the PDF iframes in `ReportGenerationFlow` + `ReportViewer` — browser PDF-viewer toolbar is gone.
+- **ReportGenerationFlow** (2026-08-08) — setup → generating → preview state machine. Generate = real `POST /api/reports/generate` `{eventId, signatories}`; failure → error banner (`border-error/30 bg-error-lightest`) + back to setup **with signatories preserved**; success → preview with real `fs_document_number` + `reportId` + **`router.refresh()`** (re-added 2026-08-08 — without it the superseded PDF with old signatories stayed visible). Preview = FS No. + `StatusBadge` pending_adviser_approval + lock notice (warning tokens) + `<PdfViewer url="/api/reports/{reportId}/pdf">` + `CancelReportButton`. Generating = `Loader2 animate-spin text-accent` + "Generating report…" (no fake timer). `previousReport` (rejected/cancelled) → "Regenerating creates a new revision…" banner.
+- **ReportViewer** (2026-08-08) — **server component, zero client state** — PDF survives navigation and logout/login by construction (streams from the proxy route every load). Props `{report: {id, fs_document_number, status}, isArchived}`; FS No. + StatusBadge (`reportStatusMap`) + `<PdfViewer url="/api/reports/{id}/pdf">`. Lock warning + CancelReportButton only when `status === "pending_adviser_approval" && !isArchived`. **PrintReportButton** renders only when `status === "approved"` — hidden same-origin iframe → `contentWindow.print()`. Used whenever `latestReport` exists: pending/approved = locked view, rejected/cancelled = superseded PDF above regen flow, archived = read-only.
+- **CancelReportButton** (2026-08-08) — two-step inline confirm (armed panel `rounded-xl border border-error/30 bg-error-lightest p-3`; Keep `rounded-full border border-border` / Yes `rounded-full bg-error text-white`), `Loader2` while busy, inline `text-error text-xs` on failure; `POST /api/reports/[reportId]/cancel` → `onCancelled?.()` + `router.refresh()`. Shared by generation preview and persistent locked view.
+- **ReportPdf** (2026-08-08) — @react-pdf/renderer; **server-only — never imported from a client component** (build rule); `renderToBuffer` only (never `renderToStream`/`PDFDownloadLink`); used by `app/api/reports/generate/route.tsx`. Times-Roman, LETTER. Official liquidation-report layout: LIQUIDATION REPORT title, meta row (No./Date), DOMAIN `name (code)`, Project Name/Activity, College/Dept., APPROVED BUDGET PER CV No. (N/A) + AMOUNT, Date of CV (N/A); letterhead (MABINI COLLEGES / Finance Division — Accounting Department) centered at the **bottom** of the page. Expense table 4 cols (Expense Accounts/Items | Approved Budget | Actual Expenses | Variance) — per-entry Budget/Variance `—` (only `events.budget_total` tracked); TOTAL row carries real budget/actual + red `₱ (x)` variance when overspent. Returned-amount block: RETURNED AMOUNT = `₱ 0.00` + overage note when overspent, else `₱ remaining`. Signatories: one column per signatory — signature line over centered bold full name + muted position (`#6b7280`), no Prepared/Approved labels. Supported CSS limited (padding/margin/fontSize/flex/position…). `revision_count` never rendered.
+- **Reports pages (treasurer)** (2026-08-07) — list: all dept events + latest report per event (`getLatestReportsByEvent`); row card `rounded-xl border border-border bg-surface px-4 py-3.5 shadow-card transition-colors hover:border-accent`; no-report row `border-dashed border-border` + chip `rounded-full border border-border bg-surface-secondary px-3 py-1 text-xs font-medium text-text-secondary`. Detail: server page owns flow; `LOCKED_STATUSES` (pending/approved) → locked card instead of form; archived → read-only. Async `params: Promise<{eventId: string}>`. "Generate Report" buttons link to the report page; `SpendingBreakdownCard` "See more" → `#spending-breakdown` anchor (`lg:w-2/5 scroll-mt-6`).
+- **ReportPreviewDocument** (2026-08-07) — mock FS document visual, pure server component; superseded by the real PDF (Step 20+) — kept as reference only. Token-styled; totals block with Remaining red `text-error` + `-formatPHP(abs)` when negative; dotted-underline signatory grid.
+
+### Adviser report review (Phase 8, 2026-08-08)
+Files: components/adviser/* + app/adviser/reports/* + app/api/reports/[reportId]/{approve,reject}/route.ts
+
+- **Adviser reports landing** (app/adviser/reports/page.tsx, server, force-dynamic) — `getReportsForAdviserReview`; `Map`-based grouping; one `Link` card per report: `rounded-xl border border-border bg-surface px-4 py-3.5 shadow-card transition-colors hover:border-accent`; left = event name + `FS-...-0000N` (muted, `text-xs`), right = `StatusBadge` (`reportStatusMap`) + `formatPHP(spent)` + "of {budget} spent"; shows **all** statuses (filter is `r.report` only) sorted `generated_at` desc — includes rejected history.
+- **Adviser report detail** (app/adviser/reports/[eventId]/page.tsx, server) — notFound guards (missing report / cross-dept via `getEventDashboard`); header `Back to reports` link, `h1` event name + StatusBadge + `FS-… · ₱spent of ₱budget spent` line; `<PdfViewer url="/api/reports/{id}/pdf">`; entries grid reuses `EntryCard` + `EntryDetailModal` patterns (read-only, no actions); **overspend banner**: `border-l-[3px] border-l-warning bg-warning-lightest px-4 py-3` + `AlertTriangle text-warning` + title `text-sm font-semibold text-warning-foreground` + one muted line per unresolved entry (`{supplier} — ₱{amount}` + explanation).
+- **AdviserReportReview** (components/adviser/AdviserReportReview.tsx, client) — `useState` busy (`"approve"|"reject"|null`); approve: overspend present → `confirm()` "This report has unresolved overspend entries. Approving acknowledges that overspend. Continue?" + label "Acknowledge overspend & Approve", else plain "Approve this report? This cannot be undone." + "Approve Report"; busy → both buttons `disabled:opacity-50`, spinner in the active one. Reject: toggle panel `rounded-xl border border-error/30 bg-error-lightest p-3`; reason textarea (required, disables confirm until filled) + **per-entry comment textarea for each unresolved overspend entry** (existing `rejected` entry callout reused at `border-error/30 bg-error-lightest`); per-entry comment label `text-xs font-medium text-error`. **Buttons (destructive = outline-only per ui-rules):** Reject trigger + Confirm Rejection both `rounded-full border border-error px-6 py-3 text-sm font-medium text-error transition-colors hover:bg-error-lightest disabled:opacity-50` — ⚠️ Confirm Rejection shipped filled-red in build, fixed 2026-08-08. Approve (primary) `rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-foreground` (+ outline variant when rejecting). Success → `onSuccess()` + `router.refresh()`; failure inline `text-error text-xs`.
+- **approve route** (`app/api/reports/[reportId]/approve/route.ts`) — `requireRole(["adviser"], event.department_id)`; 404/409 precondition chain (missing, archived, wrong status); overspend branch: count unresolved (`is("overspend_resolved_at", null)` — **not** `eq(...,null)`, PostgREST 400s) → `if (count > 0)` stamp every unresolved entry (`overspend_resolved_at/by`) **before** status flip; conditional update `.eq("status","pending_adviser_approval")` → 0 rows = raced reject → 409 "already been reviewed"; then `report-anchor.ts` (SHA-256 of FS no + PDF bytes + entries) → `polygon_tx_hash` (null soft-fail in dev — no keys); audit `report.approved` (metadata: event_id, fs_document_number, polygon_tx_hash, `unresolved_overspend_count`); revalidate ×5; `{success:true}`.
+- **reject route** (`app/api/reports/[reportId]/reject/route.ts`) — zod body `{reason, comments?: [{entry_id, text}]}`; same precondition chain; status flip `rejected` (race-guarded); `entry_comments` insert (best-effort, logged); audit `report.rejected` (metadata: event_id, fs_document_number, `rejection_reason`, `comment_count`); notification `report_rejected` → dept **active treasurer** (best-effort guard — skips silently when none); revalidate ×5.
+
+---
+
+## Phase Status
+
+- **Phase 1 — Auth & Landing:** Landing navbar/hero/how-it-works/footer, login, signup (role + dept), OTP, pending-approval, forgot password — all [x]
+- **Phase 2 — Admin:** Departments list + form + detail tabs, users row (deactivate/reactivate) [x]; Admin Approvals List [ ]
+- **Phase 3 — Adviser:** Approvals tabs, batch approve table, single reject w/ reason [x]
+- **Phase 4 — Treasurer Events & Budget:** events list card, new event form, dashboard summary bar, locked/archived banner [x]
+- **Phase 5 — Entries:** method toggle, receipt dropzone, review panel, manual form, entry list row [x]
+- **Phase 6 — Voiding & Overspend:** Void Reason Modal [ ], Overspend Explanation Modal [ ]
+- **Phase 7–8 — Reports:** Signatory setup [x], report preview [x], adviser review screen [x], reject modal [x]
+- **Phase 9 — Archiving:** signed-doc upload modal [ ], post-check result screen [ ]
+- **Phase 10 — Notifications:** list item [ ]
+- **Phase 11 — Audit:** audit log table [ ]
 
 ---
 
