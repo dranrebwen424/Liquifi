@@ -218,7 +218,7 @@ export async function uploadReportPdf(
   const key = `${deptId}/reports/${reportId}/report.pdf`;
   const { error } = await insforge.storage
     .from(SIGNED_REPORT_BUCKET)
-    .upload(key, file); // content type rides on the Blob (see route)
+    .upload(key, file, { contentType: "application/pdf", upsert: false }); // content type rides on the Blob (see route)
 
   if (error) throw new Error("Upload failed");
   return key;
