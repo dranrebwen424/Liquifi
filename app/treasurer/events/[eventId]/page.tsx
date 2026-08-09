@@ -3,12 +3,14 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { requireRole } from "@/lib/auth-guard";
 import { getEventDashboard } from "@/lib/queries/events";
+import { getLatestReportByEvent } from "@/lib/queries/reports";
 import { computeSpendingBreakdown } from "@/lib/spending-breakdown";
 import { LockedBanner } from "@/components/events/LockedBanner";
 import { BudgetSummary } from "@/components/events/BudgetSummary";
 import { SpendingBreakdownCard } from "@/components/events/SpendingBreakdownCard";
 import { EventStatusBadge } from "@/components/ui/StatusBadge";
 import { EventDashboardActions } from "@/components/events/EventDashboardActions";
+import { ArchiveEventButton } from "@/components/events/ArchiveEventModal";
 import { ExpensesSection } from "@/components/entries/ExpensesSection";
 
 type Props = {
@@ -32,6 +34,14 @@ export default async function EventDashboardPage({ params }: Props) {
 
   const isArchived = event.status === "archived";
   const canMutate = !event.is_locked && !isArchived;
+
+  // Archive gate: only reachable once the latest report is approved, the
+  // event is not yet archived, and no unresolved overspend remains.
+  const latestReport = await getLatestReportByEvent(eventId);
+  const canArchive =
+    latestReport?.status === "approved" &&
+    !isArchived &&
+    !event.has_unresolved_overspend;
 
   const createdDate = new Date(event.created_at).toLocaleDateString("en-PH", {
     year: "numeric",
@@ -73,6 +83,12 @@ export default async function EventDashboardPage({ params }: Props) {
             )}
           </p>
         </div>
+
+        <ArchiveEventButton
+          eventId={eventId}
+          canArchive={canArchive}
+          isArchived={isArchived}
+        />
       </div>
 
       {/* Locked / Archived banner */}

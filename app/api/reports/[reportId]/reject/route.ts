@@ -3,6 +3,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
 import { createInsforgeServer } from "@/lib/insforge-server";
+import { createNotification } from "@/lib/notifications";
 
 const RejectSchema = z.object({
   rejection_reason: z
@@ -124,17 +125,12 @@ export async function POST(request: Request, { params }: Props) {
         .eq("account_status", "active")
         .maybeSingle();
       if (treasurer) {
-        await insforge.database.from("notifications").insert({
-          user_id: treasurer.id,
-          type: "report_rejected",
-          payload_json: {
-            report_id: reportId,
-            event_id: event.id,
-            event_name: event.name,
-            fs_document_number: report.fs_document_number,
-            rejection_reason,
-          },
-          read: false,
+        await createNotification(treasurer.id, "report_rejected", {
+          report_id: reportId,
+          event_id: event.id,
+          event_name: event.name,
+          fs_document_number: report.fs_document_number,
+          rejection_reason,
         });
       }
     } catch (notifErr) {

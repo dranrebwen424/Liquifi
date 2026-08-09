@@ -441,8 +441,9 @@ function EntryDetailContent({
         </div>
       )}
 
-      {/* Resubmit / discard actions — rejected entries only */}
-      {entry.status === "rejected" && (
+      {/* Resubmit / discard actions — rejected entries only, treasurer only.
+          (Adviser/admin see rejection info above but never these actions.) */}
+      {canMutate && entry.status === "rejected" && (
         <RejectedEntryActions
           entryId={entry.id}
           terminal={Boolean(entry.resubmissionExplanation)}

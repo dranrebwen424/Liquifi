@@ -38,7 +38,7 @@ export async function GET(
     }
 
     // Treasurers/advisers scoped to the owning department; admin unrestricted
-    await requireRole(["treasurer", "adviser"], event.department_id);
+    await requireRole(["treasurer", "adviser", "admin"], event.department_id);
 
     const blob = await getReportPdfBlob(reportId);
     return new Response(blob, {

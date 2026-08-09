@@ -11,6 +11,8 @@ type EventDashboardActionsProps = {
   canMutate: boolean;
   isArchived: boolean;
   isLocked: boolean;
+  /** Adviser/admin read-only mode — omits all mutating controls entirely. */
+  readOnly?: boolean;
 };
 
 export function EventDashboardActions({
@@ -18,8 +20,12 @@ export function EventDashboardActions({
   canMutate,
   isArchived,
   isLocked,
+  readOnly,
 }: EventDashboardActionsProps) {
   const [logEntryOpen, setLogEntryOpen] = useState(false);
+
+  // Read-only (adviser/admin): mobile action strip omitted entirely.
+  if (readOnly) return null;
 
   return (
     <>

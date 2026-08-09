@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createInsforgeServer } from "@/lib/insforge-server";
 import { requireRole } from "@/lib/auth-guard";
 import { sendWelcomeEmail, sendRejectionEmail } from "@/lib/email";
+import { createNotification } from "@/lib/notifications";
 
 // ─── Approve Adviser Signup ──────────────────────────────────────────
 
@@ -74,14 +75,9 @@ export async function approveAdviserSignup(userId: string) {
 
     // Notification — best-effort
     try {
-      await insforge.database.from("notifications").insert({
-        user_id: userId,
-        type: "signup_approved",
-        payload_json: {
-          applicant_name: `${applicant.first_name} ${applicant.last_name}`,
-          department_id: applicant.department_id,
-        },
-        read: false,
+      await createNotification(userId, "signup_approved", {
+        applicant_name: `${applicant.first_name} ${applicant.last_name}`,
+        department_id: applicant.department_id,
       });
     } catch (notifErr) {
       console.error("[actions/approvals] signup_approved notification failed:", notifErr);
@@ -170,14 +166,9 @@ export async function rejectAdviserSignup(userId: string) {
 
     // Notification — best-effort
     try {
-      await insforge.database.from("notifications").insert({
-        user_id: userId,
-        type: "signup_rejected",
-        payload_json: {
-          applicant_name: `${applicant.first_name} ${applicant.last_name}`,
-          department_id: applicant.department_id,
-        },
-        read: false,
+      await createNotification(userId, "signup_rejected", {
+        applicant_name: `${applicant.first_name} ${applicant.last_name}`,
+        department_id: applicant.department_id,
       });
     } catch (notifErr) {
       console.error("[actions/approvals] signup_rejected notification failed:", notifErr);
@@ -266,14 +257,9 @@ export async function approveTreasurerSignup(userId: string) {
 
     // Notification — best-effort
     try {
-      await insforge.database.from("notifications").insert({
-        user_id: userId,
-        type: "signup_approved",
-        payload_json: {
-          applicant_name: `${applicant.first_name} ${applicant.last_name}`,
-          department_id: applicant.department_id,
-        },
-        read: false,
+      await createNotification(userId, "signup_approved", {
+        applicant_name: `${applicant.first_name} ${applicant.last_name}`,
+        department_id: applicant.department_id,
       });
     } catch (notifErr) {
       console.error("[actions/approvals] signup_approved notification failed:", notifErr);
@@ -366,14 +352,9 @@ export async function rejectTreasurerSignup(userId: string) {
 
     // Notification — best-effort
     try {
-      await insforge.database.from("notifications").insert({
-        user_id: userId,
-        type: "signup_rejected",
-        payload_json: {
-          applicant_name: `${applicant.first_name} ${applicant.last_name}`,
-          department_id: applicant.department_id,
-        },
-        read: false,
+      await createNotification(userId, "signup_rejected", {
+        applicant_name: `${applicant.first_name} ${applicant.last_name}`,
+        department_id: applicant.department_id,
       });
     } catch (notifErr) {
       console.error("[actions/approvals] signup_rejected notification failed:", notifErr);
@@ -623,15 +604,10 @@ export async function rejectEntry(entryId: string, rejectionReason: string) {
 
     // Notification to entry creator — best-effort
     try {
-      await insforge.database.from("notifications").insert({
-        user_id: entry.created_by,
-        type: "entry_rejected",
-        payload_json: {
-          entry_id: entryId,
-          event_id: entry.event_id,
-          reason: rejectionReason.trim(),
-        },
-        read: false,
+      await createNotification(entry.created_by, "entry_rejected", {
+        entry_id: entryId,
+        event_id: entry.event_id,
+        reason: rejectionReason.trim(),
       });
     } catch (notifErr) {
       console.error("[actions/approvals] entry_rejected notification failed:", notifErr);

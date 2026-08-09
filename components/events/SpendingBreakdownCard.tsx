@@ -12,12 +12,15 @@ type Category = {
 type SpendingBreakdownCardProps = {
   categories: Category[];
   eventId: string;
+  /** Adviser/admin read-only mode — hides the treasurer-only "See more" link. */
+  readOnly?: boolean;
   className?: string;
 };
 
 export function SpendingBreakdownCard({
   categories,
   eventId,
+  readOnly,
   className,
 }: SpendingBreakdownCardProps) {
   // ponytail: top 4 only
@@ -69,8 +72,9 @@ export function SpendingBreakdownCard({
         )}
       </div>
 
-      {/* See more link — only when there is data */}
-      {topCategories.length > 0 && (
+      {/* See more link — only when there is data, and never in read-only mode
+          (it links to the treasurer report page, which non-treasurers can't open) */}
+      {!readOnly && topCategories.length > 0 && (
         <div className="mt-4 pt-3 border-t border-border-light">
           <Link
             href={`/treasurer/reports/${eventId}#spending-breakdown`}

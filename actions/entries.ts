@@ -8,6 +8,7 @@ import { VOID_REASON_MAX } from "@/lib/limits";
 import { remainingAfterEntryCents, entryCausesOverspend } from "@/lib/overspend";
 import { CATEGORIES, manualGateThresholdCents } from "@/components/entries/manual-categories";
 import { toNumber } from "@/lib/format";
+import { createNotification } from "@/lib/notifications";
 import type { ManualSubmitPayload } from "@/components/entries/ManualQuickForm";
 
 /**
@@ -535,16 +536,11 @@ export async function submitManualEntry(
         .eq("account_status", "active")
         .maybeSingle();
       if (adviser) {
-        await insforge.database.from("notifications").insert({
-          user_id: adviser.id,
-          type: "manual_entry_pending",
-          payload_json: {
-            entry_id: entryId,
-            event_id: eventId,
-            amount,
-            category: payload.category,
-          },
-          read: false,
+        await createNotification(adviser.id, "manual_entry_pending", {
+          entry_id: entryId,
+          event_id: eventId,
+          amount,
+          category: payload.category,
         });
       }
     } catch (notifErr) {

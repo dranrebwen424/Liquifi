@@ -6,6 +6,7 @@ import { createInsforgeServer } from "@/lib/insforge-server";
 import { requireRole } from "@/lib/auth-guard";
 import { uploadReportPdf } from "@/lib/storage";
 import { formatFsNumber } from "@/lib/report-number";
+import { createNotification } from "@/lib/notifications";
 import { ReportPdf } from "@/components/reports/ReportPdf";
 
 // Step 20 — real report generation. Creates the Report row at
@@ -239,17 +240,12 @@ export async function POST(request: NextRequest) {
         .eq("account_status", "active")
         .maybeSingle();
       if (adviser) {
-        await insforge.database.from("notifications").insert({
-          user_id: adviser.id,
-          type: "report_ready_for_approval",
-          payload_json: {
-            report_id: reportId,
-            event_id: eventId,
-            event_name: event.name,
-            fs_document_number: fsDocumentNumber,
-            revision_count: revisionCount,
-          },
-          read: false,
+        await createNotification(adviser.id, "report_ready_for_approval", {
+          report_id: reportId,
+          event_id: eventId,
+          event_name: event.name,
+          fs_document_number: fsDocumentNumber,
+          revision_count: revisionCount,
         });
       }
     } catch (notifErr) {

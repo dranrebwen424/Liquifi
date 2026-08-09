@@ -14,6 +14,8 @@ type BudgetSummaryProps = {
   canMutate: boolean;
   isArchived: boolean;
   isLocked: boolean;
+  /** Adviser/admin read-only mode — omits all mutating controls entirely. */
+  readOnly?: boolean;
   className?: string;
 };
 
@@ -24,6 +26,7 @@ export function BudgetSummary({
   canMutate,
   isArchived,
   isLocked,
+  readOnly,
   className,
 }: BudgetSummaryProps) {
   const [logEntryOpen, setLogEntryOpen] = useState(false);
@@ -79,8 +82,9 @@ export function BudgetSummary({
             </div>
           </div>
 
-          {/* Right: Action buttons (desktop only) */}
-          <div className="hidden flex-col gap-2 lg:flex">
+          {/* Right: Action buttons (desktop only) — omitted entirely in read-only mode */}
+          {!readOnly && (
+            <div className="hidden flex-col gap-2 lg:flex">
             <button
               onClick={() => setLogEntryOpen(true)}
               disabled={!canMutate}
@@ -126,7 +130,8 @@ export function BudgetSummary({
                 Generate Report
               </button>
             )}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Full-width progress bar + status text */}

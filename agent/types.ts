@@ -140,3 +140,34 @@ export function toParsedReceiptClient(r: ReceiptParseResult): ParsedReceipt {
     })),
   };
 }
+
+// ─── Document Verification (signed-report completeness check) ───────
+
+/** Per-check verdict from the OpenRouter document verifier. */
+export const documentCheckSchema = z.object({
+  passed: z.boolean(),
+  reason: z.string().min(1),
+});
+
+/**
+ * Raw OpenRouter response for the signed-document completeness check.
+ * `page_count_observed` is the model's count of distinct pages in the upload —
+ * the route cross-checks it against the expected count parsed from the
+ * generated PDF, which catches duplicate/missing page uploads that a pure
+ * file-count comparison would miss.
+ */
+export const documentVerificationResponseSchema = z.object({
+  document_number: documentCheckSchema,
+  signatures: documentCheckSchema,
+  page_count_observed: z.number().int().nonnegative(),
+  summary: z.string().min(1),
+});
+
+export type DocumentVerificationResult = {
+  checks: {
+    document_number: { passed: boolean; reason: string };
+    signatures: { passed: boolean; reason: string };
+  };
+  pageCountObserved: number;
+  summary: string;
+};

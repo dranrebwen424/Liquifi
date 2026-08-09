@@ -9,6 +9,8 @@ export type NavItemConfig = {
   label: string;
   href: string;
   icon: LucideIcon;
+  /** Unread count badge — rendered only when > 0. */
+  badge?: number;
 };
 
 type NavItemProps = NavItemConfig & {
@@ -16,7 +18,7 @@ type NavItemProps = NavItemConfig & {
   variant: "sidebar" | "bottom";
 };
 
-export function NavItem({ label, href, icon: Icon, isActive, variant }: NavItemProps) {
+export function NavItem({ label, href, icon: Icon, isActive, variant, badge = 0 }: NavItemProps) {
   if (variant === "sidebar") {
     return (
       <li>
@@ -44,6 +46,11 @@ export function NavItem({ label, href, icon: Icon, isActive, variant }: NavItemP
             />
           </span>
           <span className="relative z-10">{label}</span>
+          {badge > 0 && (
+            <span className="relative z-10 ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-[11px] font-semibold leading-none text-accent-foreground">
+              {badge > 99 ? "99+" : badge}
+            </span>
+          )}
         </Link>
       </li>
     );
@@ -71,6 +78,11 @@ export function NavItem({ label, href, icon: Icon, isActive, variant }: NavItemP
           strokeWidth={isActive ? 0 : 1.5}
           fill={isActive ? "currentColor" : "none"}
         />
+        {badge > 0 && (
+          <span className="absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold leading-none text-accent-foreground">
+            {badge > 99 ? "99+" : badge}
+          </span>
+        )}
       </span>
       <span className="relative z-10 text-[11px] font-medium">{label}</span>
     </Link>

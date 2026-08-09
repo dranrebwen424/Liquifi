@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth-guard";
 import { createInsforgeServer } from "@/lib/insforge-server";
 import { getReportPdfBlob } from "@/lib/storage";
+import { createNotification } from "@/lib/notifications";
 import { anchorReport } from "@/agent/report-anchor";
 
 function errorResponse(message: string, status: number) {
@@ -139,16 +140,11 @@ export async function POST(request: Request, { params }: Props) {
         .eq("account_status", "active")
         .maybeSingle();
       if (treasurer) {
-        await insforge.database.from("notifications").insert({
-          user_id: treasurer.id,
-          type: "report_approved",
-          payload_json: {
-            report_id: reportId,
-            event_id: event.id,
-            event_name: event.name,
-            fs_document_number: report.fs_document_number,
-          },
-          read: false,
+        await createNotification(treasurer.id, "report_approved", {
+          report_id: reportId,
+          event_id: event.id,
+          event_name: event.name,
+          fs_document_number: report.fs_document_number,
         });
       }
     } catch (notifErr) {

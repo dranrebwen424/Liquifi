@@ -151,6 +151,25 @@ export async function uploadSignedReport(
 }
 
 /**
+ * Delete a signed report page blob by its storage key. Best-effort:
+ * a failed or orphaned delete logs and never throws — used on the archive
+ * failure path to roll back uploads before anything is saved.
+ */
+export async function deleteSignedReportPage(key: string): Promise<void> {
+  try {
+    const insforge = await createInsforgeServer();
+    const { error } = await insforge.storage
+      .from(SIGNED_REPORT_BUCKET)
+      .remove(key);
+    if (error) {
+      console.error("[storage] deleteSignedReportPage: blob delete failed:", key, error);
+    }
+  } catch (error) {
+    console.error("[storage] deleteSignedReportPage:", error);
+  }
+}
+
+/**
  * Get presigned URL for signed report page.
  */
 export async function getSignedReportUrl(

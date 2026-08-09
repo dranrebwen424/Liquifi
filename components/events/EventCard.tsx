@@ -14,6 +14,8 @@ type EventCardProps = {
   totalSpent: number;
   numEntries: number;
   createdByName: string;
+  /** Override the default treasurer link (e.g. adviser/admin read-only views). */
+  href?: string;
 };
 
 const MotionLink = motion.create(Link);
@@ -38,13 +40,13 @@ function budgetColor(pct: number) {
   return "bg-success";
 }
 
-export function EventCard({ id, name, status, budgetTotal, totalSpent, numEntries, createdByName }: EventCardProps) {
+export function EventCard({ id, name, status, budgetTotal, totalSpent, numEntries, createdByName, href }: EventCardProps) {
   const pct = budgetTotal > 0 ? Math.min((totalSpent / budgetTotal) * 100, 100) : 0;
 
   return (
     <MotionConfig reducedMotion="user">
       <MotionLink
-        href={`/treasurer/events/${id}`}
+        href={href ?? `/treasurer/events/${id}`}
         initial="rest"
         whileHover="hover"
         className="flex w-full flex-col gap-3"

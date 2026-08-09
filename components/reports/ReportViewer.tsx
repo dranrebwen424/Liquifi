@@ -12,12 +12,15 @@ import { PdfViewer } from "@/components/reports/PdfViewer";
 type ReportViewerProps = {
   report: { id: string; fs_document_number: string; status: string };
   isArchived: boolean;
+  /** Adviser/admin read-only mode — hides treasurer-only controls (cancel).
+      The pending-lock banner is treasurer-voiced, so it goes too. */
+  readOnly?: boolean;
 };
 
-export function ReportViewer({ report, isArchived }: ReportViewerProps) {
+export function ReportViewer({ report, isArchived, readOnly }: ReportViewerProps) {
   const status = reportStatusMap[report.status] ?? reportStatusMap.pending_adviser_approval;
   const isPending = report.status === "pending_adviser_approval";
-  const cancellable = isPending && !isArchived;
+  const cancellable = !readOnly && isPending && !isArchived;
 
   return (
     <div className="flex flex-col gap-4">

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { AlertTriangle, ArrowLeft, Loader2 } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 import type { getEventDashboard } from "@/lib/queries/events";
 import type { getLatestReportByEvent } from "@/lib/queries/reports";
 import { formatPHP } from "@/lib/format";
@@ -162,6 +162,15 @@ export function AdviserReportReview({ event, report }: Props) {
             {formatPHP(event.budget_total)} spent
           </p>
         </div>
+
+        {/* Round-trip to the full event dashboard */}
+        <Link
+          href={`/adviser/events/${event.id}`}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-text-secondary transition-colors hover:text-text-primary"
+        >
+          View event
+          <ArrowRight className="h-4 w-4" />
+        </Link>
       </div>
 
       {/* Unresolved overspend banner */}
