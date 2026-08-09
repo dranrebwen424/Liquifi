@@ -43,8 +43,8 @@ export default async function AdviserApprovalsPage() {
 
   const { data: entries } = await insforge.database
     .from("entries")
-    .select("id, event_id, created_by, created_at, amount, category")
-    .eq("status", "pending_approval")
+    .select("id, event_id, created_by, created_at, amount, category, resubmission_explanation")
+    .in("status", ["pending_approval", "resubmitted"])
     .eq("type", "manual")
     .in("event_id", deptEventIds.length > 0 ? deptEventIds : ["__none__"])
     .order("created_at", { ascending: false });
@@ -77,6 +77,7 @@ export default async function AdviserApprovalsPage() {
       created_by_name: creatorMap[e.created_by as string] ?? null,
       amount: e.amount as number,
       category: (e.category as string | null) ?? null,
+      resubmission_explanation: (e.resubmission_explanation as string | null) ?? null,
       created_at: e.created_at as string,
     })) ?? [];
 

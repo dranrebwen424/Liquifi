@@ -2,6 +2,7 @@
 
 import { useId } from "react";
 import { cn } from "@/lib/utils";
+import { formatNumberInput } from "@/lib/format";
 import type { LucideIcon } from "lucide-react";
 
 // ─── Types ─────────────────────────────────────────────────────────
@@ -20,10 +21,12 @@ type FloatingInputProps = {
   suffix?: string;
   /** Prefix shown inside the input (e.g. "₱"). */
   prefix?: string;
+  /** Currency input — digits only, live thousands separators ("20000" → "20,000"). */
+  currency?: boolean;
+  /** Integer count input — digits only, blocks e/E/+/-/. and all letters. */
+  digits?: boolean;
   /** Optional icon shown inside the input (e.g. Users for witness field). */
   icon?: LucideIcon;
-  min?: number;
-  step?: number;
   required?: boolean;
   /** Error message — when truthy, shows red border + message below. */
   error?: string;
@@ -41,9 +44,9 @@ export function FloatingInput({
   placeholder = " ",
   suffix,
   prefix,
+  currency,
+  digits,
   icon: Icon,
-  min,
-  step,
   required,
   error,
 }: FloatingInputProps) {
@@ -72,18 +75,20 @@ export function FloatingInput({
         <input
           id={id}
           type={type}
-          inputMode={inputMode}
+          inputMode={digits ? "numeric" : inputMode}
           value={value}
           onChange={(e) => {
-            if (type === "number") {
-              onChange(Math.max(0, Number(e.target.value) || 0));
+            if (currency) {
+              // Digits only + live thousands separators; commas never reach state
+              onChange(formatNumberInput(e.target.value));
+            } else if (digits) {
+              // Digits only — strips e/E/+/-/. and all letters
+              onChange(e.target.value.replace(/\D/g, ""));
             } else {
               onChange(e.target.value);
             }
           }}
           placeholder={placeholder}
-          min={min}
-          step={step}
           required={required}
           aria-invalid={!!error}
           className={cn(

@@ -29,6 +29,7 @@ type PendingEntry = {
   created_by_name?: string | null;
   amount: number;
   category: string | null;
+  resubmission_explanation?: string | null;
   created_at: string;
 };
 
@@ -296,6 +297,11 @@ export default function AdviserApprovalsClient({ pendingUsers: initialUsers, pen
                           {entry.created_by_name && (
                             <p className="text-xs text-muted-foreground">by {entry.created_by_name}</p>
                           )}
+                          {entry.resubmission_explanation && (
+                            <p className="mt-1 text-xs text-amber-600">
+                              Resubmission: {entry.resubmission_explanation}
+                            </p>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
                           {entry.category || "—"}
@@ -481,9 +487,10 @@ export default function AdviserApprovalsClient({ pendingUsers: initialUsers, pen
               </Button>
               <Button
                 variant={confirmingAction.type === "reject" ? "destructive" : "default"}
-                onClick={executeUserAction}
+                disabled={approving}
+                onClick={() => (confirmingAction.userId ? executeUserAction() : executeBatchApprove())}
               >
-                {confirmingAction.type === "approve" ? "Approve" : "Reject"}
+                {approving ? "Approving…" : confirmingAction.type === "approve" ? "Approve" : "Reject"}
               </Button>
             </div>
           </div>

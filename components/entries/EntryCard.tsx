@@ -4,6 +4,7 @@ import { useState } from "react";
 import { FileText, Pencil, CircleMinus } from "lucide-react";
 import { formatPHP } from "@/lib/format";
 import { StatusBadge, entryStatusMap } from "@/components/ui/StatusBadge";
+import { entryTitle } from "@/components/entries/entry-title";
 import { cn } from "@/lib/utils";
 import type { EntryType, EntryStatus } from "@/types";
 
@@ -21,10 +22,12 @@ type EntryCardProps = {
   issueTime?: string | null;
   imageUrl?: string | null;
   itemBreakdown?: unknown;
+  formPayload?: unknown;
   createdAt?: string;
   voidReason?: string | null;
   voidedBy?: string | null;
   voidedAt?: string | null;
+  voidedByName?: string | null;
   onClick?: () => void;
 };
 
@@ -94,16 +97,25 @@ export function EntryCard({
   amount,
   description,
   supplierName,
+  category,
+  formPayload,
+  itemBreakdown,
   imageUrl,
   voidReason,
   voidedBy,
+  voidedAt,
+  voidedByName,
   onClick,
 }: EntryCardProps) {
   const isVoided = status === "voided";
-  const displayName = supplierName || description || "Untitled entry";
-  const category = supplierName ? description : null;
+  const displayName = entryTitle({ supplierName, description, category, formPayload, itemBreakdown });
+  // Subtitle: doc type for receipts, category label for manual entries
+  const subtitle = supplierName ? description : (category ?? null);
   const [imgFailed, setImgFailed] = useState(false);
   const showImage = type === "receipt" && Boolean(imageUrl) && !imgFailed;
+  const voidDate = voidedAt
+    ? new Date(voidedAt).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })
+    : null;
 
   return (
     <div
@@ -148,7 +160,11 @@ export function EntryCard({
 
           {/* Category — always takes space for consistent height */}
           <p className="text-xs text-text-muted line-clamp-1">
-            {category ?? "\u00A0"}
+            {isVoided
+              ? [voidedByName ? `Voided by ${voidedByName}` : "Voided", voidDate]
+                  .filter(Boolean)
+                  .join(" \u00B7 ")
+              : (subtitle ?? "\u00A0")}
           </p>
         </div>
 

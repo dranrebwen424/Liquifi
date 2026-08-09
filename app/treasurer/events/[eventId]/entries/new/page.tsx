@@ -8,12 +8,13 @@ import { ReceiptUpload, type ParsedUploadResult } from "@/components/entries/Rec
 import { ReceiptReview } from "@/components/entries/ReceiptReview";
 import { ManualCategoryPicker } from "@/components/entries/ManualCategoryPicker";
 import { ManualQuickForm, type ManualSubmitPayload } from "@/components/entries/ManualQuickForm";
-import { discardReceiptEntry } from "@/actions/entries";
+import { discardReceiptEntry, confirmReceiptEntry, submitManualEntry } from "@/actions/entries";
 import type { ParsedReceipt } from "@/agent/types";
 import type { ExpenseType } from "@/components/entries/manual-categories";
 
 type Method = "receipt" | "manual";
 type ManualScreen = "picker" | "form" | "success";
+type OverspendState = { overshoot: number; explanation: string; error: string | null };
 
 type Props = {
   params: Promise<{ eventId: string }>;
@@ -41,6 +42,8 @@ export default function NewEntryPage({ params }: Props) {
   const [reviewOpen, setReviewOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [discarding, setDiscarding] = useState(false);
+  const [overspend, setOverspend] = useState<OverspendState | null>(null);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
 
   // Manual flow
   const [manualScreen, setManualScreen] = useState<ManualScreen>("picker");
@@ -59,18 +62,43 @@ export default function NewEntryPage({ params }: Props) {
     setDiscarding(true);
     await discardReceiptEntry(entryId, eventId);
     setDiscarding(false);
+    setEntryId(null);
     setReviewOpen(false);
+    setOverspend(null);
+    setConfirmError(null);
     setTimeout(() => setParsedData(null), 150);
   }, [entryId, eventId]);
 
   const handleConfirm = useCallback(async () => {
-    if (!parsedData) return;
+    if (!entryId || !parsedData) return;
+    if (overspend && !overspend.explanation.trim()) {
+      setOverspend((s) =>
+        s ? { ...s, error: "An explanation is required to confirm the overspend." } : s,
+      );
+      return;
+    }
     setConfirming(true);
-    await new Promise((r) => setTimeout(r, 800));
+    setConfirmError(null);
+    const result = await confirmReceiptEntry(
+      entryId,
+      eventId,
+      overspend ? { overspendExplanation: overspend.explanation } : undefined,
+    );
     setConfirming(false);
+
+    if (!result.success) {
+      setConfirmError(result.error);
+      return;
+    }
+    if ("overspendRequired" in result) {
+      setOverspend({ overshoot: result.overshoot, explanation: "", error: null });
+      return;
+    }
+
     setReviewOpen(false);
+    setOverspend(null);
     router.push(`/treasurer/events/${eventId}`);
-  }, [parsedData, eventId, router]);
+  }, [entryId, parsedData, overspend, eventId, router]);
 
   // ─── Manual flow ───────────────────────────────────────────────
 
@@ -85,11 +113,16 @@ export default function NewEntryPage({ params }: Props) {
   }, []);
 
   const handleFormSubmit = useCallback(
-    async (_data: ManualSubmitPayload) => {
-      await new Promise((r) => setTimeout(r, 600));
-      setManualScreen("success");
+    async (data: ManualSubmitPayload) => {
+      const result = await submitManualEntry(eventId, data);
+      // Both gates (explanationRequired, overspendRequired) are handled inside
+      // ManualQuickForm — a success is only real when neither is present.
+      if (result.success && !("explanationRequired" in result) && !("overspendRequired" in result)) {
+        setManualScreen("success");
+      }
+      return result;
     },
-    [],
+    [eventId],
   );
 
   const handleLogAnother = useCallback(() => {
@@ -224,6 +257,11 @@ export default function NewEntryPage({ params }: Props) {
           onDiscard={handleDiscard}
           onClose={handleDiscard}
           confirming={confirming || discarding}
+          overspend={overspend}
+          onOverspendChange={(value) =>
+            setOverspend((s) => (s ? { ...s, explanation: value, error: null } : s))
+          }
+          confirmError={confirmError}
         />
       )}
     </div>

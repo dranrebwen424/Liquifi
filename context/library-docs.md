@@ -402,7 +402,7 @@ await insforge.storage
 - Generated buffer uploaded directly to InsForge Storage — never written to disk
 - Always save public URL to `Report.pdf_url` after upload
 - `revision_count` is system/audit-only — never render it on the PDF
-- Overspend entries get a row tint as a disclosure marker
+- Overspend disclosure on the PDF: the TOTAL row's Variance renders red `₱ (x)` when actual spend exceeds budget (per-row tint not used — no per-category budget exists; see ui-registry ReportPdf)
 
 ---
 

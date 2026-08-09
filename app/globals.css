@@ -3,7 +3,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: #ffffff; /* page background — always white (per request) */
+  --background: #f9f9fb; /* page background — subtle warm grey; cards (surface #fff) float on it */
   --foreground: #111114;
   --card: #ffffff;
   --card-foreground: #111114;

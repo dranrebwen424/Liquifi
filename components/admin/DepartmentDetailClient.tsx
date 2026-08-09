@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, Fragment } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { Folder, Loader2, CircleCheckBig, CircleMinus } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Folder, Loader2, CircleCheckBig, CircleMinus, ChevronDown, ChevronUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   StatusBadge,
@@ -12,7 +12,8 @@ import {
   reportStatusMap,
 } from "@/components/ui/StatusBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { formatPHP } from "@/lib/format";
+import { EventBrowser } from "@/components/events/EventBrowser";
+import { staggerContainer, fadeUpItem } from "@/lib/motion-variants";
 import { setUserAccountStatus } from "@/actions/departments";
 import type { AccountStatus } from "@/types";
 
@@ -37,13 +38,17 @@ type User = {
 type Event = {
   id: string;
   name: string;
-  status: string;
+  status: "open" | "archived";
   budget_total: number;
-  spent: number;
+  total_spent: number;
+  num_entries: number;
+  created_by_name: string;
+  created_at: string;
 };
 
 type Report = {
   id: string;
+  event_id: string;
   fs_document_number: string;
   status: string;
   event_name: string;
@@ -53,16 +58,18 @@ type AuditLog = {
   id: string;
   action: string;
   target_type: string;
+  target_id: string | null;
   actor: string;
+  metadata_json: Record<string, unknown> | null;
   created_at: string;
 };
 
 type Props = {
   department: Department;
   initialUsers: User[];
-  mockEvents?: Event[];
-  mockReports?: Report[];
-  mockAuditLogs?: AuditLog[];
+  events?: Event[];
+  reports?: Report[];
+  auditLogs?: AuditLog[];
 };
 
 const TABS = ["Users", "Events", "Reports", "Audit Logs"] as const;
@@ -71,9 +78,9 @@ type Tab = (typeof TABS)[number];
 export function DepartmentDetailClient({
   department,
   initialUsers,
-  mockEvents = [],
-  mockReports = [],
-  mockAuditLogs = [],
+  events = [],
+  reports = [],
+  auditLogs = [],
 }: Props) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>("Users");
@@ -103,22 +110,6 @@ export function DepartmentDetailClient({
     }
     setTogglingId(null);
   }, [users, department.id, router]);
-
-  // ─── Animation variants ───────────────────────────────────────────
-  const staggerContainer = {
-    hidden: {},
-    show: {
-      transition: { staggerChildren: 0.04, delayChildren: 0.05 },
-    },
-  };
-
-  const fadeUpItem = {
-    hidden: { opacity: 0, y: 12 },
-    show: {
-      opacity: 1, y: 0,
-      transition: { type: "spring" as const, stiffness: 100, damping: 20, duration: 0.2 },
-    },
-  };
 
   return (
     <div className="flex flex-col gap-8 pb-24 md:pb-0">
@@ -189,13 +180,18 @@ export function DepartmentDetailClient({
             />
           )}
           {activeTab === "Events" && (
-            <EventsTab events={mockEvents} />
+            <EventBrowser
+              events={events}
+              basePath={`/admin/departments/${department.id}/events`}
+              emptyTitle="No events"
+              emptyDescription="This department has no events yet."
+            />
           )}
           {activeTab === "Reports" && (
-            <ReportsTab reports={mockReports} />
+            <ReportsTab departmentId={department.id} reports={reports} />
           )}
           {activeTab === "Audit Logs" && (
-            <AuditTab logs={mockAuditLogs} />
+            <AuditTab logs={auditLogs} />
           )}
         </motion.div>
       </AnimatePresence>
@@ -325,72 +321,15 @@ function UsersTab({
   );
 }
 
-// ─── Tab: Events ───────────────────────────────────────────────────
-
-function EventsTab({ events }: { events: Event[] }) {
-  if (events.length === 0) {
-    return (
-      <EmptyState
-        title="No events"
-        description="This department has no events yet."
-      />
-    );
-  }
-
-  return (
-    <>
-      <div className="hidden grid-cols-1 gap-x-5 gap-y-8 sm:grid md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-        {events.map((event) => {
-          const isOpen = event.status === "open";
-          return (
-            <div key={event.id} className="mx-auto flex h-[180px] w-full max-w-[280px] flex-col rounded-xl border border-border-strong bg-surface p-6 transition-all duration-200 hover:border-accent hover:shadow-lg hover:scale-[1.02]">
-              <div className="flex items-start justify-between gap-3">
-                <h3 className="min-w-0 text-base font-semibold leading-6 text-text-primary line-clamp-2">
-                  {event.name}
-                </h3>
-                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${isOpen ? "bg-success-light text-success" : "bg-accent-light text-accent"}`}>
-                  <Folder className="h-4 w-4" />
-                </div>
-              </div>
-              <p className={`mt-2 text-xs font-medium uppercase tracking-wide ${isOpen ? "text-success" : "text-text-muted"}`}>
-                {isOpen ? "Open" : "Archived"}
-              </p>
-              <div className="mt-auto flex items-end justify-between gap-2 pt-4 text-[11px] leading-4 text-text-muted">
-                <span>Budget: {formatPHP(event.budget_total)}</span>
-                <span>Spent: {formatPHP(event.spent)}</span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <div className="flex flex-col gap-4 md:hidden">
-        {events.map((event) => {
-          const isOpen = event.status === "open";
-          return (
-            <div key={event.id} className="flex items-start justify-between gap-3 rounded-xl border border-border-strong bg-surface p-4">
-              <div className="min-w-0 flex-1">
-                <p className="text-base font-semibold text-text-primary">{event.name}</p>
-                <p className={`mt-0.5 text-xs font-medium uppercase tracking-wide ${isOpen ? "text-success" : "text-text-muted"}`}>
-                  {isOpen ? "Open" : "Archived"}
-                </p>
-                <p className="mt-2 text-[11px] leading-4 text-text-muted">
-                  {formatPHP(event.budget_total)} · {formatPHP(event.spent)} spent
-                </p>
-              </div>
-              <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${isOpen ? "bg-success-light text-success" : "bg-accent-light text-accent"}`}>
-                <Folder className="h-4 w-4" />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </>
-  );
-}
-
 // ─── Tab: Reports ──────────────────────────────────────────────────
 
-function ReportsTab({ reports }: { reports: Report[] }) {
+function ReportsTab({
+  departmentId,
+  reports,
+}: {
+  departmentId: string;
+  reports: Report[];
+}) {
   if (reports.length === 0) {
     return (
       <EmptyState
@@ -404,7 +343,11 @@ function ReportsTab({ reports }: { reports: Report[] }) {
     <>
       <div className="hidden grid-cols-1 gap-x-5 gap-y-8 sm:grid md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
         {reports.map((report) => (
-          <div key={report.id} className="mx-auto flex h-[180px] w-full max-w-[280px] flex-col rounded-xl border border-border-strong bg-surface p-6 transition-all duration-200 hover:border-accent hover:shadow-lg hover:scale-[1.02]">
+          <Link
+            key={report.id}
+            href={`/admin/departments/${departmentId}/reports/${report.event_id}`}
+            className="mx-auto flex h-[180px] w-full max-w-[280px] flex-col rounded-xl border border-border-strong bg-surface p-6 transition-all duration-200 hover:border-accent hover:shadow-lg hover:scale-[1.02]"
+          >
             <div className="flex items-start justify-between gap-3">
               <h3 className="min-w-0 truncate text-base font-semibold text-text-primary">
                 {report.fs_document_number}
@@ -421,12 +364,16 @@ function ReportsTab({ reports }: { reports: Report[] }) {
                 label={reportStatusMap[report.status]?.label ?? report.status}
               />
             </div>
-          </div>
+          </Link>
         ))}
       </div>
       <div className="flex flex-col gap-4 md:hidden">
         {reports.map((report) => (
-          <div key={report.id} className="flex items-start justify-between gap-3 rounded-xl border border-border-strong bg-surface p-4">
+          <Link
+            key={report.id}
+            href={`/admin/departments/${departmentId}/reports/${report.event_id}`}
+            className="flex items-start justify-between gap-3 rounded-xl border border-border-strong bg-surface p-4"
+          >
             <div className="min-w-0 flex-1">
               <p className="truncate text-base font-semibold text-text-primary">
                 {report.fs_document_number}
@@ -443,7 +390,7 @@ function ReportsTab({ reports }: { reports: Report[] }) {
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-light text-accent">
               <Folder className="h-4 w-4" />
             </div>
-          </div>
+          </Link>
         ))}
       </div>
     </>
@@ -453,6 +400,8 @@ function ReportsTab({ reports }: { reports: Report[] }) {
 // ─── Tab: Audit Logs ───────────────────────────────────────────────
 
 function AuditTab({ logs }: { logs: AuditLog[] }) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
   if (logs.length === 0) {
     return (
       <EmptyState
@@ -462,6 +411,10 @@ function AuditTab({ logs }: { logs: AuditLog[] }) {
     );
   }
 
+  const hasMetadata = (log: AuditLog) =>
+    log.metadata_json !== null &&
+    Object.keys(log.metadata_json).length > 0;
+
   return (
     <>
       <div className="hidden overflow-x-auto rounded-xl border border-border-strong bg-surface md:block">
@@ -469,45 +422,112 @@ function AuditTab({ logs }: { logs: AuditLog[] }) {
           <thead>
             <tr className="border-b border-border text-xs font-medium uppercase tracking-wide text-text-muted">
               <th className="px-6 py-3 font-medium">Action</th>
-              <th className="px-6 py-3 font-medium">Type</th>
+              <th className="px-6 py-3 font-medium">Target</th>
               <th className="px-6 py-3 font-medium">Actor</th>
               <th className="px-6 py-3 font-medium">Date</th>
+              <th className="w-10" />
             </tr>
           </thead>
           <tbody>
-            {logs.map((log) => (
-              <tr key={log.id} className="border-b border-border transition-colors last:border-0 hover:bg-surface-secondary">
-                <td className="px-6 py-3 font-medium text-text-primary">{log.action}</td>
-                <td className="px-6 py-3 text-text-secondary">{log.target_type}</td>
-                <td className="px-6 py-3 text-text-secondary">{log.actor}</td>
-                <td className="px-6 py-3 text-text-muted">
-                  {new Date(log.created_at).toLocaleDateString("en-PH", {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </td>
-              </tr>
-            ))}
+            {logs.map((log) => {
+              const isExpanded = expandedId === log.id;
+              return (
+                <Fragment key={log.id}>
+                  <tr className="border-b border-border transition-colors last:border-0 hover:bg-surface-secondary">
+                    <td className="px-6 py-3 font-medium text-text-primary">{log.action}</td>
+                    <td className="px-6 py-3">
+                      <span className="text-text-secondary">{log.target_type}</span>
+                      {log.target_id && (
+                        <span className="ml-1.5 text-xs text-text-muted">
+                          #{log.target_id.slice(0, 8)}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-3 text-text-secondary">{log.actor}</td>
+                    <td className="px-6 py-3 whitespace-nowrap text-text-muted">
+                      {new Date(log.created_at).toLocaleString("en-PH", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      {hasMetadata(log) && (
+                        <button
+                          onClick={() => setExpandedId(isExpanded ? null : log.id)}
+                          aria-label={isExpanded ? "Hide details" : "Show details"}
+                          className="rounded-md p-1 text-text-muted transition-colors hover:bg-surface-tertiary hover:text-text-primary"
+                        >
+                          {isExpanded ? (
+                            <ChevronUp className="h-4 w-4" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4" />
+                          )}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                  {isExpanded && hasMetadata(log) && (
+                    <tr className="border-b border-border bg-surface-secondary/50 last:border-0">
+                      <td colSpan={5} className="px-6 py-4">
+                        <pre className="overflow-x-auto rounded-lg border border-border bg-surface p-3 text-xs leading-relaxed text-text-secondary">
+                          {JSON.stringify(log.metadata_json, null, 2)}
+                        </pre>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>
       <div className="flex flex-col gap-4 md:hidden">
-        {logs.map((log) => (
-          <div key={log.id} className="rounded-xl border border-border-strong bg-surface p-4">
-            <p className="text-sm font-semibold text-text-primary">{log.action}</p>
-            <p className="mt-1 text-xs text-text-muted">
-              {log.target_type} · {log.actor}
-            </p>
-            <p className="mt-2 text-xs text-text-secondary">
-              {new Date(log.created_at).toLocaleDateString("en-PH", {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-              })}
-            </p>
-          </div>
-        ))}
+        {logs.map((log) => {
+          const isExpanded = expandedId === log.id;
+          return (
+            <div key={log.id} className="rounded-xl border border-border-strong bg-surface p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-text-primary">{log.action}</p>
+                  <p className="mt-1 text-xs text-text-muted">
+                    {log.target_type}
+                    {log.target_id && ` · #${log.target_id.slice(0, 8)}`} · {log.actor}
+                  </p>
+                </div>
+                {hasMetadata(log) && (
+                  <button
+                    onClick={() => setExpandedId(isExpanded ? null : log.id)}
+                    aria-label={isExpanded ? "Hide details" : "Show details"}
+                    className="shrink-0 rounded-md p-1 text-text-muted transition-colors hover:bg-surface-tertiary hover:text-text-primary"
+                  >
+                    {isExpanded ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </button>
+                )}
+              </div>
+              <p className="mt-2 text-xs text-text-secondary">
+                {new Date(log.created_at).toLocaleString("en-PH", {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}
+              </p>
+              {isExpanded && hasMetadata(log) && (
+                <pre className="mt-3 overflow-x-auto rounded-lg border border-border bg-surface-secondary/50 p-3 text-xs leading-relaxed text-text-secondary">
+                  {JSON.stringify(log.metadata_json, null, 2)}
+                </pre>
+              )}
+            </div>
+          );
+        })}
       </div>
     </>
   );

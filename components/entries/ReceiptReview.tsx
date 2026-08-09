@@ -2,11 +2,17 @@
 
 import { useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, X, FileText } from "lucide-react";
+import { Check, X, FileText, AlertTriangle } from "lucide-react";
 import { formatPHP } from "@/lib/format";
 import { dialogOverlay, dialogContent, sheetSlideUp } from "@/lib/motion-variants";
 import { CATEGORIES } from "@/components/entries/manual-categories";
 import type { ParsedReceipt } from "@/agent/types";
+
+type OverspendProps = {
+  overshoot: number;
+  explanation: string;
+  error: string | null;
+};
 
 type ReceiptReviewProps = {
   open: boolean;
@@ -15,6 +21,9 @@ type ReceiptReviewProps = {
   onDiscard: () => void;
   onClose: () => void;
   confirming?: boolean;
+  overspend?: OverspendProps | null;
+  onOverspendChange?: (value: string) => void;
+  confirmError?: string | null;
 };
 
 export function ReceiptReview({
@@ -24,6 +33,9 @@ export function ReceiptReview({
   onDiscard,
   onClose,
   confirming = false,
+  overspend = null,
+  onOverspendChange,
+  confirmError = null,
 }: ReceiptReviewProps) {
   // Close on Escape
   const handleKeyDown = useCallback(
@@ -142,6 +154,40 @@ export function ReceiptReview({
         </div>
       </div>
 
+      {/* Overspend warning — required explanation before deducting */}
+      {overspend && (
+        <div className="rounded-xl border border-warning bg-warning-lightest p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning-foreground" aria-hidden />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-text-primary">
+                This will put the event {formatPHP(overspend.overshoot)} over budget
+              </p>
+              <p className="mt-0.5 text-xs text-text-muted">
+                Explain why this expense was necessary — the adviser will see it on the report.
+              </p>
+              <textarea
+                value={overspend.explanation}
+                onChange={(e) => onOverspendChange?.(e.target.value)}
+                rows={3}
+                maxLength={500}
+                placeholder="Why was this expense necessary?"
+                aria-label="Overspend explanation"
+                className="mt-3 w-full resize-none rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
+              />
+              {overspend.error && (
+                <p className="mt-1.5 text-xs font-medium text-error">{overspend.error}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm error — guards / server rejection */}
+      {confirmError && (
+        <p className="text-xs font-medium text-error" role="alert">{confirmError}</p>
+      )}
+
       {/* Actions */}
       <div className="flex flex-col gap-2 sm:flex-row-reverse">
         <button
@@ -150,7 +196,7 @@ export function ReceiptReview({
           className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
         >
           <Check className="h-4 w-4" />
-          {confirming ? "Confirming…" : "Confirm & Deduct"}
+          {confirming ? "Confirming…" : overspend ? "Confirm Overspend" : "Confirm & Deduct"}
         </button>
         <button
           onClick={onDiscard}

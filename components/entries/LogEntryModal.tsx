@@ -10,6 +10,7 @@ import {
   Pencil,
   FileText,
   RefreshCw,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatPHP } from "@/lib/format";
@@ -18,7 +19,7 @@ import { ReceiptUpload, type ParsedUploadResult } from "@/components/entries/Rec
 import { ManualCategoryPicker } from "@/components/entries/ManualCategoryPicker";
 import { ManualQuickForm, type ManualSubmitPayload } from "@/components/entries/ManualQuickForm";
 import LottiePlayer from "@/components/LottiePlayer";
-import { discardReceiptEntry } from "@/actions/entries";
+import { confirmReceiptEntry, discardReceiptEntry, submitManualEntry } from "@/actions/entries";
 import type { ParsedReceipt } from "@/agent/types";
 import type { ExpenseType } from "@/components/entries/manual-categories";
 
@@ -26,6 +27,7 @@ import type { ExpenseType } from "@/components/entries/manual-categories";
 
 type Method = "receipt" | "manual";
 type ManualScreen = "picker" | "form" | "success";
+type OverspendState = { overshoot: number; explanation: string; error: string | null };
 
 type LogEntryModalProps = {
   open: boolean;
@@ -45,6 +47,8 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
   const [reviewOpen, setReviewOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [discarding, setDiscarding] = useState(false);
+  const [overspend, setOverspend] = useState<OverspendState | null>(null);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
 
   // Manual flow state
   const [manualScreen, setManualScreen] = useState<ManualScreen>("picker");
@@ -59,17 +63,36 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
       setReviewOpen(false);
       setConfirming(false);
       setDiscarding(false);
+      setOverspend(null);
+      setConfirmError(null);
       setManualScreen("picker");
       setSelectedCategory(null);
     }
   }, [open]);
 
+  /**
+   * Abandoned-review cleanup: an unconfirmed ai_parsed row is provisional —
+   * closing the modal without confirming discards it (server-guarded).
+   * entryId is nulled on confirm/discard, so post-action closes never discard.
+   * Close waits for the delete so the refresh below lands after it — otherwise
+   * the list behind re-renders before the row is gone and "discard does nothing".
+   */
+  const closeModal = useCallback(async () => {
+    if (entryId && !discarding) {
+      setDiscarding(true);
+      await discardReceiptEntry(entryId, eventId);
+      setDiscarding(false);
+      router.refresh();
+    }
+    onClose();
+  }, [entryId, discarding, eventId, onClose, router]);
+
   // Close on Escape (not during confirm or submit)
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !confirming && !discarding) onClose();
+      if (e.key === "Escape" && !confirming && !discarding) closeModal();
     },
-    [onClose, confirming, discarding],
+    [closeModal, confirming, discarding],
   );
 
   useEffect(() => {
@@ -96,19 +119,46 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
     setDiscarding(true);
     await discardReceiptEntry(entryId, eventId);
     setDiscarding(false);
+    setEntryId(null);
     setReviewOpen(false);
+    setOverspend(null);
+    setConfirmError(null);
+    router.refresh(); // row deleted (or raced a confirm) — sync the list behind
     setTimeout(() => setParsedData(null), 150);
-  }, [entryId, eventId]);
+  }, [entryId, eventId, router]);
 
   const handleConfirm = useCallback(async () => {
-    if (!parsedData) return;
+    if (!entryId || !parsedData) return;
+    if (overspend && !overspend.explanation.trim()) {
+      setOverspend((s) =>
+        s ? { ...s, error: "An explanation is required to confirm the overspend." } : s,
+      );
+      return;
+    }
     setConfirming(true);
-    await new Promise((r) => setTimeout(r, 800));
+    setConfirmError(null);
+    const result = await confirmReceiptEntry(
+      entryId,
+      eventId,
+      overspend ? { overspendExplanation: overspend.explanation } : undefined,
+    );
     setConfirming(false);
+
+    if (!result.success) {
+      setConfirmError(result.error);
+      return;
+    }
+    if ("overspendRequired" in result) {
+      setOverspend({ overshoot: result.overshoot, explanation: "", error: null });
+      return;
+    }
+
     setReviewOpen(false);
+    setOverspend(null);
+    setEntryId(null); // entry is deducted — close directly, never via closeModal's discard path
     onClose();
     router.refresh();
-  }, [parsedData, onClose, router]);
+  }, [entryId, parsedData, overspend, eventId, onClose, router]);
 
   // ─── Manual flow ───────────────────────────────────────────────
 
@@ -123,12 +173,17 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
   }, []);
 
   const handleFormSubmit = useCallback(
-    async (_data: ManualSubmitPayload) => {
-      // ponytail: mock submit delay — real submission will be wired later
-      await new Promise((r) => setTimeout(r, 600));
-      setManualScreen("success");
+    async (data: ManualSubmitPayload) => {
+      const result = await submitManualEntry(eventId, data);
+      // Both gates (explanationRequired, overspendRequired) are handled inside
+      // ManualQuickForm — a success is only real when neither is present.
+      if (result.success && !("explanationRequired" in result) && !("overspendRequired" in result)) {
+        setManualScreen("success");
+        router.refresh();
+      }
+      return result;
     },
-    [],
+    [eventId, router],
   );
 
   const handleLogAnother = useCallback(() => {
@@ -181,7 +236,7 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
         {/* Close button — web only */}
         <button
           type="button"
-          onClick={onClose}
+          onClick={closeModal}
           className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-surface-secondary hover:text-text-primary sm:flex"
           aria-label="Close"
         >
@@ -230,7 +285,7 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
           </div>
           <div className="mt-2 flex w-full flex-col gap-2.5 sm:flex-row">
             <button
-              onClick={onClose}
+              onClick={closeModal}
               className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-border px-6 py-3 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary"
             >
               Close
@@ -269,7 +324,7 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
         </div>
         <button
           type="button"
-          onClick={onClose}
+          onClick={closeModal}
           className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-surface-secondary hover:text-text-primary sm:flex"
           aria-label="Close"
         >
@@ -326,6 +381,44 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
         </div>
       </div>
 
+      {/* Overspend warning — required explanation before deducting */}
+      {overspend && (
+        <div className="rounded-xl border border-warning bg-warning-lightest p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning-foreground" aria-hidden />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-text-primary">
+                This will put the event {formatPHP(overspend.overshoot)} over budget
+              </p>
+              <p className="mt-0.5 text-xs text-text-muted">
+                Explain why this expense was necessary — the adviser will see it on the report.
+              </p>
+              <textarea
+                value={overspend.explanation}
+                onChange={(e) =>
+                  setOverspend((s) =>
+                    s ? { ...s, explanation: e.target.value, error: null } : s,
+                  )
+                }
+                rows={3}
+                maxLength={500}
+                placeholder="Why was this expense necessary?"
+                aria-label="Overspend explanation"
+                className="mt-3 w-full resize-none rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
+              />
+              {overspend.error && (
+                <p className="mt-1.5 text-xs font-medium text-error">{overspend.error}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm error — guards / server rejection */}
+      {confirmError && (
+        <p className="text-xs font-medium text-error" role="alert">{confirmError}</p>
+      )}
+
       {/* Actions */}
       <div className="flex flex-col gap-2.5 sm:flex-row-reverse">
         <button
@@ -334,7 +427,7 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
           className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-6 py-3.5 text-sm font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
         >
           <Check className="h-4 w-4" />
-          {confirming ? "Confirming…" : "Confirm & Deduct"}
+          {confirming ? "Confirming…" : overspend ? "Confirm Overspend" : "Confirm & Deduct"}
         </button>
         <button
           onClick={handleDiscard}
@@ -362,7 +455,7 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
             animate="show"
             exit="hidden"
             className="fixed inset-0 z-50 bg-overlay-alpha"
-            onClick={() => { if (!confirming && !discarding) onClose(); }}
+            onClick={() => { if (!confirming && !discarding) closeModal(); }}
           />
 
           {/* Web: centered modal */}
@@ -390,7 +483,7 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
             dragConstraints={{ top: 0 }}
             dragElastic={0.2}
             onDragEnd={(_, info) => {
-              if (info.offset.y > 100) onClose();
+              if (info.offset.y > 100) closeModal();
             }}
             className="fixed inset-x-0 bottom-0 z-50 sm:hidden"
           >
@@ -404,7 +497,7 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
                 <div className="shrink-0 border-t border-border px-6 py-3">
                   <button
                     type="button"
-                    onClick={onClose}
+                    onClick={closeModal}
                     className="w-full rounded-full border border-border px-4 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary"
                   >
                     Cancel

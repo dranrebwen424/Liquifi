@@ -11,6 +11,8 @@ type Props = {
   totalSpent: number;
   numEntries: number;
   createdAt: string;
+  /** Override the default treasurer link (e.g. adviser/admin read-only views). */
+  href?: string;
 };
 
 function budgetColor(pct: number) {
@@ -19,14 +21,14 @@ function budgetColor(pct: number) {
   return "bg-success";
 }
 
-export function EventListItem({ id, name, status, budgetTotal, totalSpent, numEntries, createdAt }: Props) {
+export function EventListItem({ id, name, status, budgetTotal, totalSpent, numEntries, createdAt, href }: Props) {
   const created = new Date(createdAt);
   const dateStr = created.toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" });
   const pct = budgetTotal > 0 ? Math.min((totalSpent / budgetTotal) * 100, 100) : 0;
 
   return (
     <Link
-      href={`/treasurer/events/${id}`}
+      href={href ?? `/treasurer/events/${id}`}
       className="group relative flex items-center gap-4 overflow-hidden rounded-xl border border-border bg-surface px-4 py-3 transition-all duration-200 hover:border-border-strong hover:bg-surface-secondary hover:shadow-md md:px-5"
     >
       {/* Folder icon — standalone, fills solid ink on hover */}

@@ -252,11 +252,14 @@ These are project-specific and non-negotiable:
 | Type                     | When                                         | Recipient        |
 | -------------------------- | ------------------------------------------- | ------------------ |
 | `report_ready_for_approval` | Report enters `pending_adviser_approval`  | Adviser           |
+| `report_approved`           | Adviser approves a report                 | Treasurer        |
+| `report_rejected`           | Adviser rejects a report                  | Treasurer         |
 | `adviser_signup_pending`    | New adviser signup submitted               | Admin             |
 | `treasurer_signup_pending`  | New treasurer signup submitted             | Department Adviser |
 | `signup_approved`           | Signup approved                            | Applicant         |
 | `signup_rejected`           | Signup rejected                            | Applicant         |
-| `report_rejected`           | Adviser rejects a report                   | Treasurer         |
+| `manual_entry_pending`      | Manual entry submitted for approval       | Department Adviser |
+| `entry_rejected`            | Adviser rejects an entry                  | Entry creator     |
 
 Do not add more notification types without updating this table first.
 

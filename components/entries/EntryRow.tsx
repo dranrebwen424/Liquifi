@@ -1,6 +1,7 @@
 import { FileText, Pencil, CircleMinus } from "lucide-react";
 import { formatPHP } from "@/lib/format";
 import { StatusBadge, entryStatusMap } from "@/components/ui/StatusBadge";
+import { entryTitle } from "@/components/entries/entry-title";
 import { cn } from "@/lib/utils";
 import type { EntryType, EntryStatus } from "@/types";
 
@@ -11,7 +12,11 @@ type EntryRowProps = {
   description?: string | null;
   supplierName?: string | null;
   category?: string | null;
+  formPayload?: unknown;
+  itemBreakdown?: unknown;
   createdAt?: string;
+  voidedAt?: string | null;
+  voidedByName?: string | null;
   onClick?: () => void;
 };
 
@@ -35,11 +40,15 @@ export function EntryRow({
   description,
   supplierName,
   category,
+  formPayload,
+  itemBreakdown,
   createdAt,
+  voidedAt,
+  voidedByName,
   onClick,
 }: EntryRowProps) {
   const isVoided = status === "voided";
-  const displayName = supplierName || description || "Untitled entry";
+  const displayName = entryTitle({ supplierName, description, category, formPayload, itemBreakdown });
   const dateStr = formatDate(createdAt);
 
   return (
@@ -69,10 +78,18 @@ export function EntryRow({
           >
             {displayName}
           </p>
-          {/* Mobile: category + date on one muted line */}
-          <p className="truncate text-xs text-text-muted md:hidden">
-            {[category, dateStr].filter(Boolean).join(" \u00B7 ") || "\u00A0"}
-          </p>
+          {/* Voided: who/when; otherwise mobile category + date */}
+          {isVoided ? (
+            <p className="truncate text-xs text-text-muted">
+              {[voidedByName ? `Voided by ${voidedByName}` : "Voided", formatDate(voidedAt)]
+                .filter(Boolean)
+                .join(" \u00B7 ")}
+            </p>
+          ) : (
+            <p className="truncate text-xs text-text-muted md:hidden">
+              {[category, dateStr].filter(Boolean).join(" \u00B7 ") || "\u00A0"}
+            </p>
+          )}
         </div>
       </div>
 

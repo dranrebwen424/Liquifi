@@ -14,6 +14,8 @@ type EventCardProps = {
   totalSpent: number;
   numEntries: number;
   createdByName: string;
+  /** Override the default treasurer link (e.g. adviser/admin read-only views). */
+  href?: string;
 };
 
 const MotionLink = motion.create(Link);
@@ -21,7 +23,7 @@ const MotionLink = motion.create(Link);
 const cardHover: Transition = { duration: 0.2, ease: "easeOut" };
 
 // Matches Figma "folder 2" hover: folder shifts left, paper sheet slides
-// down-left and widens (412→429.5 px at prototype scale, kept relative here).
+// down-left and widens.
 const folderVariants: Variants = {
   rest: { x: 0 },
   hover: { x: -4 },
@@ -29,7 +31,7 @@ const folderVariants: Variants = {
 
 const paperVariants: Variants = {
   rest: { x: 0, y: 0, width: "100%" },
-  hover: { x: -11, y: 8, width: "104.25%" },
+  hover: { x: -6, y: 8, width: "103%" },
 };
 
 function budgetColor(pct: number) {
@@ -38,13 +40,13 @@ function budgetColor(pct: number) {
   return "bg-success";
 }
 
-export function EventCard({ id, name, status, budgetTotal, totalSpent, numEntries, createdByName }: EventCardProps) {
+export function EventCard({ id, name, status, budgetTotal, totalSpent, numEntries, createdByName, href }: EventCardProps) {
   const pct = budgetTotal > 0 ? Math.min((totalSpent / budgetTotal) * 100, 100) : 0;
 
   return (
     <MotionConfig reducedMotion="user">
       <MotionLink
-        href={`/treasurer/events/${id}`}
+        href={href ?? `/treasurer/events/${id}`}
         initial="rest"
         whileHover="hover"
         className="flex w-full flex-col gap-3"
@@ -55,7 +57,7 @@ export function EventCard({ id, name, status, budgetTotal, totalSpent, numEntrie
           <motion.svg
             variants={folderVariants}
             transition={cardHover}
-            className="absolute left-1 top-0 w-[calc(100%-8px)] text-neutral drop-shadow-md"
+            className="absolute left-0 top-0 w-full text-neutral drop-shadow-md"
             viewBox="0 0 404 263"
             fill="none"
             aria-hidden="true"
@@ -74,7 +76,7 @@ export function EventCard({ id, name, status, budgetTotal, totalSpent, numEntrie
           <motion.div
             variants={paperVariants}
             transition={cardHover}
-            className="absolute left-0 top-[14%] flex h-[82%] w-full flex-col gap-1.5 rounded-xl bg-surface-secondary p-3"
+            className="absolute left-0 top-[14%] flex h-[82%] w-full flex-col gap-1.5 rounded-xl bg-surface-secondary p-3 sm:p-4"
           >
             {/* Name */}
             <h3 className="text-sm font-semibold leading-snug text-text-primary line-clamp-1">

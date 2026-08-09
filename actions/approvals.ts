@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createInsforgeServer } from "@/lib/insforge-server";
 import { requireRole } from "@/lib/auth-guard";
 import { sendWelcomeEmail, sendRejectionEmail } from "@/lib/email";
+import { createNotification } from "@/lib/notifications";
 
 // ─── Approve Adviser Signup ──────────────────────────────────────────
 
@@ -74,14 +75,9 @@ export async function approveAdviserSignup(userId: string) {
 
     // Notification — best-effort
     try {
-      await insforge.database.from("notifications").insert({
-        user_id: userId,
-        type: "signup_approved",
-        payload_json: {
-          applicant_name: `${applicant.first_name} ${applicant.last_name}`,
-          department_id: applicant.department_id,
-        },
-        read: false,
+      await createNotification(userId, "signup_approved", {
+        applicant_name: `${applicant.first_name} ${applicant.last_name}`,
+        department_id: applicant.department_id,
       });
     } catch (notifErr) {
       console.error("[actions/approvals] signup_approved notification failed:", notifErr);
@@ -170,14 +166,9 @@ export async function rejectAdviserSignup(userId: string) {
 
     // Notification — best-effort
     try {
-      await insforge.database.from("notifications").insert({
-        user_id: userId,
-        type: "signup_rejected",
-        payload_json: {
-          applicant_name: `${applicant.first_name} ${applicant.last_name}`,
-          department_id: applicant.department_id,
-        },
-        read: false,
+      await createNotification(userId, "signup_rejected", {
+        applicant_name: `${applicant.first_name} ${applicant.last_name}`,
+        department_id: applicant.department_id,
       });
     } catch (notifErr) {
       console.error("[actions/approvals] signup_rejected notification failed:", notifErr);
@@ -266,14 +257,9 @@ export async function approveTreasurerSignup(userId: string) {
 
     // Notification — best-effort
     try {
-      await insforge.database.from("notifications").insert({
-        user_id: userId,
-        type: "signup_approved",
-        payload_json: {
-          applicant_name: `${applicant.first_name} ${applicant.last_name}`,
-          department_id: applicant.department_id,
-        },
-        read: false,
+      await createNotification(userId, "signup_approved", {
+        applicant_name: `${applicant.first_name} ${applicant.last_name}`,
+        department_id: applicant.department_id,
       });
     } catch (notifErr) {
       console.error("[actions/approvals] signup_approved notification failed:", notifErr);
@@ -366,14 +352,9 @@ export async function rejectTreasurerSignup(userId: string) {
 
     // Notification — best-effort
     try {
-      await insforge.database.from("notifications").insert({
-        user_id: userId,
-        type: "signup_rejected",
-        payload_json: {
-          applicant_name: `${applicant.first_name} ${applicant.last_name}`,
-          department_id: applicant.department_id,
-        },
-        read: false,
+      await createNotification(userId, "signup_rejected", {
+        applicant_name: `${applicant.first_name} ${applicant.last_name}`,
+        department_id: applicant.department_id,
       });
     } catch (notifErr) {
       console.error("[actions/approvals] signup_rejected notification failed:", notifErr);
@@ -413,8 +394,12 @@ export async function batchApproveEntries(entryIds: string[]) {
 
     // Validate every entry
     for (const entry of entries) {
-      const eventsArr = entry.events as Array<{ department_id: string; status: string }> | null;
-      const ev = eventsArr?.[0];
+      // To-one embed may come back as object or array depending on PostgREST version
+      const eventsRow = entry.events as
+        | { department_id: string; status: string }
+        | Array<{ department_id: string; status: string }>
+        | null;
+      const ev = Array.isArray(eventsRow) ? eventsRow[0] : eventsRow;
       if (!ev) {
         return { success: false as const, error: `Entry ${entry.id} has no event.` };
       }
@@ -424,8 +409,8 @@ export async function batchApproveEntries(entryIds: string[]) {
       if (ev.status === "archived") {
         return { success: false as const, error: "Cannot approve entries for an archived event." };
       }
-      if (entry.status !== "pending_approval") {
-        return { success: false as const, error: `Entry ${entry.id} is not pending approval.` };
+      if (entry.status !== "pending_approval" && entry.status !== "resubmitted") {
+        return { success: false as const, error: `Entry ${entry.id} is not awaiting approval.` };
       }
       if (entry.type !== "manual") {
         return { success: false as const, error: "Only manual entries can be approved from this page." };
@@ -446,6 +431,70 @@ export async function batchApproveEntries(entryIds: string[]) {
     if (updateErr) {
       console.error("[actions/approvals] batchApprove failed:", updateErr);
       return { success: false as const, error: "Failed to approve entries." };
+    }
+
+    // ─── Step 18 backstop: flag the FIRST entry that pushed the event below zero ──
+    // The submit gate only guards a SINGLE manual entry; approving several at
+    // once (or onto an already-depleted budget) can push an event negative
+    // without any one entry tripping it. Walk the deducted rows in approval
+    // order and flag ONLY the first one whose crossing put the event under —
+    // the same "fires once" semantics as the treasurer submit gate, so the
+    // overspend warning does not re-fire on every later entry. No explanation
+    // here — the adviser path has none; Phase 8 surfaces these on the report.
+    const flaggedEventIds = new Set(entries.map((e: { event_id: string }) => e.event_id));
+    for (const eventId of flaggedEventIds) {
+      const { data: ev } = await insforge.database
+        .from("events")
+        .select("budget_total")
+        .eq("id", eventId)
+        .maybeSingle();
+      if (!ev || ev.budget_total === null) continue;
+      const { data: deductedRows } = await insforge.database
+        .from("entries")
+        .select("id, amount, created_at")
+        .eq("event_id", eventId)
+        .eq("status", "deducted")
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true });
+      const batchIds = new Set(entryIds);
+      let remainingCents = Math.round(Number(ev.budget_total) * 100);
+      let crossingId: string | null = null;
+      for (const row of deductedRows ?? []) {
+        remainingCents -= Math.round(Number(row.amount) * 100);
+        if (remainingCents < 0) {
+          // Break at the first row at/below zero no matter who caused it: if
+          // the event was already over budget before this batch, nothing in
+          // this batch caused the crossing and nothing gets flagged.
+          if (batchIds.has(row.id)) {
+            crossingId = row.id;
+            const { error: flagErr } = await insforge.database
+              .from("entries")
+              .update({ causes_overspend: true })
+              .eq("id", row.id);
+            if (flagErr) {
+              console.error("[actions/approvals] overspend flag failed for", eventId, flagErr);
+            }
+          }
+          break;
+        }
+      }
+
+      // The submit gate previews the crossing against a deducted-only ledger,
+      // so several pending manuals can all look like the cause and all get
+      // flagged at submit. Only the true first crossing keeps the flag (and
+      // its treasurer explanation); clear the rest of this batch's rows here.
+      const staleIds = (deductedRows ?? [])
+        .filter((row) => batchIds.has(row.id) && row.id !== crossingId)
+        .map((row) => row.id);
+      if (staleIds.length > 0) {
+        const { error: clearErr } = await insforge.database
+          .from("entries")
+          .update({ causes_overspend: false, overspend_explanation: null })
+          .in("id", staleIds);
+        if (clearErr) {
+          console.error("[actions/approvals] stale overspend flag clear failed for", eventId, clearErr);
+        }
+      }
     }
 
     // Audit log per entry — best-effort
@@ -505,8 +554,12 @@ export async function rejectEntry(entryId: string, rejectionReason: string) {
       return { success: false as const, error: "Entry not found." };
     }
 
-    const eventsArr = entry.events as Array<{ department_id: string; status: string }> | null;
-    const ev = eventsArr?.[0];
+    // To-one embed may come back as object or array depending on PostgREST version
+    const eventsRow = entry.events as
+      | { department_id: string; status: string }
+      | Array<{ department_id: string; status: string }>
+      | null;
+    const ev = Array.isArray(eventsRow) ? eventsRow[0] : eventsRow;
     if (!ev) {
       return { success: false as const, error: "Entry has no event." };
     }
@@ -516,8 +569,8 @@ export async function rejectEntry(entryId: string, rejectionReason: string) {
     if (ev.status === "archived") {
       return { success: false as const, error: "Cannot reject entries for an archived event." };
     }
-    if (entry.status !== "pending_approval") {
-      return { success: false as const, error: "Entry is not pending approval." };
+    if (entry.status !== "pending_approval" && entry.status !== "resubmitted") {
+      return { success: false as const, error: "Entry is not awaiting approval." };
     }
     if (entry.type !== "manual") {
       return { success: false as const, error: "Only manual entries can be rejected from this page." };
@@ -551,15 +604,10 @@ export async function rejectEntry(entryId: string, rejectionReason: string) {
 
     // Notification to entry creator — best-effort
     try {
-      await insforge.database.from("notifications").insert({
-        user_id: entry.created_by,
-        type: "entry_rejected",
-        payload_json: {
-          entry_id: entryId,
-          event_id: entry.event_id,
-          reason: rejectionReason.trim(),
-        },
-        read: false,
+      await createNotification(entry.created_by, "entry_rejected", {
+        entry_id: entryId,
+        event_id: entry.event_id,
+        reason: rejectionReason.trim(),
       });
     } catch (notifErr) {
       console.error("[actions/approvals] entry_rejected notification failed:", notifErr);

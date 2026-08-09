@@ -1,10 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, FileText, Pencil, ZoomIn, CircleMinus } from "lucide-react";
+import { X, FileText, Pencil, ZoomIn, CircleMinus, CircleX } from "lucide-react";
 import { formatPHP } from "@/lib/format";
 import { StatusBadge, entryStatusMap } from "@/components/ui/StatusBadge";
+import { entryTitle } from "@/components/entries/entry-title";
+import { Button } from "@/components/ui/button";
+import { resubmitEntry, withdrawPendingEntry } from "@/actions/entries";
 import { cn } from "@/lib/utils";
 import { dialogOverlay, dialogContent, sheetSlideUp } from "@/lib/motion-variants";
 import type { EntryType, EntryStatus } from "@/types";
@@ -23,16 +27,24 @@ type EntryDetail = {
   issueTime?: string | null;
   imageUrl?: string | null;
   itemBreakdown?: unknown;
+  formPayload?: unknown;
+  rejectionReason?: string | null;
+  resubmissionExplanation?: string | null;
   createdAt?: string;
   voidReason?: string | null;
   voidedBy?: string | null;
   voidedAt?: string | null;
+  voidedByName?: string | null;
 };
 
 type EntryDetailModalProps = {
   open: boolean;
   onClose: () => void;
   entry: EntryDetail;
+  /** Treasurer with mutate rights on this event — enables the void action. */
+  canMutate?: boolean;
+  /** Opens the void confirmation modal for this entry. */
+  onVoid?: () => void;
 };
 
 function formatDate(dateStr: string | null | undefined): string {
@@ -104,16 +116,191 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
   );
 }
 
+/** Resubmit action for a rejected entry (treasurer). No discard/withdraw — a
+ *  decided entry is a permanent record; the only path forward is resubmit. */
+function RejectedEntryActions({ entryId, terminal }: { entryId: string; terminal: boolean }) {
+  const router = useRouter();
+  const [mode, setMode] = useState<"idle" | "resubmit">("idle");
+  const [explanation, setExplanation] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState<string | null>(null);
+
+  const run = async (
+    action: () => Promise<{ success: boolean; error?: string }>,
+    successMessage: string,
+  ) => {
+    setBusy(true);
+    setError(null);
+    const result = await action();
+    setBusy(false);
+    if (!result.success) {
+      setError(result.error ?? "Something went wrong.");
+      return;
+    }
+    setDone(successMessage);
+    router.refresh(); // list badge rejected → resubmitted
+  };
+
+  const doResubmit = () =>
+    run(() => resubmitEntry(entryId, explanation.trim()), "Entry resubmitted — sent back to your adviser for review.");
+
+  if (done) {
+    return (
+      <div className="mt-3 rounded-lg border border-border bg-surface-secondary p-3">
+        <p className="text-sm font-medium text-text-primary">{done}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 space-y-3">
+      {error && <p className="text-xs font-medium text-destructive">{error}</p>}
+
+      {mode === "idle" && terminal && (
+        <div className="rounded-lg border border-error/30 bg-error-lightest p-3">
+          <p className="text-xs font-medium text-error-foreground">Rejected permanently</p>
+          <p className="mt-1 text-sm text-text-primary">
+            This entry was rejected after resubmission and can no longer be submitted. It stays
+            on record for audit.
+          </p>
+        </div>
+      )}
+
+      {mode === "idle" && !terminal && (
+        <Button size="sm" onClick={() => setMode("resubmit")} disabled={busy}>
+          Resubmit with explanation
+        </Button>
+      )}
+
+      {mode === "resubmit" && (
+        <div className="space-y-2 rounded-lg border border-border bg-surface-secondary p-3">
+          <label htmlFor="resubmit-explanation" className="text-xs font-medium text-text-primary">
+            Explain why this entry should be reconsidered
+          </label>
+          <textarea
+            id="resubmit-explanation"
+            value={explanation}
+            onChange={(e) => setExplanation(e.target.value)}
+            rows={3}
+            maxLength={500}
+            placeholder="Address the adviser's reason for rejection…"
+            className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary outline-none focus:border-primary"
+          />
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              onClick={doResubmit}
+              disabled={busy || explanation.trim().length === 0}
+            >
+              {busy ? "Submitting…" : "Submit resubmission"}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setMode("idle")} disabled={busy}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Withdraw action for a manual entry awaiting first adviser review (treasurer).
+ *  Withdrawing hard-deletes the row — nothing irreversible had happened yet. */
+function WithdrawEntryActions({
+  entryId,
+  onWithdrawn,
+}: {
+  entryId: string;
+  onWithdrawn?: () => void;
+}) {
+  const router = useRouter();
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+
+  const doWithdraw = async () => {
+    setBusy(true);
+    setError(null);
+    const result = await withdrawPendingEntry(entryId);
+    setBusy(false);
+    if (!result.success) {
+      setError(result.error ?? "Something went wrong.");
+      return;
+    }
+    router.refresh(); // row is gone — drop it from the list behind
+    if (onWithdrawn) {
+      onWithdrawn(); // close the detail modal — the entry no longer exists
+      return;
+    }
+    setDone(true);
+  };
+
+  if (done) {
+    return (
+      <div className="mt-3 rounded-lg border border-border bg-surface-secondary p-3">
+        <p className="text-sm font-medium text-text-primary">Entry withdrawn and removed.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 space-y-3">
+      {error && <p className="text-xs font-medium text-destructive">{error}</p>}
+
+      {!confirming ? (
+        <Button
+          size="sm"
+          variant="outline"
+          className="border-destructive/30 text-destructive hover:bg-destructive/10"
+          onClick={() => setConfirming(true)}
+          disabled={busy}
+        >
+          <CircleX className="h-3.5 w-3.5" />
+          Withdraw entry
+        </Button>
+      ) : (
+        <div className="space-y-2 rounded-lg border border-error/30 bg-error-lightest p-3">
+          <p className="text-sm text-text-primary">
+            Withdraw this entry permanently? It will be deleted and removed from your
+            adviser&apos;s review queue. This cannot be undone.
+          </p>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={doWithdraw}
+              disabled={busy}
+            >
+              {busy ? "Withdrawing…" : "Yes, withdraw"}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setConfirming(false)} disabled={busy}>
+              Keep entry
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Full detail content — shared between modal and sheet. */
 function EntryDetailContent({
   entry,
+  canMutate,
+  onVoid,
   onViewImage,
+  onWithdrawn,
 }: {
   entry: EntryDetail;
+  canMutate?: boolean;
+  onVoid?: () => void;
   onViewImage?: () => void;
+  onWithdrawn?: () => void;
 }) {
   const isVoided = entry.status === "voided";
-  const displayName = entry.supplierName || entry.description || "Untitled entry";
+  const displayName = entryTitle(entry);
   const title = entry.supplierName ? entry.description : null;
   const itemBreakdown = isItemBreakdown(entry.itemBreakdown) ? entry.itemBreakdown : null;
   const [imgFailed, setImgFailed] = useState(false);
@@ -238,15 +425,58 @@ function EntryDetailContent({
         </div>
       )}
 
+      {/* Rejection info */}
+      {entry.status === "rejected" && entry.rejectionReason && (
+        <div className="rounded-lg border border-error/30 bg-error-lightest p-3">
+          <p className="text-xs font-medium text-error-foreground">Rejected</p>
+          <p className="mt-1 text-sm text-text-primary">{entry.rejectionReason}</p>
+        </div>
+      )}
+
+      {/* Resubmission note */}
+      {entry.status === "resubmitted" && entry.resubmissionExplanation && (
+        <div className="rounded-lg border border-border bg-surface-secondary p-3">
+          <p className="text-xs font-medium text-text-muted">Resubmission note</p>
+          <p className="mt-1 text-sm text-text-primary">{entry.resubmissionExplanation}</p>
+        </div>
+      )}
+
+      {/* Resubmit / discard actions — rejected entries only, treasurer only.
+          (Adviser/admin see rejection info above but never these actions.) */}
+      {canMutate && entry.status === "rejected" && (
+        <RejectedEntryActions
+          entryId={entry.id}
+          terminal={Boolean(entry.resubmissionExplanation)}
+        />
+      )}
+
+      {/* Withdraw — manual entry awaiting first adviser review, treasurer only.
+          Rejected/resubmitted entries are NOT withdrawable (permanent audit record). */}
+      {canMutate && entry.status === "pending_approval" && (
+        <WithdrawEntryActions entryId={entry.id} onWithdrawn={onWithdrawn} />
+      )}
+
       {/* Void info */}
       {isVoided && entry.voidReason && (
         <div className="rounded-lg border border-error/30 bg-error-lightest p-3">
           <p className="text-xs font-medium text-error-foreground">
-            Voided{entry.voidedBy ? ` by ${entry.voidedBy}` : ""}
+            Voided{entry.voidedByName ? ` by ${entry.voidedByName}` : ""}
             {entry.voidedAt ? ` on ${formatDate(entry.voidedAt)}` : ""}
           </p>
           <p className="mt-1 text-sm text-text-primary">{entry.voidReason}</p>
         </div>
+      )}
+
+      {/* Void action — deducted entries only, treasurer only */}
+      {canMutate && !isVoided && entry.status === "deducted" && (
+        <Button
+          variant="destructive"
+          className="w-full rounded-full"
+          onClick={onVoid}
+        >
+          <CircleX className="h-4 w-4" />
+          Void entry
+        </Button>
       )}
     </div>
   );
@@ -315,7 +545,7 @@ function ImageViewer({
   );
 }
 
-export function EntryDetailModal({ open, onClose, entry }: EntryDetailModalProps) {
+export function EntryDetailModal({ open, onClose, entry, canMutate, onVoid }: EntryDetailModalProps) {
   const [imageOpen, setImageOpen] = useState(false);
 
   // Lock body scroll when open
@@ -372,7 +602,10 @@ export function EntryDetailModal({ open, onClose, entry }: EntryDetailModalProps
                 <div className="max-h-[85vh] scrollbar-hide overflow-y-auto rounded-xl p-6 pt-12">
                   <EntryDetailContent
                     entry={entry}
+                    canMutate={canMutate}
+                    onVoid={onVoid}
                     onViewImage={() => setImageOpen(true)}
+                    onWithdrawn={onClose}
                   />
                 </div>
               </div>
@@ -392,7 +625,10 @@ export function EntryDetailModal({ open, onClose, entry }: EntryDetailModalProps
               <div className="p-6 pb-8 pt-0">
                 <EntryDetailContent
                   entry={entry}
+                  canMutate={canMutate}
+                  onVoid={onVoid}
                   onViewImage={() => setImageOpen(true)}
+                  onWithdrawn={onClose}
                 />
               </div>
             </motion.div>

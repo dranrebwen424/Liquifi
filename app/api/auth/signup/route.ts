@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createInsforgeServer } from "@/lib/insforge-server";
+import { createNotification } from "@/lib/notifications";
 
 export async function POST(req: NextRequest) {
   try {
@@ -86,20 +87,15 @@ export async function POST(req: NextRequest) {
           .eq("account_status", "active");
 
         if (admins && admins.length > 0) {
-          await insforge.database
-            .from("notifications")
-            .insert(
-              admins.map((a: { id: string }) => ({
-                user_id: a.id,
-                type: "adviser_signup_pending",
-                payload_json: {
-                  applicant_email: email,
-                  applicant_name: name,
-                  department_id: departmentId,
-                },
-                read: false,
-              })),
-            );
+          await createNotification(
+            admins.map((a: { id: string }) => a.id),
+            "adviser_signup_pending",
+            {
+              applicant_email: email,
+              applicant_name: name,
+              department_id: departmentId,
+            },
+          );
         }
       } else {
         // Notify the department's active adviser
@@ -112,15 +108,10 @@ export async function POST(req: NextRequest) {
           .maybeSingle();
 
         if (adviser) {
-          await insforge.database.from("notifications").insert({
-            user_id: adviser.id,
-            type: "treasurer_signup_pending",
-            payload_json: {
-              applicant_email: email,
-              applicant_name: name,
-              department_id: departmentId,
-            },
-            read: false,
+          await createNotification(adviser.id, "treasurer_signup_pending", {
+            applicant_email: email,
+            applicant_name: name,
+            department_id: departmentId,
           });
         }
       }

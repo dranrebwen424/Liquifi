@@ -1,17 +1,31 @@
 import { requireLayoutRole } from "@/lib/layout-guard";
+import { createInsforgeServer } from "@/lib/insforge-server";
 import { AdviserSidebar } from "@/components/adviser/AdviserSidebar";
 import { AdviserMobileBottomNav } from "@/components/adviser/AdviserMobileBottomNav";
+import { PushSubscriber } from "@/components/notifications/PushSubscriber";
+import { SidebarShell } from "@/components/layout/SidebarShell";
 
 export default async function AdviserLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  await requireLayoutRole("adviser");
+  const user = await requireLayoutRole("adviser");
+
+  // Unread notification count for the nav badges. Refreshes on every
+  // navigation/revalidation; mark-read actions also revalidate these routes.
+  const insforge = await createInsforgeServer();
+  const { data: unreadRows } = await insforge.database
+    .from("notifications")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("read", false);
+  const unreadCount = unreadRows?.length ?? 0;
 
   return (
     <div className="min-h-screen bg-background">
-      <AdviserSidebar />
+      <PushSubscriber />
+      <AdviserSidebar unreadCount={unreadCount} />
 
       {/* Mobile top bar */}
       <div className="flex h-16 items-center gap-2 border-b border-border bg-surface px-4 lg:hidden">
@@ -32,14 +46,10 @@ export default async function AdviserLayout({
       </div>
 
       {/* Mobile bottom nav */}
-      <AdviserMobileBottomNav />
+      <AdviserMobileBottomNav unreadCount={unreadCount} />
 
       {/* Main content */}
-      <main className="lg:pl-60">
-        <div className="mx-auto max-w-[1440px] px-4 py-6 pb-20 md:px-8 md:py-8 md:pb-0">
-          {children}
-        </div>
-      </main>
+      <SidebarShell>{children}</SidebarShell>
     </div>
   );
 }

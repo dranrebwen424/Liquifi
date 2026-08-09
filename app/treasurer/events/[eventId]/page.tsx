@@ -2,39 +2,20 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { requireRole } from "@/lib/auth-guard";
-import { getEventDashboard, type EntryForDashboard } from "@/lib/queries/events";
+import { getEventDashboard } from "@/lib/queries/events";
+import { getLatestReportByEvent } from "@/lib/queries/reports";
+import { computeSpendingBreakdown } from "@/lib/spending-breakdown";
 import { LockedBanner } from "@/components/events/LockedBanner";
 import { BudgetSummary } from "@/components/events/BudgetSummary";
 import { SpendingBreakdownCard } from "@/components/events/SpendingBreakdownCard";
 import { EventStatusBadge } from "@/components/ui/StatusBadge";
 import { EventDashboardActions } from "@/components/events/EventDashboardActions";
+import { ArchiveEventButton } from "@/components/events/ArchiveEventModal";
 import { ExpensesSection } from "@/components/entries/ExpensesSection";
 
 type Props = {
   params: Promise<{ eventId: string }>;
 };
-
-// Real per-category spend from deducted entries (receipts fall back to their verbatim label)
-function computeSpendingBreakdown(entries: EntryForDashboard[]) {
-  const deducted = entries.filter((e) => e.status === "deducted");
-  if (deducted.length === 0) return [];
-
-  const total = deducted.reduce((sum, e) => sum + Number(e.amount), 0);
-  const byName = new Map<string, number>();
-  for (const e of deducted) {
-    const name = e.category ?? e.document_type_raw;
-    if (!name) continue;
-    byName.set(name, (byName.get(name) ?? 0) + Number(e.amount));
-  }
-
-  return [...byName.entries()]
-    .map(([name, amount]) => ({
-      name,
-      amount,
-      percentage: Math.round((amount / total) * 100),
-    }))
-    .sort((a, b) => b.amount - a.amount);
-}
 
 export default async function EventDashboardPage({ params }: Props) {
   const { eventId } = await params;
@@ -53,6 +34,14 @@ export default async function EventDashboardPage({ params }: Props) {
 
   const isArchived = event.status === "archived";
   const canMutate = !event.is_locked && !isArchived;
+
+  // Archive gate: only reachable once the latest report is approved, the
+  // event is not yet archived, and no unresolved overspend remains.
+  const latestReport = await getLatestReportByEvent(eventId);
+  const canArchive =
+    latestReport?.status === "approved" &&
+    !isArchived &&
+    !event.has_unresolved_overspend;
 
   const createdDate = new Date(event.created_at).toLocaleDateString("en-PH", {
     year: "numeric",
@@ -94,6 +83,12 @@ export default async function EventDashboardPage({ params }: Props) {
             )}
           </p>
         </div>
+
+        <ArchiveEventButton
+          eventId={eventId}
+          canArchive={canArchive}
+          isArchived={isArchived}
+        />
       </div>
 
       {/* Locked / Archived banner */}
@@ -115,6 +110,7 @@ export default async function EventDashboardPage({ params }: Props) {
         {/* Spending Breakdown — desktop only, real data (empty state until entries are deducted) */}
         <SpendingBreakdownCard
           categories={breakdown}
+          eventId={eventId}
           className="hidden lg:flex lg:w-2/5"
         />
       </div>
@@ -145,13 +141,18 @@ export default async function EventDashboardPage({ params }: Props) {
           issueTime: e.issue_time ?? null,
           imageUrl: e.image_url ?? null,
           itemBreakdown: e.item_breakdown ?? null,
+          formPayload: e.form_payload_json ?? null,
+          rejectionReason: e.rejection_reason,
+          resubmissionExplanation: e.resubmission_explanation,
           createdAt: e.created_at,
           voidReason: e.void_reason,
           voidedBy: e.voided_by,
           voidedAt: e.voided_at ?? null,
+          voidedByName: e.voidedByName ?? null,
         }))}
         categories={categories}
         isArchived={isArchived}
+        canMutate={canMutate}
       />
     </div>
   );

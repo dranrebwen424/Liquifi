@@ -13,13 +13,15 @@ import {
   Users,
   Paperclip,
   Camera,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatPHP, formatNumberInput } from "@/lib/format";
+import { formatPHP, formatNumberInput, toNumber } from "@/lib/format";
 import { CATEGORIES, type ExpenseType, type ComputeField } from "@/components/entries/manual-categories";
 import { FloatingInput } from "@/components/entries/FloatingInput";
 import { usePeopleReuse } from "@/hooks/usePeopleReuse";
 import { CameraViewfinder } from "@/components/entries/CameraViewfinder";
+import type { ManualSubmitResult } from "@/actions/entries";
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -27,7 +29,8 @@ type ItemRow = {
   id: string;
   description: string;
   qty: number;
-  price: number;
+  /** Raw input string while typing; numbers arrive from the payload path. */
+  price: string | number;
 };
 
 export type ManualSubmitPayload = {
@@ -35,20 +38,24 @@ export type ManualSubmitPayload = {
   route?: string;
   occasion?: string;
   recipient?: string;
-  fieldValues: Record<string, number | boolean>;
+  fieldValues: Record<string, number | boolean | string>;
   items: ItemRow[];
   otherMode: "flat" | "itemized";
   totalAmount: number;
   witness: string;
   photoFile: File | null;
   justification: string;
+  /** Present only when resubmitting after an `explanationRequired` gate result. */
+  aboveRangeExplanation?: string;
+  /** Present only when resubmitting after an `overspendRequired` gate result. */
+  overspendExplanation?: string;
 };
 
 type ManualQuickFormProps = {
   category: ExpenseType;
   eventId: string;
   onBack: () => void;
-  onSubmit: (data: ManualSubmitPayload) => Promise<void>;
+  onSubmit: (data: ManualSubmitPayload) => Promise<ManualSubmitResult>;
 };
 
 // ─── Component ─────────────────────────────────────────────────────
@@ -82,6 +89,18 @@ export function ManualQuickForm({
   const [submitted, setSubmitted] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
 
+  // Step 16 gate — server says this entry is above its category's normal range
+  const [gate, setGate] = useState<{ overAmount: number; threshold: number } | null>(null);
+  const [gateExplanation, setGateExplanation] = useState("");
+  const [gateError, setGateError] = useState<string | null>(null);
+  // Step 18 gate — server says this entry puts the event over budget
+  const [overspendGate, setOverspendGate] = useState<{ overshoot: number } | null>(null);
+  const [overspendExplanation, setOverspendExplanation] = useState("");
+  const [overspendGateError, setOverspendGateError] = useState<string | null>(null);
+  // Synchronous double-submit latch — set before the first await, released on
+  // EVERY result (including explanationRequired, which must allow a second submit)
+  const submitLockRef = useRef(false);
+
   // People reuse
   const { read, write } = usePeopleReuse(eventId);
   const [suggestedNames, setSuggestedNames] = useState<string | null>(null);
@@ -104,28 +123,33 @@ export function ManualQuickForm({
     setShowJustification(false);
     setError("");
     setSubmitted(false);
+    setGate(null);
+    setGateExplanation("");
+    setOverspendGate(null);
+    setOverspendExplanation("");
+    setGateError(null);
   }, [category]);
 
   // ─── Computed total ────────────────────────────────────────────
 
   const { total, parts } = useMemo(() => {
     if (category === "supplies") {
-      const sum = items.reduce((acc, i) => acc + i.qty * i.price, 0);
+      const sum = items.reduce((acc, i) => acc + i.qty * toNumber(i.price), 0);
       return {
         total: sum,
-        parts: items.map((i) => `${formatPHP(i.price)} × ${i.qty}`),
+        parts: items.map((i) => `${formatPHP(toNumber(i.price))} × ${i.qty}`),
       };
     }
 
     if (category === "others") {
       if (otherMode === "flat") {
-        const amt = Number(fieldValues.amount ?? 0);
+        const amt = toNumber(fieldValues.amount ?? 0);
         return { total: amt, parts: [] };
       }
-      const sum = items.reduce((acc, i) => acc + i.qty * i.price, 0);
+      const sum = items.reduce((acc, i) => acc + i.qty * toNumber(i.price), 0);
       return {
         total: sum,
-        parts: items.map((i) => `${formatPHP(i.price)} × ${i.qty}`),
+        parts: items.map((i) => `${formatPHP(toNumber(i.price))} × ${i.qty}`),
       };
     }
 
@@ -140,22 +164,22 @@ export function ManualQuickForm({
     if (category === "supplies") {
       return (
         items.length > 0 &&
-        items.every((i) => i.description.trim() && i.qty > 0 && i.price >= 0)
+        items.every((i) => i.description.trim() && i.qty > 0 && toNumber(i.price) >= 0)
       );
     }
 
     if (category === "others") {
       if (!justification.trim()) return false;
-      if (otherMode === "flat") return (fieldValues.amount ?? 0) > 0;
+      if (otherMode === "flat") return toNumber(fieldValues.amount ?? 0) > 0;
       return (
         items.length > 0 &&
-        items.every((i) => i.description.trim() && i.qty > 0 && i.price >= 0)
+        items.every((i) => i.description.trim() && i.qty > 0 && toNumber(i.price) >= 0)
       );
     }
 
     // Default: all numeric compute fields must be > 0
     const numericFields = config.fields.filter((f) => f.type !== "text");
-    return numericFields.every((f) => (fieldValues[f.key] ?? 0) > 0);
+    return numericFields.every((f) => toNumber(fieldValues[f.key] ?? 0) > 0);
   }, [category, config, witness, items, otherMode, fieldValues, justification]);
 
   // ─── Item management ───────────────────────────────────────────
@@ -163,7 +187,7 @@ export function ManualQuickForm({
   const addItem = useCallback(() => {
     setItems((prev) => [
       ...prev,
-      { id: crypto.randomUUID(), description: "", qty: 1, price: 0 },
+      { id: crypto.randomUUID(), description: "", qty: 1, price: "" },
     ]);
   }, []);
 
@@ -229,22 +253,48 @@ export function ManualQuickForm({
     async (e: React.FormEvent) => {
       e.preventDefault();
       setSubmitted(true);
-      if (!isValid || submitting) return;
 
+      // Explanation is required once a gate is open (range or overspend)
+      if (gate && !gateExplanation.trim()) {
+        setGateError("An explanation is required to submit.");
+        return;
+      }
+      if (overspendGate && !overspendExplanation.trim()) {
+        setOverspendGateError("An explanation is required to submit.");
+        return;
+      }
+      if (!isValid || submitting || submitLockRef.current) return;
+
+      submitLockRef.current = true;
       setError("");
+      setGateError(null);
+      setOverspendGateError(null);
       setSubmitting(true);
 
       write(witness);
 
+      // Currency/number fields are stored as raw strings while typing so decimal
+      // points survive keystroke-by-keystroke; coerce them back to numbers here.
+      const numericKeys = new Set(
+        config.fields.filter((f) => f.type !== "text").map((f) => f.key),
+      );
+      numericKeys.add("trips");
+      const payloadFieldValues: Record<string, number | boolean | string> = {};
+      for (const [k, v] of Object.entries(fieldValues)) {
+        payloadFieldValues[k] = numericKeys.has(k) ? toNumber(v) : v;
+      }
+
       const payload: ManualSubmitPayload = {
         category,
-        fieldValues,
+        fieldValues: payloadFieldValues,
         items,
         otherMode: category === "others" ? otherMode : "flat",
         totalAmount: total,
         witness: witness.trim(),
         photoFile,
         justification: justification.trim() || "",
+        aboveRangeExplanation: gate ? gateExplanation.trim() : undefined,
+        overspendExplanation: overspendGate ? overspendExplanation.trim() : undefined,
       };
 
       if (category === "transportation") payload.route = fieldValues.route ?? "";
@@ -252,16 +302,33 @@ export function ManualQuickForm({
       if (category === "honorarium") payload.recipient = fieldValues.recipient ?? "";
 
       try {
-        await onSubmit(payload);
+        const result = await onSubmit(payload);
+        if (!result.success) {
+          setError(result.error);
+        } else if ("explanationRequired" in result) {
+          // Zero-write gate — form stays filled, ask for the explanation
+          setGate({ overAmount: result.overAmount, threshold: result.threshold });
+          setGateExplanation("");
+        } else if ("overspendRequired" in result) {
+          // Zero-write gate — entry would push the event over budget
+          setOverspendGate({ overshoot: result.overshoot });
+          setOverspendExplanation("");
+        }
+        // success → parent advances to the success screen
       } catch {
         setError("Failed to submit. Please try again.");
       } finally {
         setSubmitting(false);
+        submitLockRef.current = false;
       }
     },
     [
       isValid,
       submitting,
+      gate,
+      gateExplanation,
+      overspendGate,
+      overspendExplanation,
       write,
       witness,
       category,
@@ -370,19 +437,19 @@ export function ManualQuickForm({
             <FloatingInput
               label="Fare per person"
               value={fieldValues.fare ?? ""}
-              onChange={(v) => updateField("fare", typeof v === "string" ? 0 : v)}
+              onChange={(v) => updateField("fare", typeof v === "number" ? String(v) : v)}
               prefix="₱"
+              currency
               inputMode="decimal"
               placeholder=" "
               error={getFieldError("fare")}
             />
             <FloatingInput
               label="Passengers"
-              type="number"
+              digits
               value={fieldValues.passengers ?? ""}
               onChange={(v) => updateField("passengers", v)}
               placeholder=" "
-              min={0}
               error={getFieldError("passengers")}
             />
 
@@ -392,11 +459,10 @@ export function ManualQuickForm({
             {fieldValues.roundTrip && (
               <FloatingInput
                 label="How many one-way rides total?"
-                type="number"
+                digits
                 value={fieldValues.trips ?? ""}
                 onChange={(v) => updateField("trips", v)}
                 placeholder=" "
-                min={0}
               />
             )}
           </div>
@@ -415,8 +481,9 @@ export function ManualQuickForm({
             <FloatingInput
               label="Per-head Rate"
               value={fieldValues.rate ?? ""}
-              onChange={(v) => updateField("rate", typeof v === "string" ? 0 : v)}
+              onChange={(v) => updateField("rate", typeof v === "number" ? String(v) : v)}
               prefix="₱"
+              currency
               inputMode="decimal"
               suffix={config.fields[0].suffix}
               placeholder=" "
@@ -424,12 +491,11 @@ export function ManualQuickForm({
             />
             <FloatingInput
               label="Headcount"
-              type="number"
+              digits
               value={fieldValues.headcount ?? ""}
               onChange={(v) => updateField("headcount", v)}
               suffix={config.fields[1].suffix}
               placeholder=" "
-              min={0}
               error={getFieldError("headcount")}
             />
           </div>
@@ -448,8 +514,9 @@ export function ManualQuickForm({
             <FloatingInput
               label="Amount"
               value={fieldValues.amount ?? ""}
-              onChange={(v) => updateField("amount", typeof v === "string" ? 0 : v)}
+              onChange={(v) => updateField("amount", typeof v === "number" ? String(v) : v)}
               prefix="₱"
+              currency
               inputMode="decimal"
               placeholder=" "
               error={getFieldError("amount")}
@@ -463,8 +530,9 @@ export function ManualQuickForm({
             <FloatingInput
               label="Rate per page"
               value={fieldValues.rate ?? ""}
-              onChange={(v) => updateField("rate", typeof v === "string" ? 0 : v)}
+              onChange={(v) => updateField("rate", typeof v === "number" ? String(v) : v)}
               prefix="₱"
+              currency
               inputMode="decimal"
               suffix={config.fields[0].suffix}
               placeholder=" "
@@ -472,22 +540,20 @@ export function ManualQuickForm({
             />
             <FloatingInput
               label="Pages"
-              type="number"
+              digits
               value={fieldValues.pages ?? ""}
               onChange={(v) => updateField("pages", v)}
               suffix={config.fields[1].suffix}
               placeholder=" "
-              min={0}
               error={getFieldError("pages")}
             />
             <FloatingInput
               label="Copies"
-              type="number"
+              digits
               value={fieldValues.copies ?? ""}
               onChange={(v) => updateField("copies", v)}
               suffix={config.fields[2].suffix}
               placeholder=" "
-              min={0}
               error={getFieldError("copies")}
             />
           </div>
@@ -499,8 +565,9 @@ export function ManualQuickForm({
             <FloatingInput
               label="Daily Rate"
               value={fieldValues.rate ?? ""}
-              onChange={(v) => updateField("rate", typeof v === "string" ? 0 : v)}
+              onChange={(v) => updateField("rate", typeof v === "number" ? String(v) : v)}
               prefix="₱"
+              currency
               inputMode="decimal"
               suffix={config.fields[0].suffix}
               placeholder=" "
@@ -508,12 +575,11 @@ export function ManualQuickForm({
             />
             <FloatingInput
               label="Days"
-              type="number"
+              digits
               value={fieldValues.days ?? ""}
               onChange={(v) => updateField("days", v)}
               suffix={config.fields[1].suffix}
               placeholder=" "
-              min={0}
               error={getFieldError("days")}
             />
           </div>
@@ -538,16 +604,11 @@ export function ManualQuickForm({
                     className="min-w-0 flex-1 rounded-md border border-border bg-surface-secondary px-2 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:ring-1 focus:ring-accent"
                   />
                   <input
-                    type="number"
-                    min={0}
-                    step={1}
+                    type="text"
+                    inputMode="numeric"
                     value={item.qty || ""}
                     onChange={(e) =>
-                      updateItem(
-                        item.id,
-                        "qty",
-                        Math.max(0, Number(e.target.value) || 0),
-                      )
+                      updateItem(item.id, "qty", Number(e.target.value.replace(/\D/g, "")) || 0)
                     }
                     placeholder="Qty"
                     className="w-16 rounded-md border border-border bg-surface-secondary px-2 py-1.5 text-sm tabular-nums text-text-primary focus:border-accent focus:ring-1 focus:ring-accent"
@@ -559,16 +620,8 @@ export function ManualQuickForm({
                     <input
                       type="text"
                       inputMode="decimal"
-                      value={
-                        item.price ? formatNumberInput(String(item.price)) : ""
-                      }
-                      onChange={(e) =>
-                        updateItem(
-                          item.id,
-                          "price",
-                          Math.max(0, Number(e.target.value.replace(/,/g, "")) || 0),
-                        )
-                      }
+                      value={item.price}
+                      onChange={(e) => updateItem(item.id, "price", formatNumberInput(e.target.value))}
                       placeholder="0.00"
                       className="w-full rounded-md border border-border bg-surface-secondary px-2 py-1.5 pl-5 text-sm tabular-nums text-text-primary placeholder:text-text-muted focus:border-accent focus:ring-1 focus:ring-accent"
                     />
@@ -622,8 +675,9 @@ export function ManualQuickForm({
               <FloatingInput
                 label="Total Amount"
                 value={fieldValues.amount ?? ""}
-                onChange={(v) => updateField("amount", typeof v === "string" ? 0 : v)}
+                onChange={(v) => updateField("amount", typeof v === "number" ? String(v) : v)}
                 prefix="₱"
+                currency
                 inputMode="decimal"
                 placeholder=" "
                 error={submitted && !justification.trim() ? "Justification is required" : getFieldError("amount")}
@@ -649,16 +703,11 @@ export function ManualQuickForm({
                         className="min-w-0 flex-1 rounded-md border border-border bg-surface-secondary px-2 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:ring-1 focus:ring-accent"
                       />
                       <input
-                        type="number"
-                        min={0}
-                        step={1}
+                        type="text"
+                        inputMode="numeric"
                         value={item.qty || ""}
                         onChange={(e) =>
-                          updateItem(
-                            item.id,
-                            "qty",
-                            Math.max(0, Number(e.target.value) || 0),
-                          )
+                          updateItem(item.id, "qty", Number(e.target.value.replace(/\D/g, "")) || 0)
                         }
                         placeholder="Qty"
                         className="w-16 rounded-md border border-border bg-surface-secondary px-2 py-1.5 text-sm tabular-nums text-text-primary focus:border-accent focus:ring-1 focus:ring-accent"
@@ -670,21 +719,8 @@ export function ManualQuickForm({
                         <input
                           type="text"
                           inputMode="decimal"
-                          value={
-                            item.price
-                              ? formatNumberInput(String(item.price))
-                              : ""
-                          }
-                          onChange={(e) =>
-                            updateItem(
-                              item.id,
-                              "price",
-                              Math.max(
-                                0,
-                                Number(e.target.value.replace(/,/g, "")) || 0,
-                              ),
-                            )
-                          }
+                          value={item.price}
+                          onChange={(e) => updateItem(item.id, "price", formatNumberInput(e.target.value))}
                           placeholder="0.00"
                           className="w-full rounded-md border border-border bg-surface-secondary px-2 py-1.5 pl-5 text-sm tabular-nums text-text-primary placeholder:text-text-muted focus:border-accent focus:ring-1 focus:ring-accent"
                         />
@@ -878,6 +914,81 @@ export function ManualQuickForm({
         </p>
       )}
 
+      {/* ── Step 16 gate — above the category's normal range ── */}
+      {gate && (
+        <div className="rounded-xl border border-warning bg-warning-lightest p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle
+              className="mt-0.5 h-4 w-4 shrink-0 text-warning-foreground"
+              aria-hidden
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-text-primary">
+                This is {formatPHP(gate.overAmount)} above the normal range for{" "}
+                {config.label}
+              </p>
+              <p className="mt-0.5 text-xs text-text-muted">
+                The cap for {config.label} on this event&apos;s budget is{" "}
+                {formatPHP(gate.threshold)}. You can still submit — explain why
+                this expense was necessary; the adviser will see it.
+              </p>
+              <textarea
+                value={gateExplanation}
+                onChange={(e) => {
+                  setGateExplanation(e.target.value);
+                  setGateError(null);
+                }}
+                rows={3}
+                maxLength={500}
+                placeholder="Why does this expense exceed the normal range?"
+                aria-label="Above-range explanation"
+                className="mt-3 w-full resize-none rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
+              />
+              {gateError && (
+                <p className="mt-1.5 text-xs font-medium text-error">{gateError}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Step 18 gate — entry would put the event over budget ── */}
+      {overspendGate && (
+        <div className="rounded-xl border border-warning bg-warning-lightest p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle
+              className="mt-0.5 h-4 w-4 shrink-0 text-warning-foreground"
+              aria-hidden
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-text-primary">
+                This will put the event {formatPHP(overspendGate.overshoot)} over
+                budget
+              </p>
+              <p className="mt-0.5 text-xs text-text-muted">
+                Explain why this expense was necessary — the adviser will see it
+                on the report.
+              </p>
+              <textarea
+                value={overspendExplanation}
+                onChange={(e) => {
+                  setOverspendExplanation(e.target.value);
+                  setOverspendGateError(null);
+                }}
+                rows={3}
+                maxLength={500}
+                placeholder="Why was this expense necessary?"
+                aria-label="Overspend explanation"
+                className="mt-3 w-full resize-none rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
+              />
+              {overspendGateError && (
+                <p className="mt-1.5 text-xs font-medium text-error">{overspendGateError}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Submit */}
       <button
         type="submit"
@@ -885,7 +996,11 @@ export function ManualQuickForm({
         className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
       >
         {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-        {submitting ? "Submitting…" : "Submit for Approval"}
+        {submitting
+          ? "Submitting…"
+          : gate || overspendGate
+            ? "Submit with Explanation"
+            : "Submit for Approval"}
       </button>
 
       <p className="text-center text-xs text-text-muted">

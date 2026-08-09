@@ -5,6 +5,8 @@ import { motion } from "framer-motion";
 import { EntryCard } from "@/components/entries/EntryCard";
 import { EntryRow } from "@/components/entries/EntryRow";
 import { EntryDetailModal } from "@/components/entries/EntryDetailModal";
+import { VoidEntryModal } from "@/components/entries/VoidEntryModal";
+import { entryTitle } from "@/components/entries/entry-title";
 import { ViewToggle } from "@/components/events/ViewToggle";
 import { ExpenseFilterChips, ExpenseFilterIcon, type ExpenseFiltersState } from "@/components/entries/ExpenseFilters";
 import type { EntryType, EntryStatus } from "@/types";
@@ -24,15 +26,20 @@ export type EntryListItem = {
   issueTime?: string | null;
   imageUrl?: string | null;
   itemBreakdown?: unknown;
+  formPayload?: unknown;
+  rejectionReason?: string | null;
+  resubmissionExplanation?: string | null;
   createdAt?: string;
   voidReason?: string | null;
   voidedBy?: string | null;
   voidedAt?: string | null;
+  voidedByName?: string | null;
 };
 
 type EntryListProps = {
   entries: EntryListItem[];
   isArchived: boolean;
+  canMutate: boolean;
   filters?: {
     state: ExpenseFiltersState;
     onChange: (filters: ExpenseFiltersState) => void;
@@ -42,9 +49,10 @@ type EntryListProps = {
 
 type ViewMode = "grid" | "list";
 
-export function EntryList({ entries, isArchived, filters }: EntryListProps) {
+export function EntryList({ entries, isArchived, canMutate, filters }: EntryListProps) {
   const [view, setView] = useState<ViewMode>("grid");
   const [selectedEntry, setSelectedEntry] = useState<EntryListItem | null>(null);
+  const [voidTarget, setVoidTarget] = useState<EntryListItem | null>(null);
 
   return (
     <div>
@@ -143,8 +151,32 @@ export function EntryList({ entries, isArchived, filters }: EntryListProps) {
           open={!!selectedEntry}
           onClose={() => setSelectedEntry(null)}
           entry={selectedEntry}
+          canMutate={canMutate}
+          onVoid={() => setVoidTarget(selectedEntry)}
         />
       )}
+
+      {/* Void confirmation modal */}
+      <VoidEntryModal
+        open={!!voidTarget}
+        entry={
+          voidTarget
+            ? {
+                id: voidTarget.id,
+                amount: voidTarget.amount,
+                label: entryTitle({
+                  supplierName: voidTarget.supplierName,
+                  description: voidTarget.description,
+                  category: voidTarget.category,
+                  formPayload: voidTarget.formPayload,
+                  itemBreakdown: voidTarget.itemBreakdown,
+                }),
+              }
+            : null
+        }
+        onClose={() => setVoidTarget(null)}
+        onSuccess={() => setSelectedEntry(null)}
+      />
     </div>
   );
 }

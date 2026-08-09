@@ -11,6 +11,16 @@ export function formatPHP(amount: number): string {
 }
 
 /**
+ * Parse a value that may contain thousands separators ("20,000.5" → 20000.5).
+ * Numbers pass through untouched; booleans coerce like Number() (true → 1).
+ */
+export function toNumber(value: string | number | boolean): number {
+  if (typeof value === "number") return value;
+  if (typeof value === "boolean") return value ? 1 : 0;
+  return Number(value.replace(/,/g, ""));
+}
+
+/**
  * Format a raw numeric string (digits + optional dot) into a display string
  * with thousands separators. Used for live currency input formatting.
  *
