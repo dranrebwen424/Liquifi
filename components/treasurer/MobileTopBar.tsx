@@ -40,7 +40,7 @@ export function MobileTopBar() {
 
   if (isSearching) {
     return (
-      <div className="flex h-16 items-center gap-2 border-b border-border bg-surface px-4 lg:hidden">
+      <div className="flex h-16 items-center gap-2 border-b border-border bg-background px-4 lg:hidden">
         <button
           type="button"
           onClick={exitSearch}

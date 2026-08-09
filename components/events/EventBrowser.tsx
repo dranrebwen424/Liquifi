@@ -23,8 +23,8 @@ export type EventBrowserItem = {
 
 type Props = {
   events: EventBrowserItem[];
-  /** Builds the per-event link (adviser/admin pass their read-only paths). */
-  hrefFor: (id: string) => string;
+  /** Base path for event links — appends /${id} per event. e.g. "/adviser/events" */
+  basePath: string;
   emptyTitle?: string;
   emptyDescription?: string;
 };
@@ -70,7 +70,7 @@ function groupByYear(events: EventBrowserItem[]) {
 // top bar, which adviser/admin layouts don't have).
 export function EventBrowser({
   events,
-  hrefFor,
+  basePath,
   emptyTitle = "No events yet",
   emptyDescription = "No events match this department yet.",
 }: Props) {
@@ -169,7 +169,7 @@ export function EventBrowser({
           /* ── Default state: fake search bar ── */
           <div className="flex justify-center">
             <div
-              className="flex w-full max-w-[480px] items-center gap-3 rounded-xl border border-border bg-surface px-3 py-2.5 transition-colors focus-within:border-accent focus-within:ring-1 focus-within:ring-accent"
+              className="flex w-full max-w-[480px] items-center gap-3 rounded-xl border border-border bg-background px-3 py-2.5 transition-colors focus-within:border-accent focus-within:ring-1 focus-within:ring-accent"
               onClick={() => setSearching(true)}
               role="button"
               tabIndex={0}
@@ -183,7 +183,7 @@ export function EventBrowser({
           /* ── Search mode: input + filters ── */
           <>
             <div className="flex justify-center">
-              <div className="flex w-full max-w-[480px] items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2.5 focus-within:border-accent focus-within:ring-1 focus-within:ring-accent">
+              <div className="flex w-full max-w-[480px] items-center gap-2 rounded-xl border border-border bg-background px-3 py-2.5 focus-within:border-accent focus-within:ring-1 focus-within:ring-accent">
                 <button
                   type="button"
                   onClick={exitSearch}
@@ -271,7 +271,7 @@ export function EventBrowser({
                         totalSpent={event.total_spent}
                         numEntries={event.num_entries}
                         createdByName={event.created_by_name}
-                        href={hrefFor(event.id)}
+                        href={`${basePath}/${event.id}`}
                       />
                     </motion.div>
                   ))}
@@ -294,7 +294,7 @@ export function EventBrowser({
                         totalSpent={event.total_spent}
                         numEntries={event.num_entries}
                         createdAt={event.created_at}
-                        href={hrefFor(event.id)}
+                        href={`${basePath}/${event.id}`}
                       />
                     </motion.div>
                   ))}
@@ -341,7 +341,7 @@ export function EventBrowser({
                             totalSpent={event.total_spent}
                             numEntries={event.num_entries}
                             createdAt={event.created_at}
-                            href={hrefFor(event.id)}
+                            href={`${basePath}/${event.id}`}
                           />
                         </motion.div>
                       ))}

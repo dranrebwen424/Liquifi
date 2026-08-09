@@ -182,7 +182,7 @@ export function DepartmentDetailClient({
           {activeTab === "Events" && (
             <EventBrowser
               events={events}
-              hrefFor={(id) => `/admin/departments/${department.id}/events/${id}`}
+              basePath={`/admin/departments/${department.id}/events`}
               emptyTitle="No events"
               emptyDescription="This department has no events yet."
             />

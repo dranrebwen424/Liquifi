@@ -3,6 +3,7 @@ import { createInsforgeServer } from "@/lib/insforge-server";
 import { AdviserSidebar } from "@/components/adviser/AdviserSidebar";
 import { AdviserMobileBottomNav } from "@/components/adviser/AdviserMobileBottomNav";
 import { PushSubscriber } from "@/components/notifications/PushSubscriber";
+import { SidebarShell } from "@/components/layout/SidebarShell";
 
 export default async function AdviserLayout({
   children,
@@ -48,11 +49,7 @@ export default async function AdviserLayout({
       <AdviserMobileBottomNav unreadCount={unreadCount} />
 
       {/* Main content */}
-      <main className="lg:pl-60">
-        <div className="mx-auto max-w-[1440px] px-4 py-6 pb-20 md:px-8 md:py-8 md:pb-0">
-          {children}
-        </div>
-      </main>
+      <SidebarShell>{children}</SidebarShell>
     </div>
   );
 }

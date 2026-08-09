@@ -33,7 +33,7 @@ export default async function AdviserHomePage() {
 
       <EventBrowser
         events={events}
-        hrefFor={(id) => `/adviser/events/${id}`}
+        basePath="/adviser/events"
         emptyTitle="No events yet"
         emptyDescription="Your department has not created any events."
       />

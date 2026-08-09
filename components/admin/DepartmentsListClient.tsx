@@ -3,10 +3,8 @@
 import Link from "next/link";
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Plus, MoreVertical, Folder, LayoutGrid, CheckCircle2, User, Loader2, CircleCheckBig } from "lucide-react";
+import { Search, Plus, Folder, Loader2, FolderPlus, Check } from "lucide-react";
 import { motion } from "framer-motion";
-import { StatusBadge } from "@/components/ui/StatusBadge";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { createDepartment } from "@/actions/departments";
 import { AdminMobileBottomNav } from "@/components/admin/MobileBottomNav";
 
@@ -14,15 +12,16 @@ import { AdminMobileBottomNav } from "@/components/admin/MobileBottomNav";
 const staggerContainer = {
   hidden: {},
   show: {
-    transition: { staggerChildren: 0.04, delayChildren: 0.05 },
+    transition: { staggerChildren: 0.05, delayChildren: 0.1 },
   },
 };
 
 const fadeUpItem = {
-  hidden: { opacity: 0, y: 12 },
+  hidden: { opacity: 0, y: 16 },
   show: {
-    opacity: 1, y: 0,
-    transition: { type: "spring" as const, stiffness: 100, damping: 20, duration: 0.2 },
+    opacity: 1,
+    y: 0,
+    transition: { type: "spring" as const, stiffness: 120, damping: 18, duration: 0.4 },
   },
 };
 
@@ -49,8 +48,6 @@ export function DepartmentsListClient({ initialDepartments }: Props) {
   const [newCode, setNewCode] = useState("");
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
-  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
-  const [toggling, setToggling] = useState<string | null>(null);
 
   const filtered = departments.filter(
     (d) =>
@@ -95,7 +92,7 @@ export function DepartmentsListClient({ initialDepartments }: Props) {
           value={newName}
           onChange={(e) => { setNewName(e.target.value); setCreateError(""); }}
           placeholder="e.g. College of Engineering"
-          className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:ring-1 focus:ring-accent"
+          className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text-primary placeholder:text-text-muted transition-colors focus:border-accent focus:ring-2 focus:ring-accent/10"
         />
       </div>
       <div className="w-full sm:w-32">
@@ -109,25 +106,107 @@ export function DepartmentsListClient({ initialDepartments }: Props) {
           onChange={(e) => { setNewCode(e.target.value); setCreateError(""); }}
           placeholder="e.g. COE"
           maxLength={10}
-          className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm uppercase text-text-primary placeholder:text-text-muted focus:border-accent focus:ring-1 focus:ring-accent"
+          className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm uppercase text-text-primary placeholder:text-text-muted transition-colors focus:border-accent focus:ring-2 focus:ring-accent/10"
         />
       </div>
     </div>
   );
 
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-xl font-semibold text-text-primary md:text-2xl">Departments</h1>
-        <p className="mt-1 text-xs text-text-muted">Manage department accounts</p>
+    <div className="flex flex-1 flex-col">
+      {/* ── Welcome header ───────────────────────────────────────── */}
+      <div className="flex flex-col items-center gap-5 pb-8 pt-10 md:pt-14">
+        <h1 className="text-3xl font-bold tracking-tight text-text-primary md:text-[42px]">
+          Welcome Back!
+        </h1>
+
+        {/* Search + New Department */}
+        <div className="flex w-full max-w-lg items-center gap-3">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search Department...."
+              className="w-full rounded-full bg-surface-secondary py-3.5 pl-11 pr-4 text-sm text-text-primary placeholder:text-text-muted transition-all focus:ring-2 focus:ring-accent/10 focus:shadow-[0_0_0_4px_rgba(17,17,20,0.04)]"
+            />
+          </div>
+          <button
+            onClick={() => setCreateView("modal")}
+            className="hidden shrink-0 items-center gap-2 rounded-full bg-accent px-5 py-3 text-sm font-medium text-accent-foreground transition-all duration-200 hover:bg-accent-hover active:scale-[0.98] md:inline-flex"
+          >
+            <FolderPlus className="h-4 w-4" />
+            New Department
+          </button>
+        </div>
       </div>
 
-      {/* New Department — Desktop Modal */}
+      {/* ── Department card grid ─────────────────────────────────── */}
+      <motion.div
+        variants={staggerContainer}
+        initial="hidden"
+        animate="show"
+        className="grid flex-1 grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 lg:gap-5"
+      >
+        {filtered.map((dept) => (
+          <motion.div key={dept.id} variants={fadeUpItem}>
+            <Link
+              href={`/admin/departments/${dept.id}`}
+              className="group flex h-full min-h-[230px] w-full flex-col rounded-[24px] border border-border bg-surface p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-[0_8px_30px_-8px_rgba(17,17,20,0.12)]"
+            >
+              {/* Top row: folder icon + checkmark */}
+              <div className="flex items-start justify-between">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-secondary text-text-muted transition-colors duration-200 group-hover:bg-accent group-hover:text-accent-foreground">
+                  <Folder className="h-5 w-5" />
+                </div>
+                {dept.is_active && (
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-accent text-accent-foreground">
+                    <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                  </div>
+                )}
+              </div>
+
+              {/* Department name + code */}
+              <div className="mt-4">
+                <h3 className="text-[15px] font-semibold leading-snug text-text-primary line-clamp-2">
+                  {dept.name}
+                </h3>
+                <p className="mt-1.5 text-[11px] font-medium uppercase tracking-wider text-text-muted">
+                  {dept.code}
+                </p>
+              </div>
+
+              {/* Divider + Adviser / Treasurer */}
+              <div className="mt-auto border-t border-border-light pt-3">
+                <div className="flex items-center justify-between py-1 text-[12px]">
+                  <span className="text-text-muted">Adviser</span>
+                  <span className="truncate ml-3 max-w-[60%] text-right font-medium text-text-dark">
+                    {dept.adviser ?? "—"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between py-1 text-[12px]">
+                  <span className="text-text-muted">Treasurer</span>
+                  <span className="truncate ml-3 max-w-[60%] text-right font-medium text-text-dark">
+                    {dept.treasurer ?? "—"}
+                  </span>
+                </div>
+              </div>
+            </Link>
+          </motion.div>
+        ))}
+      </motion.div>
+
+      {/* ── New Department — Desktop Modal ────────────────────────── */}
       {createView === "modal" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
-          <div className="absolute inset-0 bg-overlay-alpha" onClick={closeCreate} />
-          <div className="relative w-full max-w-md rounded-xl border border-border bg-surface p-8 shadow-card">
+          <div className="absolute inset-0 bg-overlay-alpha backdrop-blur-sm" onClick={closeCreate} />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 26 }}
+            className="relative w-full max-w-md rounded-2xl border border-border bg-surface p-8 shadow-card"
+          >
             <h2 className="mb-6 text-base font-semibold text-text-primary">New Department</h2>
             {newDepartmentForm}
             {createError && (
@@ -137,7 +216,7 @@ export function DepartmentsListClient({ initialDepartments }: Props) {
               <button
                 onClick={handleCreate}
                 disabled={!newName.trim() || !newCode.trim() || creating}
-                className="flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-foreground transition-all duration-200 hover:bg-accent-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {creating && <Loader2 className="h-4 w-4 animate-spin" />}
                 {creating ? "Creating…" : "Create"}
@@ -145,20 +224,20 @@ export function DepartmentsListClient({ initialDepartments }: Props) {
               <button
                 onClick={closeCreate}
                 disabled={creating}
-                className="rounded-full border border-border bg-surface px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface-secondary"
+                className="rounded-full border border-border bg-surface px-5 py-2.5 text-sm font-medium text-text-primary transition-colors hover:bg-surface-secondary"
               >
                 Cancel
               </button>
             </div>
-          </div>
+          </motion.div>
         </div>
       )}
 
-      {/* New Department — Mobile Bottom Sheet */}
+      {/* ── New Department — Mobile Bottom Sheet ──────────────────── */}
       {createView === "sheet" && (
         <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true">
-          <div className="absolute inset-0 bg-overlay-alpha" onClick={closeCreate} />
-          <div className="absolute inset-x-0 bottom-0 rounded-t-2xl border-t border-border bg-surface p-6 pb-8 shadow-card">
+          <div className="absolute inset-0 bg-overlay-alpha backdrop-blur-sm" onClick={closeCreate} />
+          <div className="absolute inset-x-0 bottom-0 rounded-t-3xl border-t border-border bg-surface p-6 pb-8 shadow-card">
             <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-border-strong" />
             <h2 className="mb-5 text-base font-semibold text-text-primary">New Department</h2>
             {newDepartmentForm}
@@ -169,7 +248,7 @@ export function DepartmentsListClient({ initialDepartments }: Props) {
               <button
                 onClick={handleCreate}
                 disabled={!newName.trim() || !newCode.trim() || creating}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-accent px-5 py-3 text-sm font-medium text-accent-foreground transition-all duration-200 hover:bg-accent-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {creating && <Loader2 className="h-4 w-4 animate-spin" />}
                 {creating ? "Creating…" : "Create"}
@@ -177,7 +256,7 @@ export function DepartmentsListClient({ initialDepartments }: Props) {
               <button
                 onClick={closeCreate}
                 disabled={creating}
-                className="flex-1 rounded-full border border-border bg-surface px-4 py-2.5 text-sm font-medium text-text-primary transition-colors hover:bg-surface-secondary"
+                className="flex-1 rounded-full border border-border bg-surface px-5 py-3 text-sm font-medium text-text-primary transition-colors hover:bg-surface-secondary"
               >
                 Cancel
               </button>
@@ -186,155 +265,11 @@ export function DepartmentsListClient({ initialDepartments }: Props) {
         </div>
       )}
 
-      {/* Search + New */}
-      <>
-        <div className="hidden items-center gap-3 md:flex">
-          <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search department"
-              className="w-full rounded-full border border-accent bg-surface py-3 pl-11 pr-4 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:ring-1 focus:ring-accent"
-            />
-          </div>
-          <button
-            onClick={() => setCreateView("modal")}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-accent px-4 py-3 text-sm font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98]"
-          >
-            <Plus className="h-4 w-4" />
-            New Department
-          </button>
-        </div>
-        <div className="flex items-center gap-3 md:hidden">
-          <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search department"
-              className="w-full rounded-full border border-accent bg-surface py-3 pl-11 pr-4 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:ring-1 focus:ring-accent"
-            />
-          </div>
-        </div>
-      </>
-
-      {/* Empty state or grid */}
-      {filtered.length === 0 ? (
-        <EmptyState
-          title="No departments found"
-          description={search ? "No departments match your search." : "No departments yet. Create your first department."}
-          action={
-            !search ? (
-              <button
-                onClick={() => setCreateView("modal")}
-                className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98]"
-              >
-                New Department
-              </button>
-            ) : undefined
-          }
-        />
-      ) : (
-        <>
-          {/* Web: folder cards */}
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            animate="show"
-            className="hidden grid-cols-1 gap-x-5 gap-y-8 sm:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
-          >
-            {filtered.map((dept) => (
-              <motion.div key={dept.id} variants={fadeUpItem}>
-                <Link
-                  href={`/admin/departments/${dept.id}`}
-                  className="mx-auto flex h-[200px] w-full max-w-[280px] flex-col rounded-xl border border-border-strong bg-surface p-6 transition-all duration-200 hover:border-accent hover:shadow-lg hover:scale-[1.02]"
-                >
-                <div className="flex items-start justify-between gap-3">
-                  <h3 className="min-w-0 text-lg font-semibold leading-6 text-text-primary line-clamp-2">
-                    {dept.name}
-                  </h3>
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-light text-accent">
-                    <Folder className="h-4 w-4" />
-                  </div>
-                </div>
-                <p className="mt-2 text-xs font-medium uppercase tracking-wide text-text-muted">
-                  {dept.code}
-                </p>
-                <div className="mt-auto flex items-end justify-between gap-2 pt-4">
-                  <div className="flex flex-col gap-0.5 text-[11px] leading-4 text-text-muted">
-                    <span>Adviser: {dept.adviser ?? "None"}</span>
-                    <span>Treasurer: {dept.treasurer ?? "None"}</span>
-                  </div>
-                  <StatusBadge
-                    icon={CircleCheckBig}
-                    variant={dept.is_active ? "success" : "neutral"}
-                    label={dept.is_active ? "Active" : "Inactive"}
-                  />
-                </div>
-              </Link>
-              </motion.div>
-            ))}
-          </motion.div>
-
-          {/* Mobile: folder card stack */}
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            animate="show"
-            className="flex flex-col gap-4 md:hidden"
-          >
-            {filtered.map((dept) => (
-              <motion.div key={dept.id} variants={fadeUpItem} className="relative flex items-start justify-between gap-3 rounded-xl border border-border-strong bg-surface p-4">
-                <Link href={`/admin/departments/${dept.id}`} className="min-w-0 flex-1">
-                  <p className="truncate text-base font-semibold text-text-primary">
-                    {dept.name}
-                  </p>
-                  <p className="mt-0.5 text-xs font-medium uppercase tracking-wide text-text-muted">
-                    {dept.code}
-                  </p>
-                  <p className="mt-2 text-[11px] leading-4 text-text-muted">
-                    {dept.adviser ?? "No adviser"} · {dept.treasurer ?? "No treasurer"}
-                  </p>
-                </Link>
-                <div className="flex shrink-0 flex-col items-end gap-2">
-                  <StatusBadge
-                    icon={CircleCheckBig}
-                    variant={dept.is_active ? "success" : "neutral"}
-                    label={dept.is_active ? "Active" : "Inactive"}
-                  />
-                  <button
-                    onClick={() => setMenuOpenId(menuOpenId === dept.id ? null : dept.id)}
-                    className="-mr-1 rounded-md p-1 text-text-muted hover:bg-surface-tertiary hover:text-text-primary"
-                    aria-label="Open menu"
-                  >
-                    <MoreVertical className="h-5 w-5" />
-                  </button>
-                </div>
-                {menuOpenId === dept.id && (
-                  <div className="absolute right-3 top-14 z-10 w-36 rounded-lg border border-border bg-surface py-1 shadow-card">
-                    <Link
-                      href={`/admin/departments/${dept.id}`}
-                      className="block px-4 py-2 text-sm text-text-primary hover:bg-surface-secondary"
-                      onClick={() => setMenuOpenId(null)}
-                    >
-                      View details
-                    </Link>
-                  </div>
-                )}
-              </motion.div>
-            ))}
-          </motion.div>
-        </>
-      )}
-
-      {/* Mobile FAB */}
+      {/* ── Mobile FAB ───────────────────────────────────────────── */}
       {!createView && (
         <button
           onClick={() => setCreateView("sheet")}
-          className="fixed bottom-24 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-lg transition-transform hover:scale-[1.02] active:scale-95 md:hidden"
+          className="fixed bottom-24 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 sm:hidden"
           aria-label="New department"
         >
           <Plus className="h-6 w-6" />
