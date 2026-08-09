@@ -13,7 +13,7 @@ import { ReportPdf } from "@/components/reports/ReportPdf";
 // pending_adviser_approval (which derives the event lock), assigns the FS
 // number (reused on regeneration, else the department counter), stores the
 // generated PDF, and notifies the adviser. The PDF is rendered and uploaded
-// BEFORE any DB write so a failure leaves nothing behind.
+// before creating the Report row; reserving a new FS number updates the counter first.
 
 const SignatorySchema = z.object({
   position: z.string().trim().min(1),
