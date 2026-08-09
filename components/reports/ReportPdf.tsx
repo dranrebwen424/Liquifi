@@ -1,4 +1,4 @@
-﻿import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 
 // Server-only: never import this in a client component.
 // Liquidation Report layout (context/Design/liquidation-report-sample-v2.md),
