@@ -54,13 +54,18 @@ export async function POST(request: NextRequest) {
 
     // All manual entries must be resolved (approved/rejected/withdrawn rows
     // are deleted) before the report can lock the event.
-    const { data: unresolvedManual } = await insforge.database
+    const { data: unresolvedManual, error: unresolvedManualErr } = await insforge.database
       .from("entries")
       .select("id")
       .eq("event_id", eventId)
       .eq("type", "manual")
       .eq("status", "pending_approval")
+      .limit(1)
       .maybeSingle();
+    if (unresolvedManualErr) {
+      console.error("[api/reports/generate] unresolved manual check failed:", unresolvedManualErr);
+      return errorResponse("Failed to check manual entry state.", 500);
+    }
     if (unresolvedManual) {
       return errorResponse("Resolve pending manual entries before generating the report.", 409);
     }
