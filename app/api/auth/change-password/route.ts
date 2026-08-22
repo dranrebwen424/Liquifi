@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createInsforgeServer } from "@/lib/insforge-server";
+import { clearRateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   try {
@@ -29,6 +30,13 @@ export async function POST(req: NextRequest) {
         },
         { status: 400 },
       );
+    }
+
+    // A proven password reset redeems the lockout — clear the email bucket so
+    // the user can sign in immediately. Requires completing OTP with inbox
+    // access, so an attacker brute-forcing the login cannot trigger this.
+    if (email) {
+      clearRateLimit(`e:${String(email).trim().toLowerCase()}`);
     }
 
     return NextResponse.json({ success: true });

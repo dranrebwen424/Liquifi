@@ -16,6 +16,7 @@ export default function LoginPage() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState("");
+  const [softLocked, setSoftLocked] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -31,6 +32,7 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
+        setSoftLocked(Boolean(data.softLocked));
         setApiError(data.error || "Invalid email or password.");
         return;
       }
@@ -88,6 +90,36 @@ export default function LoginPage() {
         </form>
         </AuthCard>
       </div>
+      {softLocked && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-overlay-alpha px-4"
+          onClick={() => setSoftLocked(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl border border-border bg-surface p-6 shadow-card"
+            onClick={(e) => e.stopPropagation()}
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="soft-lock-title"
+          >
+            <h2 id="soft-lock-title" className="text-lg font-semibold text-text-primary">
+              Account temporarily locked
+            </h2>
+            <p className="mt-2 text-sm text-text-secondary">
+              Too many failed sign-in attempts. For your security, we recommend resetting your
+              password — it unlocks your account immediately.
+            </p>
+            <div className="mt-6 flex flex-col gap-3">
+              <AuthButton type="button" onClick={() => router.push("/forgot-password")}>
+                Reset Password
+              </AuthButton>
+              <AuthButton variant="outline" type="button" onClick={() => setSoftLocked(false)}>
+                Try again later
+              </AuthButton>
+            </div>
+          </div>
+        </div>
+      )}
     </AuthShell>
   );
 }

@@ -18,16 +18,23 @@ function formatWait(retryAfterSec: number): string {
   if (retryAfterSec < 90) {
     return `${retryAfterSec} second${retryAfterSec === 1 ? "" : "s"}`;
   }
-  return `${Math.ceil(retryAfterSec / 60)} minutes`;
+  if (retryAfterSec < 90 * 60) {
+    return `${Math.ceil(retryAfterSec / 60)} minutes`;
+  }
+  const hours = Math.ceil(retryAfterSec / 3600);
+  return `${hours} hour${hours === 1 ? "" : "s"}`;
 }
 
-function lockedResponse(scope: "account" | "network", retryAfterSec: number): NextResponse {
+function lockedResponse(scope: "account" | "network", retryAfterSec: number, softLocked = false): NextResponse {
   const error =
-    scope === "account"
-      ? `Too many failed attempts. Try again in ${formatWait(retryAfterSec)}.`
-      : `Too many login attempts from this network. Try again in ${formatWait(retryAfterSec)}.`;
+    scope === "network"
+      ? `Too many login attempts from this network. Try again in ${formatWait(retryAfterSec)}.`
+      : softLocked
+        ? "Too many failed attempts. Your account is temporarily locked for 24 hours. Reset your password to regain access."
+        : `Too many failed attempts. Try again in ${formatWait(retryAfterSec)}.`;
+  // softLocked is machine-readable so the login page can raise the recovery modal.
   return NextResponse.json(
-    { success: false, error },
+    { success: false, error, ...(scope === "account" && softLocked ? { softLocked: true } : {}) },
     { status: 429, headers: { "Retry-After": String(retryAfterSec) } },
   );
 }
@@ -48,7 +55,7 @@ function handleFailedAttempt(emailKey: string, ipKey: string | null): NextRespon
 
   const emailLock = checkRateLimit(emailKey);
   if (emailLock.blocked) {
-    return lockedResponse("account", emailLock.retryAfterSec);
+    return lockedResponse("account", emailLock.retryAfterSec, emailLock.softLocked);
   }
   const ipLock = ipKey ? checkRateLimit(ipKey) : null;
   if (ipLock?.blocked) {
@@ -85,7 +92,7 @@ export async function POST(req: NextRequest) {
     }
     const emailLock = checkRateLimit(emailKey);
     if (emailLock.blocked) {
-      return lockedResponse("account", emailLock.retryAfterSec);
+      return lockedResponse("account", emailLock.retryAfterSec, emailLock.softLocked);
     }
 
     // Buffer for auth cookies the SDK sets via responseCookies.
