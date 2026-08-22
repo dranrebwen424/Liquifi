@@ -73,6 +73,19 @@ export const IP_LIMIT: BucketConfig = {
   capMs: 60 * 60_000,
 };
 
+/**
+ * Signup IP bucket — POST /api/auth/signup reveals account states
+ * (none / in-progress / registered), so each attempt costs a tick.
+ * Successful creations clear the bucket, so a shared-network rollout
+ * week where many real people register never trips this.
+ */
+export const SIGNUP_IP_LIMIT: BucketConfig = {
+  mode: "ladder",
+  threshold: 10,
+  baseMs: 60_000,
+  capMs: 15 * 60_000,
+};
+
 const buckets = new Map<string, Bucket>();
 
 function delayFor(failures: number, config: LadderConfig): number {
