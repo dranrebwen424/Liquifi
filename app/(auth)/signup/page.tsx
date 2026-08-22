@@ -16,8 +16,6 @@ const FALLBACK_DEPARTMENTS = [
   { code: "CBA", name: "Business & Accountancy" },
 ];
 
-const STEP_SUBTITLES = ["Your name", "Account details", "Your council"];
-
 /** Fields required to advance past each step; the final submit re-checks everything. */
 const STEP_REQUIRED: Record<number, Array<keyof SignupForm>> = {
   1: ["firstName", "lastName"],
@@ -129,11 +127,9 @@ export default function SignupPage() {
   }
 
   return (
-    <AuthShell subtitle="Request an account for your council." backHref="/login">
-      <AuthCard
-        title="Get Started"
-        subtitle={`Step ${step} of 3 · ${STEP_SUBTITLES[step - 1]}`}
-      >
+    <AuthShell top backHref="/login">
+      <div className="pt-4">
+        <AuthCard title="Get Started" subtitle="Request an account for your council.">
         <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
           {step === 1 && (
             <>
@@ -190,7 +186,8 @@ export default function SignupPage() {
             Already have an account? <AuthLink href="/login">Sign in</AuthLink>
           </p>
         </form>
-      </AuthCard>
+        </AuthCard>
+      </div>
     </AuthShell>
   );
 }
