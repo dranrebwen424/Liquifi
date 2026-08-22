@@ -23,6 +23,9 @@ const STEP_REQUIRED: Record<number, Array<keyof SignupForm>> = {
   3: [],
 };
 
+/** ponytail: stricter than InsForge's own minimum — a client gate can only over-block, never let one slip to the last page. */
+const MIN_PASSWORD_LENGTH = 8;
+
 type SignupForm = {
   firstName: string;
   middleName: string;
@@ -63,10 +66,12 @@ export default function SignupPage() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState("");
+  const [stepError, setStepError] = useState("");
 
   function set(key: keyof typeof form, value: string) {
     setForm((prev) => ({ ...prev, [key]: value }));
     if (apiError) setApiError("");
+    if (stepError) setStepError("");
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -78,23 +83,52 @@ export default function SignupPage() {
     const required = STEP_REQUIRED[step];
     if (required.some((k) => !form[k])) return;
 
-    if (step < 3) {
-      setStep(step + 1);
+    if (step === 1) {
+      setStep(2);
       setSubmitted(false); // fresh step, no stale red borders
       return;
     }
 
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/signup", {
+      if (step === 2) {
+        // Flag problems HERE — the email/password page — never on the last page.
+        if (form.password.length < MIN_PASSWORD_LENGTH) {
+          setStepError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
+          return;
+        }
+        // Creating the auth account now lets InsForge's duplicate-email error
+        // surface on this step instead of after role/department.
+        const res = await fetch("/api/auth/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            firstName: form.firstName,
+            middleName: form.middleName,
+            lastName: form.lastName,
+            email: form.email,
+            password: form.password,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          setStepError(data.error || "Signup failed. Please try again.");
+          return;
+        }
+        setStep(3);
+        setSubmitted(false);
+        return;
+      }
+
+      // Step 3 — council selection; completes the signup started on step 2.
+      const res = await fetch("/api/auth/signup/complete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          email: form.email,
           firstName: form.firstName,
           middleName: form.middleName,
           lastName: form.lastName,
-          email: form.email,
-          password: form.password,
           role: form.role,
           departmentCode: form.department,
         }),
@@ -115,15 +149,11 @@ export default function SignupPage() {
       }));
       router.push(`/otp?email=${encodeURIComponent(form.email)}&intent=signup`);
     } catch {
-      setApiError("Something went wrong. Please try again.");
+      if (step === 2) setStepError("Something went wrong. Please try again.");
+      else setApiError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
-  }
-
-  function goBack() {
-    setStep(step - 1);
-    setSubmitted(false); // fresh step, no stale red borders
   }
 
   return (
@@ -171,17 +201,10 @@ export default function SignupPage() {
             </>
           )}
 
-          {apiError && (
-            <p className="text-sm text-red-500 text-center">{apiError}</p>
+          {(apiError || stepError) && (
+            <p className="text-sm text-red-500 text-center">{apiError || stepError}</p>
           )}
-          <div className={step === 1 ? "" : "flex gap-3"}>
-            {step > 1 && (
-              <AuthButton variant="outline" type="button" onClick={goBack}>
-                Back
-              </AuthButton>
-            )}
-            <AuthButton type="submit" loading={loading}>Continue</AuthButton>
-          </div>
+          <AuthButton type="submit" loading={loading}>Continue</AuthButton>
           <p className="text-center text-sm font-normal text-text-secondary">
             Already have an account? <AuthLink href="/login">Sign in</AuthLink>
           </p>
