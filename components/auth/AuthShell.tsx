@@ -54,7 +54,11 @@ export default function AuthShell({
           </Link>
         )}
         {!hideLogo && (
-          <Link href="/" className="mb-8 flex items-center justify-center gap-2" aria-label="Liquifi home">
+          <Link
+            href="/"
+            className={`mb-8 flex items-center justify-center gap-2 ${top && !backHref ? "mt-8" : ""}`}
+            aria-label="Liquifi home"
+          >
             <LogoMark className="text-accent" />
             <span className="text-[20px] font-bold leading-7 text-text-primary">Liquifi</span>
           </Link>
