@@ -3,20 +3,21 @@
 -- Deploy ONCE: InsForge Dashboard → SQL editor.
 --
 -- 1) check_signup_email(p_email text) → 'none' | 'in_progress' | 'registered'
---      'none'        no auth record                        → fresh signup
---      'in_progress' auth record, unconfirmed, no profile  → abandoned ghost;
+--      'none'        no auth record                              → fresh signup
+--      'in_progress' auth record, unverified, no profile        → abandoned ghost;
 --                                                      purgeable by re-signup
---      'registered'  users row exists OR email confirmed  → "Email already exists"
+--      'registered'  users row exists OR email_verified = true → "Email already exists"
 --    SECURITY DEFINER so anon-keyed routes can classify despite RLS.
 --
 -- 2) purge_signup_ghost(p_email text, p_min_age text DEFAULT '10 minutes') → int
---    Deletes an UNCONFIRMED, profile-less auth record for the given email —
+--    Deletes an UNVERIFIED, profile-less auth record for the given email —
 --    but only if it is older than p_min_age. The age floor makes a live
 --    signup session unhijackable: an attacker typing someone's email cannot
 --    purge a fresh record; genuinely abandoned ones yield to re-registration.
 --
--- Column caveat: assumes Supabase-style `auth.users(id, email,
--- email_confirmed_at, created_at)`. If InsForge names differ, adjust here.
+-- Schema note (verified 2026-08-22 via information_schema): InsForge's
+-- auth.users uses `email_verified boolean` (NOT Supabase's
+-- email_confirmed_at) plus created_at timestamptz.
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION check_signup_email(p_email text)
@@ -36,7 +37,7 @@ AS $$
     WHEN EXISTS (
       SELECT 1 FROM auth.users au2
       WHERE lower(au2.email) = lower(p_email)
-        AND au2.email_confirmed_at IS NOT NULL
+        AND au2.email_verified = true
     ) THEN 'registered'
     ELSE 'in_progress'
   END;
@@ -53,7 +54,7 @@ DECLARE
 BEGIN
   DELETE FROM auth.users au
   WHERE lower(au.email) = lower(p_email)
-    AND au.email_confirmed_at IS NULL
+    AND au.email_verified = false
     AND au.created_at < now() - p_min_age::interval
     AND NOT EXISTS (SELECT 1 FROM public.users pu WHERE pu.id = au.id);
   GET DIAGNOSTICS removed = ROW_COUNT;
