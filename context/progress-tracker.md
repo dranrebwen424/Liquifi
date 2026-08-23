@@ -89,6 +89,7 @@ Update this file after every completed feature. Any AI agent reading this should
 
 *Condensed 2026-08-08 (twice) on request — full verbatim history preserved in git.*
 
+- **2026-08-23 — Pending page logo-to-card gap tightened (user direction):** wrapper `pt-16` → `pt-6`; logo→"Awaiting Approval" gap 96px → 56px (logo's own mt-8 headroom preserved). Verified 390×844: gap 56px measured, zero scrolling.
 - **2026-08-23 — Logo top margin on backless auth pages (user direction):** `AuthShell` logo link gains `mt-8` only when `top && !backHref` — i.e., exactly the pending page, whose logo previously touched the screen edge. Signup/OTP keep their back-arrow-first look; login (centered, hideLogo) unaffected. Verified 390×844: logo at y=32, scrollHeight == viewport — zero scrolling.
 - **2026-08-23 — Pending page top margin (user direction):** no back arrow on this page (unlike OTP/signup) made the top-aligned card feel cramped — wrapper `pt-4` → `pt-16` (64px breathing room). Verified 390×844: card title at y≈124 (was ~90), scrollHeight still == viewport — zero scrolling.
 - **2026-08-23 — OTP + pending pages top-aligned for mobile (user direction):** both auth pages now match the signup pattern — `AuthShell top` + inner `pt-4` wrapper. OTP page dropped its redundant shell-level subtitle (card subtitle already carries "code sent to {email}" info); pending page's triple `mt-24` stack (wrapper + Lottie + button, 96px each) shrunk to `pt-4` + `mt-8` + `mt-8`. Verified on 390×844 viewport: both pages scrollHeight == viewportHeight — zero scrolling needed.
