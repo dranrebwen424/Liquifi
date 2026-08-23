@@ -53,7 +53,7 @@ export default function PendingApprovalPage() {
           </div>
         </AuthCard>
       ) : (
-        <div className="pt-4">
+        <div className="pt-16">
           <AuthCard
             title="Awaiting Approval"
             subtitle="You&rsquo;re all set! Your registration has been received and is awaiting approval. We&rsquo;ll email you as soon as your account is ready."
