@@ -40,7 +40,7 @@ export default function PendingApprovalPage() {
   }, [router]);
 
   return (
-    <AuthShell>
+    <AuthShell top>
       {approved ? (
         <AuthCard title="Account Approved!" center>
           <div className="flex flex-col items-center mt-8">
@@ -53,7 +53,7 @@ export default function PendingApprovalPage() {
           </div>
         </AuthCard>
       ) : (
-        <div className="mt-24">
+        <div className="pt-4">
           <AuthCard
             title="Awaiting Approval"
             subtitle="You&rsquo;re all set! Your registration has been received and is awaiting approval. We&rsquo;ll email you as soon as your account is ready."
@@ -82,13 +82,13 @@ export default function PendingApprovalPage() {
 
               <LottiePlayer
                 src="/Auth%20pages/loading-time.json"
-                className="mt-24 h-48 w-48"
+                className="mt-8 h-48 w-48"
               />
 
               <AuthButton
                 variant="primary"
                 onClick={() => router.push("/login")}
-                className="mt-24"
+                className="mt-8"
               >
                 Back to login
               </AuthButton>

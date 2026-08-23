@@ -106,9 +106,10 @@ function OtpPageInner() {
 
   return (
     <AuthShell
-      subtitle={isReset ? "Reset your password." : "Enter the code we sent to your email."}
+      top
       backHref={isReset ? "/forgot-password" : "/signup"}
     >
+      <div className="pt-4">
       <AuthCard
         title="Verify your email"
         subtitle={
@@ -148,6 +149,7 @@ function OtpPageInner() {
           </p>
         </form>
       </AuthCard>
+      </div>
     </AuthShell>
   );
 }
