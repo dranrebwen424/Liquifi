@@ -110,7 +110,7 @@ export function BudgetSummary({
               />
             </div>
             <span className="shrink-0 text-[11px] text-text-inverse/60">
-              {Math.round(pctUsed)}%
+              {Math.round(Math.min(pctUsed, 100))}%
             </span>
           </div>
         </div>

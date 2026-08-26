@@ -61,7 +61,7 @@ export default async function EventDashboardPage({ params }: Props) {
     <EventPageEntrance>
     <div className="flex flex-col pb-16">
       {/* ── MOBILE LAYOUT (matches Figma) ── */}
-      <div className="lg:hidden px-3.5 pt-1">
+      <div className="lg:hidden px-3.5 pt-3">
         {/* Back arrow + Event name + Archive Report (all in one row) */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-2.5 min-w-0">
