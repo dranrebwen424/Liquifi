@@ -1,5 +1,6 @@
 import { createAuthActions, createServerClient, type CookieWriter } from "@insforge/sdk/ssr";
 import { NextRequest, NextResponse } from "next/server";
+import { REFRESH_COOKIE_MAX_AGE } from "@/lib/session";
 import {
   EMAIL_LIMIT,
   IP_LIMIT,
@@ -108,6 +109,10 @@ export async function POST(req: NextRequest) {
     const authActions = createAuthActions({
       baseUrl: process.env.NEXT_PUBLIC_INSFORGE_URL!,
       anonKey: process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
+      // Persist the refresh cookie — the SDK default is a browser-session
+      // cookie (or one tied to the refresh JWT's exp), which logs users out
+      // every time they close the browser.
+      options: { refreshToken: { maxAge: REFRESH_COOKIE_MAX_AGE } },
       responseCookies: {
         set: (name, value, opts) => {
           pendingCookies.push({ name, value });
@@ -191,13 +196,15 @@ export async function POST(req: NextRequest) {
 
     // 6. Build success response — apply auth cookies to it
     const response = NextResponse.json({ success: true, redirectTo });
-    // Store role in a cookie so the proxy can redirect logged-in users to the right dashboard
+    // Store role in a cookie so the proxy can redirect logged-in users to the
+    // right dashboard. 7 days — must outlive the 2-day sliding session window
+    // so active users never lose the auto-redirect.
     response.cookies.set("user_role", profile.role, {
       httpOnly: true,
       secure: true,
       sameSite: "lax",
       path: "/",
-      maxAge: 60 * 60 * 24 * 2, // 2 days
+      maxAge: 60 * 60 * 24 * 7, // 7 days
     });
     for (const { name, value } of pendingCookies) {
       const opts = pendingCookieOpts.get(name);

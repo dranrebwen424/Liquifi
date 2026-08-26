@@ -12,7 +12,7 @@ export const itemBreakdownSchema = z.object({
 
 /** Classification the model returns alongside extraction fields — drives the guided-upload outcomes. */
 export const classificationSchema = z.object({
-  outcome: z.enum(["valid", "borderline", "invalid"]),
+  outcome: z.enum(["valid", "borderline", "invalid", "multiple"]),
   reason: z.string().min(1),
 });
 
@@ -67,7 +67,7 @@ export type ReceiptParseResult = z.infer<typeof receiptParseSchema>;
 /** Discriminated parse result — verdicts short-circuit, only "valid" carries the strict receipt. */
 export type ParseOutcome =
   | { outcome: "valid"; receipt: ReceiptParseResult }
-  | { outcome: "borderline" | "invalid"; reason: string };
+  | { outcome: "borderline" | "invalid" | "multiple"; reason: string };
 
 /** System-normalized document-type categories — for reporting only, falls back to "other". */
 export const DOCUMENT_TYPE_CATEGORIES = [

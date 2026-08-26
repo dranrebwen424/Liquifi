@@ -34,7 +34,7 @@ type ArchiveEventButtonProps = {
   eventId: string;
   canArchive: boolean;
   isArchived: boolean;
-  /** Compact mode for Figma mobile layout — smaller outlined pill. */
+  /** Compact mode for Figma mobile layout — matches View Report pill style. */
   compact?: boolean;
 };
 
@@ -55,7 +55,7 @@ export function ArchiveEventButton({
         className={cn(
           "inline-flex shrink-0 items-center gap-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50",
           compact
-            ? "rounded-[10px] border border-text-primary px-3 py-1.5 text-xs font-medium text-text-primary hover:bg-surface-secondary"
+            ? "rounded-[17px] border border-border px-3.5 py-[7px] text-[11px] font-medium text-text-primary hover:bg-surface-secondary"
             : "rounded-lg border px-2.5 py-1.5 text-xs font-medium sm:gap-2 sm:rounded-xl sm:px-4 sm:py-2.5 sm:text-sm",
           !compact &&
             (canArchive
@@ -70,7 +70,7 @@ export function ArchiveEventButton({
               : "Available once the report is approved."
         }
       >
-        <Archive className="h-3.5 w-3.5" />
+        <Archive className="h-3 w-3" />
         Archive Report
       </button>
 

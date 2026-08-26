@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@insforge/sdk/ssr/middleware";
+import { REFRESH_COOKIE_MAX_AGE } from "@/lib/session";
 // ponytail: middleware does cookie-based redirect hinting.
 // Real auth+role enforcement happens in route-group layouts.
 // Session refresh (updateSession) handles expired access tokens.
@@ -55,6 +56,9 @@ export async function proxy(request: NextRequest) {
   await updateSession({
     requestCookies: request.cookies as never,
     responseCookies: response.cookies as never,
+    // Pin the refresh cookie to the sliding window — without this the SDK
+    // writes it as a browser-session cookie and users get logged out on close.
+    options: { refreshToken: { maxAge: REFRESH_COOKIE_MAX_AGE } },
   });
 
   return response;

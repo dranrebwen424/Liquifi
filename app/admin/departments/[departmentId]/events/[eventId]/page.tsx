@@ -9,6 +9,7 @@ import { BudgetSummary } from "@/components/events/BudgetSummary";
 import { SpendingBreakdownCard } from "@/components/events/SpendingBreakdownCard";
 import { EventStatusBadge } from "@/components/ui/StatusBadge";
 import { ExpensesSection } from "@/components/entries/ExpensesSection";
+import { EventPageEntrance } from "@/components/events/EventPageEntrance";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +43,8 @@ export default async function AdminEventPage({ params }: Props) {
   const breakdown = computeSpendingBreakdown(event.entries);
 
   return (
-    <div className="flex flex-col gap-5 pb-16">
+    <EventPageEntrance>
+    <div className="flex flex-col pb-16">
       {/* Back link */}
       <Link
         href={`/admin/departments/${departmentId}`}
@@ -52,29 +54,31 @@ export default async function AdminEventPage({ params }: Props) {
         Back to department
       </Link>
 
-      {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold text-text-primary md:text-[28px]">
-              {event.name}
-            </h1>
-            <EventStatusBadge status={event.status} />
-          </div>
-          <p className="mt-1 text-xs text-text-muted">
-            Created {createdDate}
-            {event.created_by_name && event.created_by_name !== "Unknown" && (
-              <> · by {event.created_by_name}</>
-            )}
-          </p>
+      {/* Header — title truncates instead of wrapping on phones */}
+      <div className="mt-3">
+        <div className="flex items-center gap-2">
+          <h1 className="min-w-0 truncate text-lg font-semibold text-text-primary sm:text-2xl md:text-[28px]">
+            {event.name}
+          </h1>
+          <EventStatusBadge status={event.status} />
         </div>
+        <p className="mt-0.5 text-[11px] text-text-muted sm:text-xs">
+          Created {createdDate}
+          {event.created_by_name && event.created_by_name !== "Unknown" && (
+            <> · by {event.created_by_name}</>
+          )}
+        </p>
       </div>
 
       {/* Locked / Archived banner */}
-      <LockedBanner isLocked={event.is_locked} isArchived={isArchived} />
+      {(event.is_locked || isArchived) && (
+        <div className="mt-5">
+          <LockedBanner isLocked={event.is_locked} isArchived={isArchived} />
+        </div>
+      )}
 
       {/* Two-column: Dark hero + Spending breakdown */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:gap-4">
+      <div className="mt-5 flex flex-col gap-4 lg:flex-row lg:gap-4">
         <BudgetSummary
           budgetTotal={event.budget_total}
           totalSpent={event.total_spent}
@@ -95,34 +99,37 @@ export default async function AdminEventPage({ params }: Props) {
       </div>
 
       {/* Expenses section — read-only (no void/resubmit/discard) */}
-      <ExpensesSection
-        entries={event.entries.map((e) => ({
-          id: e.id,
-          type: e.type,
-          status: e.status,
-          amount: Number(e.amount),
-          description: e.document_type_raw,
-          supplierName: e.supplier_name,
-          documentType: e.document_type_raw,
-          documentNumber: e.document_number,
-          category: e.category ?? null,
-          issueDate: e.issue_date ?? null,
-          issueTime: e.issue_time ?? null,
-          imageUrl: e.image_url ?? null,
-          itemBreakdown: e.item_breakdown ?? null,
-          formPayload: e.form_payload_json ?? null,
-          rejectionReason: e.rejection_reason,
-          resubmissionExplanation: e.resubmission_explanation,
-          createdAt: e.created_at,
-          voidReason: e.void_reason,
-          voidedBy: e.voided_by,
-          voidedAt: e.voided_at ?? null,
-          voidedByName: e.voidedByName ?? null,
-        }))}
-        categories={categories}
-        isArchived={isArchived}
-        canMutate={false}
-      />
+      <div className="mt-8 border-t border-border-light pt-6">
+        <ExpensesSection
+          entries={event.entries.map((e) => ({
+            id: e.id,
+            type: e.type,
+            status: e.status,
+            amount: Number(e.amount),
+            description: e.document_type_raw,
+            supplierName: e.supplier_name,
+            documentType: e.document_type_raw,
+            documentNumber: e.document_number,
+            category: e.category ?? null,
+            issueDate: e.issue_date ?? null,
+            issueTime: e.issue_time ?? null,
+            imageUrl: e.image_url ?? null,
+            itemBreakdown: e.item_breakdown ?? null,
+            formPayload: e.form_payload_json ?? null,
+            rejectionReason: e.rejection_reason,
+            resubmissionExplanation: e.resubmission_explanation,
+            createdAt: e.created_at,
+            voidReason: e.void_reason,
+            voidedBy: e.voided_by,
+            voidedAt: e.voided_at ?? null,
+            voidedByName: e.voidedByName ?? null,
+          }))}
+          categories={categories}
+          isArchived={isArchived}
+          canMutate={false}
+        />
+      </div>
     </div>
+    </EventPageEntrance>
   );
 }

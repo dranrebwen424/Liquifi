@@ -1,0 +1,28 @@
+- generic [active] [ref=e1]:
+  - alert [ref=e34]
+  - main [ref=e38]:
+    - generic [ref=e39]:
+      - link "Go back" [ref=e40] [cursor=pointer]:
+        - /url: /signup
+      - link "Liquifi home" [ref=e43] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e48]: Liquifi
+      - paragraph [ref=e49]: Enter the code we sent to your email.
+      - generic [ref=e50]:
+        - generic [ref=e51]:
+          - heading "Verify your email" [level=1] [ref=e52]
+          - paragraph [ref=e53]: Check your inbox for a 6-digit code.
+        - generic [ref=e54]:
+          - generic [ref=e56]:
+            - textbox "Digit 1" [ref=e57]
+            - textbox "Digit 2" [ref=e58]
+            - textbox "Digit 3" [ref=e59]
+            - textbox "Digit 4" [ref=e60]
+            - textbox "Digit 5" [ref=e61]
+            - textbox "Digit 6" [ref=e62]
+          - button "Verify" [ref=e63]
+          - button "Resend code in 60s" [disabled] [ref=e64]
+          - paragraph [ref=e65]:
+            - text: Wrong email?
+            - link "Sign up" [ref=e66] [cursor=pointer]:
+              - /url: /signup

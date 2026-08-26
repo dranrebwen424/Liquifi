@@ -26,7 +26,7 @@ type ReceiptUploadProps = {
  * they render an action banner immediately and never count toward the 3-attempt ceiling.
  * generic/parse_failed keep the inline red text + attempt counting.
  */
-type FailureKind = "generic" | "parse_failed" | "invalid_document" | "borderline";
+type FailureKind = "generic" | "parse_failed" | "invalid_document" | "borderline" | "multiple_documents";
 
 /** Maximum file size in bytes (10 MB). */
 const MAX_SIZE = 10 * 1024 * 1024;
@@ -167,7 +167,7 @@ export function ReceiptUpload({ eventId, onParsed, onExhausted, onNoReceipt }: R
       if (!res.ok || !body?.success) {
         const message = body?.error ?? "Something went wrong.";
         const code = body?.code;
-        if (code === "invalid_document" || code === "borderline") {
+        if (code === "invalid_document" || code === "borderline" || code === "multiple_documents") {
           // Verdicts show guidance immediately and don't count toward the fallback ceiling
           setFailure({ kind: code, message });
         } else {
@@ -213,6 +213,9 @@ export function ReceiptUpload({ eventId, onParsed, onExhausted, onNoReceipt }: R
               <Image className="h-4 w-4" />
               Choose from Library
             </button>
+            <p className="text-center text-[11px] text-text-muted">
+              One receipt per photo — shoot each receipt separately.
+            </p>
           </div>
 
           <div
@@ -353,6 +356,25 @@ export function ReceiptUpload({ eventId, onParsed, onExhausted, onNoReceipt }: R
               Log as No Receipt Entry
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Multiple-documents verdict — the photo has 2+ receipts; one per upload */}
+      {!uploading && failure?.kind === "multiple_documents" && (
+        <div className="flex flex-col gap-3 rounded-xl border border-warning bg-warning-lightest p-4">
+          <div>
+            <p className="text-sm font-semibold text-text-primary">
+              One receipt per upload
+            </p>
+            <p className="mt-0.5 text-xs text-text-muted">{failure.message}</p>
+          </div>
+          <button
+            onClick={resetFile}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98]"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Try Another Photo
+          </button>
         </div>
       )}
 

@@ -77,10 +77,9 @@ export function Sidebar({ navItems, role }: SidebarProps) {
 
   return (
     <aside
-      className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-50 lg:flex lg:flex-col transition-[width] duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)]"
+      className="hidden bg-nav lg:fixed lg:inset-y-0 lg:left-0 lg:z-50 lg:flex lg:flex-col transition-[width] duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)]"
       style={{
         width: "var(--sidebar-width)",
-        backgroundColor: "#0a0a0c",
       }}
     >
       {/* Logo + toggle */}
@@ -97,7 +96,7 @@ export function Sidebar({ navItems, role }: SidebarProps) {
               transition={{ duration: 0.2 }}
               className="flex shrink-0 items-center gap-3 overflow-hidden"
             >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white font-bold text-sm" style={{ color: "#0a0a0c" }}>
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-text-inverse font-bold text-sm text-nav">
                 M
               </div>
               <span className="text-lg font-bold whitespace-nowrap text-white">
@@ -109,13 +108,10 @@ export function Sidebar({ navItems, role }: SidebarProps) {
         <button
           onClick={toggleCollapsed}
           className={cn(
-            "shrink-0 rounded-lg p-1.5 transition-colors",
+            "shrink-0 rounded-lg p-1.5 text-text-muted transition-colors hover:text-text-inverse",
             collapsed ? "mt-0" : "ml-auto",
           )}
-          style={{ color: "#a1a1aa" }}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          onMouseEnter={(e) => e.currentTarget.style.color = "#ffffff"}
-          onMouseLeave={(e) => e.currentTarget.style.color = "#a1a1aa"}
         >
           {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
         </button>
@@ -124,7 +120,7 @@ export function Sidebar({ navItems, role }: SidebarProps) {
       {/* Nav */}
       <nav className={cn("flex-1 py-4", collapsed ? "px-2" : "px-3")}>
         {!collapsed && (
-          <p className="mb-2 px-3 text-[11px] font-medium uppercase" style={{ color: "rgba(161,161,170,0.5)", letterSpacing: "0.1em" }}>
+          <p className="mb-2 px-3 text-[11px] font-medium uppercase text-text-muted/60 tracking-[0.1em]">
             Menu
           </p>
         )}
@@ -160,21 +156,18 @@ export function Sidebar({ navItems, role }: SidebarProps) {
       </nav>
 
       {/* User profile */}
-      <div className={cn("relative", collapsed ? "p-2" : "p-3")} style={{ borderTop: "1px solid #1e1e22" }}>
+      <div className={cn("relative border-t border-nav-border", collapsed ? "p-2" : "p-3")}>
         <button
           onClick={() => setProfileOpen((v) => !v)}
           className={cn(
-            "flex w-full items-center rounded-xl transition-all duration-200",
+            "flex w-full items-center rounded-xl text-text-muted transition-colors duration-200 hover:bg-nav-hover",
             collapsed ? "justify-center p-2" : "gap-3 px-3 py-2.5",
           )}
-          style={{ color: "#a1a1aa" }}
           aria-haspopup="menu"
           aria-expanded={profileOpen}
           title={collapsed ? role : undefined}
-          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#1a1a1e"}
-          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
         >
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white" style={{ backgroundColor: "#27272e" }}>
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-nav-active text-sm font-semibold text-text-inverse">
             {role.charAt(0).toUpperCase()}
           </div>
           <AnimatePresence>
@@ -186,20 +179,19 @@ export function Sidebar({ navItems, role }: SidebarProps) {
                 transition={{ duration: 0.2 }}
                 className="min-w-0 flex-1 overflow-hidden text-left"
               >
-                <p className="truncate text-sm font-medium text-white capitalize">
+                <p className="truncate text-sm font-medium text-text-inverse capitalize">
                   {role}
                 </p>
-                <p className="truncate text-[11px]" style={{ color: "rgba(161,161,170,0.6)" }}>{role}@liquifi.app</p>
+                <p className="truncate text-[11px] text-text-muted/60">{role}@liquifi.app</p>
               </motion.div>
             )}
           </AnimatePresence>
           {!collapsed && (
             <ChevronUp
               className={cn(
-                "h-4 w-4 shrink-0 transition-transform duration-200",
+                "h-4 w-4 shrink-0 text-text-muted/50 transition-transform duration-200",
                 profileOpen && "rotate-180",
               )}
-              style={{ color: "rgba(161,161,170,0.5)" }}
             />
           )}
         </button>
@@ -214,20 +206,18 @@ export function Sidebar({ navItems, role }: SidebarProps) {
               exit={{ opacity: 0, scale: 0.95, y: 6 }}
               transition={{ type: "spring", stiffness: 400, damping: 28 }}
               className={cn(
-                "absolute z-50 rounded-xl py-1 shadow-xl",
+                "absolute z-50 rounded-xl border border-nav-border bg-nav py-1 shadow-xl",
                 collapsed ? "bottom-14 left-2 right-2" : "bottom-16 left-3 right-3",
               )}
-              style={{ backgroundColor: "#0a0a0c", border: "1px solid #1e1e22" }}
             >
               <Link
                 href={profileLinks[role]}
                 role="menuitem"
                 onClick={() => setProfileOpen(false)}
                 className={cn(
-                  "flex items-center transition-colors duration-150 hover:bg-[#1a1a1e]",
+                  "flex items-center text-text-muted transition-colors duration-150 hover:bg-nav-hover hover:text-text-inverse",
                   collapsed ? "justify-center p-2" : "gap-2.5 px-3 py-2 text-sm",
                 )}
-                style={{ color: "#a1a1aa" }}
                 title={collapsed ? "Profile" : undefined}
               >
                 <User className="h-4 w-4 shrink-0" />
@@ -245,10 +235,9 @@ export function Sidebar({ navItems, role }: SidebarProps) {
                   router.push("/login");
                 }}
                 className={cn(
-                  "flex w-full items-center transition-colors duration-150 hover:bg-[#fee2e2]",
+                  "flex w-full items-center text-error transition-colors duration-150 hover:bg-error-light",
                   collapsed ? "justify-center p-2" : "gap-2.5 px-3 py-2 text-sm",
                 )}
-                style={{ color: "#ef4444" }}
                 title={collapsed ? "Log out" : undefined}
               >
                 <LogOut className="h-4 w-4 shrink-0" />

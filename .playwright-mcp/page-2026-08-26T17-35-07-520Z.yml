@@ -1,0 +1,66 @@
+- generic [ref=f1e1]:
+  - generic [ref=f1e2]:
+    - generic [ref=f1e3]:
+      - generic [ref=f1e7]: Liquifi
+      - button "Search events" [ref=f1e8]
+    - navigation [ref=f1e12]:
+      - link "Home" [ref=f1e13] [cursor=pointer]:
+        - /url: /treasurer/home
+      - link "Reports" [ref=f1e18] [cursor=pointer]:
+        - /url: /treasurer/reports
+      - link "1 Notifications" [ref=f1e24] [cursor=pointer]:
+        - /url: /treasurer/notifications
+        - generic [ref=f1e25]: "1"
+        - generic [ref=f1e30]: Notifications
+      - link "Profile" [ref=f1e31] [cursor=pointer]:
+        - /url: /treasurer/profile
+    - main [ref=f1e37]:
+      - generic [ref=f1e38]:
+        - generic [ref=f1e39]:
+          - generic [ref=f1e40]:
+            - heading "Active Events" [level=2] [ref=f1e41]
+            - generic [ref=f1e42]:
+              - button "Grid view" [ref=f1e43]
+              - button "List view" [ref=f1e49]
+          - generic [ref=f1e51]:
+            - link "Black Friday ₱5,000.00 of ₱25,000.00 20% 1 entry" [ref=f1e53] [cursor=pointer]:
+              - /url: /treasurer/events/32eae1d1-012e-4e6d-a197-a10d8a761d7f
+              - generic [ref=f1e58]:
+                - heading "Black Friday" [level=3] [ref=f1e59]
+                - generic [ref=f1e61]:
+                  - paragraph [ref=f1e62]: ₱5,000.00 of ₱25,000.00
+                  - generic [ref=f1e63]: 20%
+                - generic [ref=f1e64]: 1 entry
+            - link "Testing ₱1,585.76 of ₱200.00 100% 3 entries" [ref=f1e70] [cursor=pointer]:
+              - /url: /treasurer/events/64c18eb9-1e55-4433-b66c-a17318889cbb
+              - generic [ref=f1e75]:
+                - heading "Testing" [level=3] [ref=f1e76]
+                - generic [ref=f1e78]:
+                  - paragraph [ref=f1e79]: ₱1,585.76 of ₱200.00
+                  - generic [ref=f1e80]: 100%
+                - generic [ref=f1e81]: 3 entries
+            - link [ref=f1e87] [cursor=pointer]:
+              - /url: /treasurer/events/107a3854-dca0-4155-ac81-15075f378a89
+              - generic [ref=f1e92]:
+                - heading "From" [level=3] [ref=f1e93]
+                - paragraph [ref=f1e96]: ₱0.00 of ₱20,000.00
+                - generic [ref=f1e97]: 4 entries
+            - link "Expo ₱7,812.86 of ₱20.00 100% 8 entries" [ref=f1e103] [cursor=pointer]:
+              - /url: /treasurer/events/f55a83a7-6b4d-4542-bef8-5045c801476d
+              - generic [ref=f1e108]:
+                - heading "Expo" [level=3] [ref=f1e109]
+                - generic [ref=f1e111]:
+                  - paragraph [ref=f1e112]: ₱7,812.86 of ₱20.00
+                  - generic [ref=f1e113]: 100%
+                - generic [ref=f1e114]: 8 entries
+            - link "Homecoming ₱739.75 of ₱25,000.00 3% 7 entries" [ref=f1e120] [cursor=pointer]:
+              - /url: /treasurer/events/13426dca-78ef-47c1-904f-378f8faafcca
+              - generic [ref=f1e125]:
+                - heading "Homecoming" [level=3] [ref=f1e126]
+                - generic [ref=f1e128]:
+                  - paragraph [ref=f1e129]: ₱739.75 of ₱25,000.00
+                  - generic [ref=f1e130]: 3%
+                - generic [ref=f1e131]: 7 entries
+        - button "New event" [ref=f1e136]
+  - button "Open Next.js Dev Tools" [ref=f1e143] [cursor=pointer]
+  - alert [ref=f1e147]

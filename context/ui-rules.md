@@ -37,10 +37,11 @@ The `--font-sans` variable is declared in `@theme` in `globals.css`. Apply the f
 
 ## Sidebar / Bottom Nav
 
-- Active item: `color: var(--color-accent)`, font-weight 500, 14px, `background: var(--color-accent-light)` pill behind icon+label on web sidebar
-- Inactive item: `color: var(--color-text-secondary)`, font-weight 500, 14px
-- No underline — active state is color + background change only
-- Sidebar/nav always white background, full-height (web) or full-width (mobile)
+- **Sidebar (desktop)** uses dark chrome via the `nav-*` tokens: background `bg-nav` (#0A0A0C), hover surface `bg-nav-hover`, active item pill `bg-nav-active` + `text-text-inverse`, dividers `border-nav-border`, inactive items `text-text-muted` with `hover:bg-nav-hover hover:text-text-inverse`. (Approved dark-chrome exception 2026-08-25 — the "always white" rule applies to the **mobile bottom nav**, not the sidebar.)
+- **Mobile bottom nav** is always solid white: `bg-surface border-t border-border`, icons + labels, fixed height 64px.
+- **Active nav state (both variants)** — X-style filled icon: each nav icon has a filled silhouette counterpart (mapped in `components/layout/NavItem.tsx` `FILLED` record); inactive = outline `strokeWidth={2}`. Active color: `text-accent` (bottom nav) / `bg-nav-active text-text-inverse` (sidebar). No pill behind the bottom-nav active icon.
+- Inactive item: `color: var(--color-text-secondary)` (web sidebar uses `text-text-muted` on dark), font-weight 500, 14px
+- No underline — active state is icon fill + color change only
 - Unread notification count shows as a small pill badge on the Notifications nav item, never as a raw dot with no count
 
 ---

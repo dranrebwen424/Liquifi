@@ -1,0 +1,22 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e232]:
+      - heading "WELCOME" [level=1] [ref=e234]
+      - generic [ref=e235]:
+        - generic [ref=e237]:
+          - textbox "Email *" [ref=e238]:
+            - /placeholder: " "
+            - text: e2e-modal-1787398064501@example.com
+          - generic: Email *
+        - generic [ref=e240]:
+          - textbox "Password *" [ref=e241]:
+            - /placeholder: " "
+            - text: wrong-password-123
+          - generic: Password *
+          - button "Show password" [ref=e242]
+        - paragraph [ref=e248]: Too many failed attempts. Try again in 60 seconds.
+        - button "Sign in" [ref=e249]
+        - link "Forget Password?" [ref=e251] [cursor=pointer]:
+          - /url: /forgot-password
+        - button "Create an account" [ref=e252]
+  - alert [ref=e253]

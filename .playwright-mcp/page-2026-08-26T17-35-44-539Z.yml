@@ -1,0 +1,125 @@
+- generic [active] [ref=f1e1]:
+  - generic [ref=f1e2]:
+    - generic:
+      - generic: Liquifi
+      - button "Search events"
+    - navigation:
+      - link "Home":
+        - /url: /treasurer/home
+      - link "Reports":
+        - /url: /treasurer/reports
+      - link "1 Notifications":
+        - /url: /treasurer/notifications
+        - generic: "1"
+        - generic: Notifications
+      - link "Profile":
+        - /url: /treasurer/profile
+    - main [ref=f1e37]:
+      - generic [ref=f1e149]:
+        - link "Back to events" [ref=f1e150] [cursor=pointer]:
+          - /url: /treasurer/home
+        - generic [ref=f1e153]:
+          - generic [ref=f1e154]:
+            - generic [ref=f1e155]:
+              - heading "Expo" [level=1] [ref=f1e156]
+              - generic "Open" [ref=f1e157]
+            - paragraph [ref=f1e161]: Created Jul 25, 2026 · by Dranreb Wen Balangbang
+          - button "Archive Event" [disabled] [ref=f1e162]
+        - generic [ref=f1e167]:
+          - generic [ref=f1e169]:
+            - paragraph [ref=f1e170]: BUDGET
+            - paragraph [ref=f1e171]: "-₱7,792.86"
+            - generic [ref=f1e172]:
+              - generic [ref=f1e173]:
+                - paragraph [ref=f1e174]: Total
+                - paragraph [ref=f1e175]: ₱20.00
+              - generic [ref=f1e176]:
+                - paragraph [ref=f1e177]: Paid
+                - paragraph [ref=f1e178]: ₱7,812.86
+          - generic [ref=f1e179]:
+            - paragraph
+        - generic [ref=f1e183]:
+          - button "Log Entry" [ref=f1e184]
+          - link "View Report" [ref=f1e186] [cursor=pointer]:
+            - /url: /treasurer/reports/f55a83a7-6b4d-4542-bef8-5045c801476d
+        - generic [ref=f1e191]:
+          - generic [ref=f1e192]:
+            - generic [ref=f1e193]:
+              - heading "Expenses" [level=2] [ref=f1e194]
+              - paragraph [ref=f1e195]: Total of 8 Entries
+            - generic [ref=f1e196]:
+              - button [ref=f1e198]
+              - generic [ref=f1e200]:
+                - button "Grid view" [ref=f1e201]
+                - button "List view" [ref=f1e207]
+          - generic [ref=f1e209]:
+            - generic [ref=f1e211] [cursor=pointer]:
+              - generic [ref=f1e212]:
+                - img "Receipt" [ref=f1e213]
+                - generic "Deducted" [ref=f1e215]
+              - generic [ref=f1e219]:
+                - generic [ref=f1e220]:
+                  - paragraph [ref=f1e221]: MABINI COLLEGES, INC.
+                  - paragraph [ref=f1e222]: INVOICE
+                - paragraph [ref=f1e223]: ₱3,000.00
+            - generic [ref=f1e225] [cursor=pointer]:
+              - generic [ref=f1e226]:
+                - img "Receipt" [ref=f1e227]
+                - generic "Deducted" [ref=f1e229]
+              - generic [ref=f1e233]:
+                - generic [ref=f1e234]:
+                  - paragraph [ref=f1e235]: FATIMA A. PANDEAGUA DING'S FASHION BOUTIQUE
+                  - paragraph [ref=f1e236]: SALES INVOICE
+                - paragraph [ref=f1e237]: ₱1,700.00
+            - generic [ref=f1e239] [cursor=pointer]:
+              - generic [ref=f1e240]:
+                - img "Receipt" [ref=f1e241]
+                - generic "Deducted" [ref=f1e243]
+              - generic [ref=f1e247]:
+                - generic [ref=f1e248]:
+                  - paragraph [ref=f1e249]: CAMARINES NORTE ELECTRIC COOP., INC. (CANORECO)
+                  - paragraph [ref=f1e250]: BILLING INVOICE
+                - paragraph [ref=f1e251]: ₱1,298.39
+            - generic [ref=f1e253] [cursor=pointer]:
+              - generic [ref=f1e254]:
+                - img "Receipt" [ref=f1e255]
+                - generic "Deducted" [ref=f1e257]
+              - generic [ref=f1e261]:
+                - generic [ref=f1e262]:
+                  - paragraph [ref=f1e263]: Cara Mia Sales and Services Inc.
+                  - paragraph [ref=f1e264]: OFFICIAL RECEIPT
+                - paragraph [ref=f1e265]: ₱896.01
+            - generic [ref=f1e267] [cursor=pointer]:
+              - generic [ref=f1e268]:
+                - img "Receipt" [ref=f1e269]
+                - generic "Deducted" [ref=f1e271]
+              - generic [ref=f1e275]:
+                - generic [ref=f1e276]:
+                  - paragraph [ref=f1e277]: PRIMEWATER
+                  - paragraph [ref=f1e278]: Receipt
+                - paragraph [ref=f1e279]: ₱468.46
+            - generic [ref=f1e281] [cursor=pointer]:
+              - generic "Pending Approval" [ref=f1e288]
+              - generic [ref=f1e292]:
+                - generic [ref=f1e293]:
+                  - paragraph [ref=f1e294]: Transportation — SM
+                  - paragraph [ref=f1e295]: transportation
+                - paragraph [ref=f1e296]: ₱2,478.00
+            - generic [ref=f1e298] [cursor=pointer]:
+              - generic "Pending Approval" [ref=f1e305]
+              - generic [ref=f1e309]:
+                - generic [ref=f1e310]:
+                  - paragraph [ref=f1e311]: Transportation — SM
+                  - paragraph [ref=f1e312]: transportation
+                - paragraph [ref=f1e313]: ₱46.00
+            - generic [ref=f1e315] [cursor=pointer]:
+              - generic [ref=f1e316]:
+                - img "Receipt" [ref=f1e317]
+                - generic "Deducted" [ref=f1e319]
+              - generic [ref=f1e323]:
+                - generic [ref=f1e324]:
+                  - paragraph [ref=f1e325]: SM MART INC.
+                  - paragraph [ref=f1e326]: ACKNOWLEDGEMENT RECEIPT
+                - paragraph [ref=f1e327]: ₱450.00
+  - button "Open Next.js Dev Tools" [ref=f1e143] [cursor=pointer]
+  - alert [ref=f1e147]

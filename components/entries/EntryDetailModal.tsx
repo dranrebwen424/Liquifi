@@ -65,15 +65,42 @@ function formatTime(timeStr: string | null | undefined): string {
   return timeStr;
 }
 
-type ItemRow = {
-  description?: string;
-  quantity?: number;
-  unit_price?: number;
-  line_amount?: number;
+type NormalizedItem = {
+  description: string;
+  qty: number | null;
+  unitPrice: number | null;
+  lineAmount: number | null;
 };
 
-function isItemBreakdown(val: unknown): val is ItemRow[] {
-  return Array.isArray(val) && val.length > 0 && typeof val[0] === "object" && "description" in (val[0] as Record<string, unknown>);
+function toNumberOrNull(v: unknown): number | null {
+  const n =
+    typeof v === "number"
+      ? v
+      : typeof v === "string" && v.trim() !== ""
+        ? Number(v)
+        : NaN;
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Stored shapes differ: receipts = camelCase (qty/unitPrice/lineAmount, verbatim
+ *  from the Gemini zod schema), manual = snake_case (qty/unit_price/line_amount). */
+function normalizeItem(raw: Record<string, unknown>): NormalizedItem {
+  return {
+    description: typeof raw.description === "string" ? raw.description : "",
+    qty: toNumberOrNull(raw.qty ?? raw.quantity),
+    unitPrice: toNumberOrNull(raw.unitPrice ?? raw.unit_price),
+    lineAmount: toNumberOrNull(raw.lineAmount ?? raw.line_amount),
+  };
+}
+
+function isItemBreakdown(val: unknown): val is Record<string, unknown>[] {
+  return (
+    Array.isArray(val) &&
+    val.length > 0 &&
+    typeof val[0] === "object" &&
+    val[0] !== null &&
+    "description" in (val[0] as Record<string, unknown>)
+  );
 }
 
 /** Receipt image placeholder (larger version for modal). */
@@ -302,7 +329,9 @@ function EntryDetailContent({
   const isVoided = entry.status === "voided";
   const displayName = entryTitle(entry);
   const title = entry.supplierName ? entry.description : null;
-  const itemBreakdown = isItemBreakdown(entry.itemBreakdown) ? entry.itemBreakdown : null;
+  const itemBreakdown = isItemBreakdown(entry.itemBreakdown)
+    ? entry.itemBreakdown.map(normalizeItem)
+    : null;
   const [imgFailed, setImgFailed] = useState(false);
   const showImage = Boolean(entry.imageUrl) && !imgFailed;
 
@@ -406,16 +435,16 @@ function EntryDetailContent({
                     className="border-b border-border last:border-0"
                   >
                     <td className="px-3 py-2 text-text-primary">
-                      {item.description ?? "—"}
+                      {item.description || "—"}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums text-text-primary">
-                      {item.quantity ?? "—"}
+                      {item.qty ?? "—"}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums text-text-primary">
-                      {item.unit_price != null ? formatPHP(item.unit_price) : "—"}
+                      {item.unitPrice != null ? formatPHP(item.unitPrice) : "—"}
                     </td>
                     <td className="px-3 py-2 text-right font-medium tabular-nums text-text-primary">
-                      {item.line_amount != null ? formatPHP(item.line_amount) : "—"}
+                      {item.lineAmount != null ? formatPHP(item.lineAmount) : "—"}
                     </td>
                   </tr>
                 ))}

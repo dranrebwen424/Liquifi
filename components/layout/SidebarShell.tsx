@@ -1,14 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+import { isEventPage } from "@/lib/event-route";
+import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "liquifi:sidebar-collapsed";
 
 /**
  * Shared shell that syncs main content padding with the collapsible Sidebar.
  * On mobile: no sidebar offset. On desktop: left padding synced with sidebar.
+ * On event pages: bottom padding animates from pb-20 → pb-0 (navs slide out).
  */
 export function SidebarShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(true);
 
   useEffect(() => {
@@ -46,8 +51,15 @@ export function SidebarShell({ children }: { children: React.ReactNode }) {
     );
   }, [collapsed]);
 
+  const eventPage = isEventPage(pathname);
+
   return (
-    <main className="px-4 py-6 pb-20 transition-[padding] duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] md:px-12 md:py-8 md:pb-0 lg:pl-[calc(var(--sidebar-width)+48px)]">
+    <main
+      className={cn(
+        "px-4 pt-6 pb-6 transition-[padding] duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] md:px-12 md:pt-8 md:pb-8 lg:pl-[calc(var(--sidebar-width)+48px)]",
+        eventPage ? "pt-0 pb-0 md:pt-0" : "pb-20 md:pb-0",
+      )}
+    >
       {children}
     </main>
   );

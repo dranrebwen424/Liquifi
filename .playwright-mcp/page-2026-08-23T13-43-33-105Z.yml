@@ -1,0 +1,30 @@
+- generic [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - link "Go back" [ref=e4] [cursor=pointer]:
+        - /url: /login
+      - link "Liquifi home" [ref=e7] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e12]: Liquifi
+      - generic [ref=e14]:
+        - generic [ref=e15]:
+          - heading "Get Started" [level=1] [ref=e16]
+          - paragraph [ref=e17]: Request an account for your council.
+        - generic [ref=e18]:
+          - generic [ref=e20]:
+            - button "Role" [expanded] [active] [ref=e21]:
+              - generic [ref=e22]: Treasurer
+            - generic: Role
+            - listbox [ref=e35]:
+              - option "Treasurer" [selected] [ref=e36] [cursor=pointer]
+              - option "Adviser" [ref=e37] [cursor=pointer]
+          - generic [ref=e26]:
+            - button "Department" [ref=e27]:
+              - generic [ref=e28]: College of Accountancy (BSBA)
+            - generic: Department
+          - button "Continue" [ref=e31]
+          - paragraph [ref=e32]:
+            - text: Already have an account?
+            - link "Sign in" [ref=e33] [cursor=pointer]:
+              - /url: /login
+  - alert [ref=e34]

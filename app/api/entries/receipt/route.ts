@@ -16,6 +16,8 @@ const GUIDANCE = {
     "We couldn't read a receipt number or vendor from this image. If this is a real expense without a receipt (like a sari-sari store purchase), you can log it using No Receipt Entry — just fill in what was bought and the adviser will approve it.",
   borderline:
     "This photo looks blurry or unclear. Try a clearer photo, or log it as a No Receipt Entry.",
+  multiple_documents:
+    "This photo contains more than one receipt. Upload one receipt at a time — take a separate photo of each receipt.",
 } as const;
 
 function errorResponse(message: string, status: number, code?: string) {
@@ -75,7 +77,12 @@ export async function POST(request: NextRequest) {
     try {
       const outcome = await parseReceipt(dataUrl);
       if (outcome.outcome !== "valid") {
-        const code = outcome.outcome === "invalid" ? "invalid_document" : "borderline";
+        const code =
+          outcome.outcome === "invalid"
+            ? "invalid_document"
+            : outcome.outcome === "multiple"
+              ? "multiple_documents"
+              : "borderline";
         await insforge.database.from("audit_logs").insert([
           {
             actor_id: user.id,

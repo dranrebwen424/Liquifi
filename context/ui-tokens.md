@@ -59,7 +59,14 @@ telling the user something about status — not decoration.
   --color-surface: #ffffff;
   --color-surface-secondary: #f5f5f6;
   --color-surface-tertiary: #f0f0f2;
+  --color-surface-dept: #e9eef6;
   --color-surface-inverse: #111114;
+
+  /* Dark nav chrome (sidebar) */
+  --color-nav: #0a0a0c;
+  --color-nav-hover: #1a1a1e;
+  --color-nav-active: #27272e;
+  --color-nav-border: #1e1e22;
 
   /* Borders */
   --color-border: #e5e5e5;
@@ -154,6 +161,10 @@ token above:
 | Card / surface        | `bg-surface`               |
 | Secondary surface     | `bg-surface-secondary`     |
 | Inverse surface       | `bg-surface-inverse`       |
+| Sidebar chrome (dark) | `bg-nav`                   |
+| Sidebar hover surface | `bg-nav-hover`             |
+| Sidebar active pill   | `bg-nav-active`            |
+| Sidebar dividers      | `border-nav-border`        |
 | Default border        | `border-border`            |
 | Light border          | `border-border-light`      |
 | Strong border         | `border-border-strong`     |

@@ -90,6 +90,12 @@
   --color-surface-dept: #e9eef6;
   --color-surface-inverse: #111114;
 
+  /* Dark nav chrome (sidebar) */
+  --color-nav: #0a0a0c;
+  --color-nav-hover: #1a1a1e;
+  --color-nav-active: #27272e;
+  --color-nav-border: #1e1e22;
+
   /* Borders */
   --color-border-light: #eeeeee;
   --color-border-strong: #d4d4d4;
@@ -166,10 +172,16 @@
 }
 
 @layer base {
+  html {
+    margin: 0;
+    padding: 0;
+  }
   * {
     @apply border-border;
   }
   body {
+    margin: 0;
+    padding: 0;
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);

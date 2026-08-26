@@ -55,16 +55,16 @@ export function BudgetSummary({
   if (mobileOnly) {
     return (
       <>
-        <div className={cn("rounded-[21px] bg-surface-inverse p-5 shadow-card", className)}>
+        <div className={cn("rounded-[20px] bg-surface-inverse p-4 shadow-card", className)}>
           {/* BUDGET label */}
-          <p className="text-[11px] font-medium uppercase tracking-wide text-text-inverse/60">
+          <p className="text-[10px] font-medium uppercase tracking-wide text-text-inverse/60">
             BUDGET
           </p>
 
           {/* Main budget amount */}
           <p
             className={cn(
-              "mt-1 text-[28px] font-bold leading-tight tabular-nums",
+              "mt-1 text-[24px] font-bold leading-tight tabular-nums",
               remaining < 0 ? "text-error" : "text-text-inverse",
             )}
           >
@@ -74,28 +74,28 @@ export function BudgetSummary({
           </p>
 
           {/* Total + Spent row */}
-          <div className="mt-4 flex gap-8">
+          <div className="mt-3 flex gap-6">
             <div>
-              <p className="text-[11px] font-medium uppercase tracking-wide text-text-inverse/60">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-text-inverse/60">
                 TOTAL
               </p>
-              <p className="mt-0.5 text-sm font-bold tabular-nums text-text-inverse">
+              <p className="mt-0.5 text-[13px] font-bold tabular-nums text-text-inverse">
                 {formatPHP(budgetTotal)}
               </p>
             </div>
             <div>
-              <p className="text-[11px] font-medium uppercase tracking-wide text-text-inverse/60">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-text-inverse/60">
                 SPEND
               </p>
-              <p className="mt-0.5 text-sm font-bold tabular-nums text-text-inverse">
+              <p className="mt-0.5 text-[13px] font-bold tabular-nums text-text-inverse">
                 {formatPHP(totalSpent)}
               </p>
             </div>
           </div>
 
           {/* Progress bar + percentage */}
-          <div className="mt-4 flex items-center gap-3">
-            <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/10">
+          <div className="mt-3 flex items-center gap-2.5">
+            <div className="h-[5px] flex-1 overflow-hidden rounded-full bg-white/10">
               <div
                 className="h-full rounded-full transition-all"
                 style={{
@@ -109,7 +109,7 @@ export function BudgetSummary({
                 }}
               />
             </div>
-            <span className="shrink-0 text-xs text-text-inverse/60">
+            <span className="shrink-0 text-[10px] text-text-inverse/60">
               {Math.round(pctUsed)}%
             </span>
           </div>

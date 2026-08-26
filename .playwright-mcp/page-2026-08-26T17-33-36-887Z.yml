@@ -1,0 +1,17 @@
+- main [ref=e2]:
+  - generic [ref=e6]:
+    - heading "WELCOME" [level=1] [ref=e8]
+    - generic [ref=e9]:
+      - generic [ref=e11]:
+        - textbox "Email *" [ref=e12]:
+          - /placeholder: " "
+        - generic: Email *
+      - generic [ref=e14]:
+        - textbox "Password *" [ref=e15]:
+          - /placeholder: " "
+        - generic: Password *
+        - button "Show password" [ref=e16]
+      - button "Sign in" [ref=e22]
+      - link "Forget Password?" [ref=e24] [cursor=pointer]:
+        - /url: /forgot-password
+      - button "Create an account" [ref=e25]
