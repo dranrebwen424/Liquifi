@@ -25,12 +25,14 @@ export function LockedBanner({ isLocked, isArchived }: LockedBannerProps) {
   if (!isLocked) return null;
 
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-border border-l-[3px] border-l-info bg-info-lightest px-4 py-3">
-      <Lock className="h-4 w-4 shrink-0 text-info-foreground" />
+    <div className="flex items-center gap-3 rounded-[5px] border border-border bg-surface px-4 py-3 shadow-[0px_2px_10px_0px_rgba(0,0,0,0.02)]">
+      <Lock className="h-5 w-5 shrink-0 text-text-muted" />
       <div>
-        <p className="text-sm font-medium text-info-foreground">Locked</p>
+        <p className="text-sm font-medium text-text-primary">
+          Pending Adviser Approval
+        </p>
         <p className="text-xs text-text-muted">
-          Report pending adviser approval.
+          New entries cannot be added while this event is awaiting approval.
         </p>
       </div>
     </div>

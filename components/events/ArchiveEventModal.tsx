@@ -34,12 +34,15 @@ type ArchiveEventButtonProps = {
   eventId: string;
   canArchive: boolean;
   isArchived: boolean;
+  /** Compact mode for Figma mobile layout — smaller outlined pill. */
+  compact?: boolean;
 };
 
 export function ArchiveEventButton({
   eventId,
   canArchive,
   isArchived,
+  compact,
 }: ArchiveEventButtonProps) {
   const [open, setOpen] = useState(false);
 
@@ -50,10 +53,14 @@ export function ArchiveEventButton({
         onClick={() => setOpen(true)}
         disabled={!canArchive}
         className={cn(
-          "inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-          canArchive
-            ? "border-error/40 bg-surface text-error hover:bg-error-lightest"
-            : "border-border bg-surface text-text-muted",
+          "inline-flex shrink-0 items-center gap-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+          compact
+            ? "rounded-[10px] border border-text-primary px-3 py-1.5 text-xs font-medium text-text-primary hover:bg-surface-secondary"
+            : "rounded-lg border px-2.5 py-1.5 text-xs font-medium sm:gap-2 sm:rounded-xl sm:px-4 sm:py-2.5 sm:text-sm",
+          !compact &&
+            (canArchive
+              ? "border-error/40 bg-surface text-error hover:bg-error-lightest"
+              : "border-border bg-surface text-text-muted"),
         )}
         title={
           isArchived
@@ -63,8 +70,8 @@ export function ArchiveEventButton({
               : "Available once the report is approved."
         }
       >
-        <Archive className="h-4 w-4" />
-        Archive Event
+        <Archive className="h-3.5 w-3.5" />
+        Archive Report
       </button>
 
       <ArchiveEventModal

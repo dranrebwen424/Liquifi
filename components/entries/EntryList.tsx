@@ -40,6 +40,8 @@ type EntryListProps = {
   entries: EntryListItem[];
   isArchived: boolean;
   canMutate: boolean;
+  /** Figma mobile layout — shows "Expenses" heading + count + filter icons. */
+  mobileLayout?: boolean;
   filters?: {
     state: ExpenseFiltersState;
     onChange: (filters: ExpenseFiltersState) => void;
@@ -49,40 +51,65 @@ type EntryListProps = {
 
 type ViewMode = "grid" | "list";
 
-export function EntryList({ entries, isArchived, canMutate, filters }: EntryListProps) {
+export function EntryList({ entries, isArchived, canMutate, mobileLayout, filters }: EntryListProps) {
   const [view, setView] = useState<ViewMode>("grid");
   const [selectedEntry, setSelectedEntry] = useState<EntryListItem | null>(null);
   const [voidTarget, setVoidTarget] = useState<EntryListItem | null>(null);
 
   return (
     <div>
-      {/* Header — always visible */}
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <h2 className="text-base font-semibold text-text-primary">
-          EXPENSES ({entries.length})
-        </h2>
+      {/* Header — mobile Figma layout */}
+      {mobileLayout ? (
+        <div className="mb-4 flex items-end justify-between">
+          <div>
+            <h2 className="text-[19px] font-medium text-text-primary">
+              Expenses
+            </h2>
+            <p className="mt-0.5 text-[11px] text-text-muted">
+              Total of {entries.length} {entries.length === 1 ? "Entry" : "Entries"}
+            </p>
+          </div>
 
-        {/* Desktop: filter chips inline next to title */}
-        {filters && (
-          <ExpenseFilterChips
-            filters={filters.state}
-            onChange={filters.onChange}
-            categories={filters.categories}
-          />
-        )}
+          {/* Filter + Sort icons */}
+          <div className="flex items-center gap-2">
+            {filters && (
+              <ExpenseFilterIcon
+                filters={filters.state}
+                onChange={filters.onChange}
+                categories={filters.categories}
+              />
+            )}
+          </div>
+        </div>
+      ) : (
+        /* Header — desktop layout (unchanged) */
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <h2 className="text-base font-semibold text-text-primary">
+            EXPENSES ({entries.length})
+          </h2>
 
-        {/* Right side: mobile filter icon + view toggle */}
-        <div className="ml-auto flex items-center gap-2">
+          {/* Desktop: filter chips inline next to title */}
           {filters && (
-            <ExpenseFilterIcon
+            <ExpenseFilterChips
               filters={filters.state}
               onChange={filters.onChange}
               categories={filters.categories}
             />
           )}
-          <ViewToggle value={view} onChange={setView} />
+
+          {/* Right side: mobile filter icon + view toggle */}
+          <div className="ml-auto flex items-center gap-2">
+            {filters && (
+              <ExpenseFilterIcon
+                filters={filters.state}
+                onChange={filters.onChange}
+                categories={filters.categories}
+              />
+            )}
+            <ViewToggle value={view} onChange={setView} />
+          </div>
         </div>
-      </div>
+      )}
 
       {entries.length === 0 ? (
         /* Empty state */

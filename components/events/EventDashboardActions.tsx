@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Plus, FileText } from "lucide-react";
+import { Plus, ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LogEntryModal } from "@/components/entries/LogEntryModal";
 
@@ -29,15 +29,17 @@ export function EventDashboardActions({
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-3 lg:hidden">
+      {/* Mobile: Figma-matched pill buttons */}
+      <div className="flex gap-3 lg:hidden">
+        {/* Log Entry — dark filled pill */}
         <button
           onClick={() => setLogEntryOpen(true)}
           disabled={!canMutate}
           className={cn(
-            "inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-medium transition-[color,transform,shadow] hover:scale-[1.02]",
+            "inline-flex flex-1 items-center justify-center gap-2 rounded-[17px] px-4 py-3 text-sm font-medium transition-[color,transform,shadow]",
             canMutate
-              ? "bg-accent text-accent-foreground hover:bg-accent-hover hover:shadow-md active:scale-[0.98]"
-              : "cursor-not-allowed border border-border bg-surface text-text-muted opacity-50",
+              ? "bg-surface-inverse text-text-inverse hover:bg-accent-hover hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
+              : "cursor-not-allowed bg-neutral text-text-inverse/50",
           )}
           title={
             isArchived
@@ -51,29 +53,73 @@ export function EventDashboardActions({
           Log Entry
         </button>
 
-        {canMutate ? (
-          <Link
-            href={`/treasurer/reports/${eventId}`}
-            className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 py-3 text-sm font-medium text-text-primary transition-[color,transform,shadow] hover:bg-surface-secondary hover:border-border-strong hover:shadow-sm active:scale-[0.98]"
-            title="Generate financial report"
-          >
-            <FileText className="h-4 w-4" />
-            Generate Report
-          </Link>
-        ) : (
+        {/* View Report — outlined pill */}
+        {isArchived ? (
           <button
             type="button"
             disabled
-            className="inline-flex cursor-not-allowed flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 py-3 text-sm font-medium text-text-muted opacity-50"
-            title={
-              isArchived
-                ? "Archived — no reports."
-                : "Report already pending."
-            }
+            className="inline-flex flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-[17px] border border-border px-4 py-3 text-sm font-medium text-text-muted"
+            title="Archived — no reports."
           >
-            <FileText className="h-4 w-4" />
-            Generate Report
+            <ArrowUpRight className="h-4 w-4" />
+            View Report
           </button>
+        ) : (
+          <Link
+            href={`/treasurer/reports/${eventId}`}
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-[17px] border border-text-primary px-4 py-3 text-sm font-medium text-text-primary transition-[color,transform,shadow] hover:bg-surface-secondary hover:shadow-sm hover:scale-[1.02] active:scale-[0.98]"
+            title="View financial report"
+          >
+            <ArrowUpRight className="h-4 w-4" />
+            View Report
+          </Link>
+        )}
+      </div>
+
+      {/* Desktop: unchanged original layout */}
+      <div className="hidden grid-cols-2 gap-3 lg:grid">
+        {/* Log Entry — always visible; grayed out when locked/archived */}
+        <button
+          onClick={() => setLogEntryOpen(true)}
+          disabled={!canMutate}
+          className={cn(
+            "inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-medium transition-[color,transform,shadow]",
+            canMutate
+              ? "bg-accent text-accent-foreground hover:bg-accent-hover hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
+              : "cursor-not-allowed bg-white/10 text-text-inverse/50",
+          )}
+          title={
+            isArchived
+              ? "Archived — read-only."
+              : isLocked
+                ? "Locked — report pending."
+                : "Log a new expense"
+          }
+        >
+          <Plus className="h-4 w-4" />
+          Log Entry
+        </button>
+
+        {/* View Report — always a link; disabled only when archived (no report exists) */}
+        {isArchived ? (
+          <button
+            type="button"
+            disabled
+            className="inline-flex cursor-not-allowed flex-1 items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm font-medium text-text-inverse/50"
+            title="Archived — no reports."
+          >
+            <ArrowUpRight className="h-4 w-4" />
+            View Report
+          </button>
+        ) : (
+          <Link
+            href={`/treasurer/reports/${eventId}`}
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/30 px-4 py-3 text-sm font-medium text-text-inverse transition-[color,transform,shadow] hover:bg-white/10 hover:shadow-sm hover:scale-[1.02] active:scale-[0.98]"
+            title="View financial report"
+          >
+            <ArrowUpRight className="h-4 w-4" />
+            View Report
+          </Link>
         )}
       </div>
 

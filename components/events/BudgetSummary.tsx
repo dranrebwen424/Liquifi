@@ -16,6 +16,12 @@ type BudgetSummaryProps = {
   isLocked: boolean;
   /** Adviser/admin read-only mode — omits all mutating controls entirely. */
   readOnly?: boolean;
+  /** Mobile-only Figma layout — shows budget info with creator details. */
+  mobileOnly?: boolean;
+  /** Creator name (shown in mobile layout). */
+  createdByName?: string | null;
+  /** Formatted created date (shown in mobile layout). */
+  createdDate?: string;
   className?: string;
 };
 
@@ -27,6 +33,9 @@ export function BudgetSummary({
   isArchived,
   isLocked,
   readOnly,
+  mobileOnly,
+  createdByName,
+  createdDate,
   className,
 }: BudgetSummaryProps) {
   const [logEntryOpen, setLogEntryOpen] = useState(false);
@@ -42,17 +51,105 @@ export function BudgetSummary({
         ? "Near Budget Limit"
         : `${Math.round(pctUsed)}% Budget Utilized`;
 
+  // ── Mobile-only Figma layout ──
+  if (mobileOnly) {
+    return (
+      <>
+        <div className={cn("rounded-[21px] bg-surface-inverse p-5 shadow-card", className)}>
+          {/* BUDGET label */}
+          <p className="text-[11px] font-medium uppercase tracking-wide text-text-inverse/60">
+            BUDGET
+          </p>
+
+          {/* Main budget amount */}
+          <p
+            className={cn(
+              "mt-1 text-[28px] font-bold leading-tight tabular-nums",
+              remaining < 0 ? "text-error" : "text-text-inverse",
+            )}
+          >
+            {remaining < 0
+              ? `-${formatPHP(Math.abs(remaining))}`
+              : formatPHP(remaining)}
+          </p>
+
+          {/* Creator info */}
+          <div className="mt-3 flex flex-col gap-0.5">
+            {createdByName && createdByName !== "Unknown" && (
+              <p className="text-[11px] text-text-inverse/60">
+                By: {createdByName}
+              </p>
+            )}
+            {createdDate && (
+              <p className="text-[11px] text-text-inverse/60">
+                Created {createdDate}
+              </p>
+            )}
+          </div>
+
+          {/* Total + Spent row */}
+          <div className="mt-4 flex gap-8">
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-wide text-text-inverse/60">
+                TOTAL
+              </p>
+              <p className="mt-0.5 text-sm font-bold tabular-nums text-text-inverse">
+                {formatPHP(budgetTotal)}
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-wide text-text-inverse/60">
+                SPEND
+              </p>
+              <p className="mt-0.5 text-sm font-bold tabular-nums text-text-inverse">
+                {formatPHP(totalSpent)}
+              </p>
+            </div>
+          </div>
+
+          {/* Progress bar + percentage */}
+          <div className="mt-4 flex items-center gap-3">
+            <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/10">
+              <div
+                className="h-full rounded-full transition-all"
+                style={{
+                  width: `${Math.min(pctUsed, 100)}%`,
+                  backgroundColor:
+                    pctUsed >= 100
+                      ? "var(--color-error)"
+                      : pctUsed >= 70
+                        ? "var(--color-warning)"
+                        : "var(--color-success)",
+                }}
+              />
+            </div>
+            <span className="shrink-0 text-xs text-text-inverse/60">
+              {Math.round(pctUsed)}%
+            </span>
+          </div>
+        </div>
+
+        <LogEntryModal
+          open={logEntryOpen}
+          onClose={() => setLogEntryOpen(false)}
+          eventId={eventId}
+        />
+      </>
+    );
+  }
+
+  // ── Desktop layout (unchanged) ──
   return (
     <>
-      <div className={cn("rounded-xl bg-surface-inverse p-5 shadow-card sm:p-6", className)}>
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+      <div className={cn("rounded-xl bg-surface-inverse p-4 shadow-card sm:p-6", className)}>
+        <div className="flex flex-col gap-4 sm:gap-6 lg:flex-row lg:items-center lg:justify-between">
           {/* Left: Expense data */}
           <div className="flex-1">
             <p className="text-xs font-medium uppercase tracking-wide text-text-inverse/60">
-              Expenses
+              BUDGET
             </p>
             <p
-              className={`mt-1 text-[32px] font-semibold leading-10 tabular-nums sm:text-[40px] sm:leading-12 ${
+              className={`mt-1 text-[26px] font-semibold leading-8 tabular-nums sm:text-[40px] sm:leading-12 ${
                 remaining < 0 ? "text-error" : "text-text-inverse"
               }`}
             >
@@ -62,7 +159,7 @@ export function BudgetSummary({
             </p>
 
             {/* Total + Paid */}
-            <div className="mt-4 flex gap-8">
+            <div className="mt-3 flex gap-6 sm:mt-4 sm:gap-8">
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-text-inverse/60">
                   Total
@@ -135,7 +232,7 @@ export function BudgetSummary({
         </div>
 
         {/* Full-width progress bar + status text */}
-        <div className="mt-6">
+        <div className="mt-4 sm:mt-6">
           <p className="mb-1.5 text-right text-xs text-text-inverse/60">
             {statusText}
           </p>
