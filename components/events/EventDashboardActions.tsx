@@ -36,7 +36,7 @@ export function EventDashboardActions({
           onClick={() => setLogEntryOpen(true)}
           disabled={!canMutate}
           className={cn(
-            "inline-flex flex-1 items-center justify-center gap-1.5 rounded-[17px] px-4 py-[10px] text-[13px] font-medium transition-[color,transform,shadow]",
+            "inline-flex flex-1 items-center justify-center gap-1.5 rounded-[17px] px-4 py-[11px] text-[14px] font-medium transition-[color,transform,shadow]",
             canMutate
               ? "bg-surface-inverse text-text-inverse hover:bg-accent-hover hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
               : "cursor-not-allowed bg-neutral text-text-inverse/50",
@@ -49,7 +49,7 @@ export function EventDashboardActions({
                 : "Log a new expense"
           }
         >
-          <Plus className="h-3.5 w-3.5" />
+          <Plus className="h-4 w-4" />
           Log Entry
         </button>
 
@@ -58,19 +58,19 @@ export function EventDashboardActions({
           <button
             type="button"
             disabled
-            className="inline-flex flex-1 cursor-not-allowed items-center justify-center gap-1.5 rounded-[17px] border border-border px-4 py-[10px] text-[13px] font-medium text-text-muted"
+            className="inline-flex flex-1 cursor-not-allowed items-center justify-center gap-1.5 rounded-[17px] border border-border px-4 py-[11px] text-[14px] font-medium text-text-muted"
             title="Archived — no reports."
           >
-            <ArrowUpRight className="h-3.5 w-3.5" />
+            <ArrowUpRight className="h-4 w-4" />
             View Report
           </button>
         ) : (
           <Link
             href={`/treasurer/reports/${eventId}`}
-            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-[17px] border border-text-primary px-4 py-[10px] text-[13px] font-medium text-text-primary transition-[color,transform,shadow] hover:bg-surface-secondary hover:shadow-sm hover:scale-[1.02] active:scale-[0.98]"
+            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-[17px] border border-text-primary px-4 py-[11px] text-[14px] font-medium text-text-primary transition-[color,transform,shadow] hover:bg-surface-secondary hover:shadow-sm hover:scale-[1.02] active:scale-[0.98]"
             title="View financial report"
           >
-            <ArrowUpRight className="h-3.5 w-3.5" />
+            <ArrowUpRight className="h-4 w-4" />
             View Report
           </Link>
         )}

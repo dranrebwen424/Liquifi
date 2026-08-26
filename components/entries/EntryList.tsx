@@ -62,7 +62,7 @@ export function EntryList({ entries, isArchived, canMutate, mobileLayout, filter
       {mobileLayout ? (
         <div className="mb-4 flex items-end justify-between">
           <div>
-            <h2 className="text-[19px] font-medium text-text-primary">
+            <h2 className="text-[20px] font-medium text-text-primary">
               Expenses
             </h2>
             <p className="mt-0.5 text-[11px] text-text-muted">
