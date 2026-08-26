@@ -73,20 +73,6 @@ export function BudgetSummary({
               : formatPHP(remaining)}
           </p>
 
-          {/* Creator info */}
-          <div className="mt-3 flex flex-col gap-0.5">
-            {createdByName && createdByName !== "Unknown" && (
-              <p className="text-[11px] text-text-inverse/60">
-                By: {createdByName}
-              </p>
-            )}
-            {createdDate && (
-              <p className="text-[11px] text-text-inverse/60">
-                Created {createdDate}
-              </p>
-            )}
-          </div>
-
           {/* Total + Spent row */}
           <div className="mt-4 flex gap-8">
             <div>

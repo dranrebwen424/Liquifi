@@ -70,7 +70,7 @@ export function EntryList({ entries, isArchived, canMutate, mobileLayout, filter
             </p>
           </div>
 
-          {/* Filter + Sort icons */}
+          {/* Filter + View Toggle icons */}
           <div className="flex items-center gap-2">
             {filters && (
               <ExpenseFilterIcon
@@ -79,6 +79,7 @@ export function EntryList({ entries, isArchived, canMutate, mobileLayout, filter
                 categories={filters.categories}
               />
             )}
+            <ViewToggle value={view} onChange={setView} />
           </div>
         </div>
       ) : (

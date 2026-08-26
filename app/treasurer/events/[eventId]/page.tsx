@@ -62,21 +62,40 @@ export default async function EventDashboardPage({ params }: Props) {
     <div className="flex flex-col pb-16">
       {/* ── MOBILE LAYOUT (matches Figma) ── */}
       <div className="lg:hidden">
-        {/* Back arrow + Event name */}
-        <div className="flex items-center gap-3">
-          <Link
-            href="/treasurer/home"
-            className="inline-flex shrink-0 items-center justify-center"
-            aria-label="Back to events"
-          >
-            <ArrowLeft className="h-5 w-5 text-text-primary" />
-          </Link>
-          <h1 className="min-w-0 truncate text-lg font-semibold text-text-primary">
-            {event.name}
-          </h1>
+        {/* Back arrow + Event name + Archive Report (all in one row) */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3 min-w-0">
+            <Link
+              href="/treasurer/home"
+              className="mt-1 inline-flex shrink-0 items-center justify-center"
+              aria-label="Back to events"
+            >
+              <ArrowLeft className="h-5 w-5 text-text-primary" />
+            </Link>
+            <div className="min-w-0">
+              <h1 className="min-w-0 truncate text-lg font-semibold text-text-primary">
+                {event.name}
+              </h1>
+              <p className="mt-0.5 text-[11px] text-text-muted">
+                {event.created_by_name && event.created_by_name !== "Unknown" && (
+                  <>By: {event.created_by_name}</>
+                )}
+              </p>
+              <p className="text-[11px] text-text-muted">
+                Created {createdDate}
+              </p>
+            </div>
+          </div>
+
+          <ArchiveEventButton
+            eventId={eventId}
+            canArchive={canArchive}
+            isArchived={isArchived}
+            compact
+          />
         </div>
 
-        {/* Dark budget card */}
+        {/* Dark budget card — no creator info inside */}
         <BudgetSummary
           budgetTotal={event.budget_total}
           totalSpent={event.total_spent}
@@ -84,8 +103,6 @@ export default async function EventDashboardPage({ params }: Props) {
           canMutate={canMutate}
           isArchived={isArchived}
           isLocked={event.is_locked}
-          createdByName={event.created_by_name}
-          createdDate={createdDate}
           className="mt-5"
           mobileOnly
         />
@@ -97,16 +114,6 @@ export default async function EventDashboardPage({ params }: Props) {
             canMutate={canMutate}
             isArchived={isArchived}
             isLocked={event.is_locked}
-          />
-        </div>
-
-        {/* Archive Report button — top right */}
-        <div className="mt-3 flex justify-end">
-          <ArchiveEventButton
-            eventId={eventId}
-            canArchive={canArchive}
-            isArchived={isArchived}
-            compact
           />
         </div>
 
