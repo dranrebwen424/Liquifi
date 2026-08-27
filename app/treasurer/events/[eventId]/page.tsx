@@ -61,7 +61,7 @@ export default async function EventDashboardPage({ params }: Props) {
     <EventPageEntrance>
     <div className="flex flex-col pb-16">
       {/* ── MOBILE LAYOUT (matches Figma) ── */}
-      <div className="lg:hidden px-3.5 pt-3">
+      <div className="lg:hidden px-3 pt-6">
         {/* Back arrow + Event name + Archive Report (all in one row) */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-2.5 min-w-0">
@@ -70,18 +70,18 @@ export default async function EventDashboardPage({ params }: Props) {
               className="mt-0.5 inline-flex shrink-0 items-center justify-center"
               aria-label="Back to events"
             >
-              <ArrowLeft className="h-[20px] w-[20px] text-text-primary" />
+              <ArrowLeft className="h-5 w-5 text-text-primary" />
             </Link>
             <div className="min-w-0">
-              <h1 className="min-w-0 truncate text-[18px] font-semibold leading-tight text-text-primary">
+              <h1 className="min-w-0 truncate text-[20px] font-semibold leading-tight text-text-primary">
                 {event.name}
               </h1>
-              <p className="mt-0.5 text-[11px] leading-snug text-text-muted">
+              <p className="mt-0.5 text-[12px] leading-snug text-text-muted">
                 {event.created_by_name && event.created_by_name !== "Unknown" && (
                   <>By: {event.created_by_name}</>
                 )}
               </p>
-              <p className="text-[11px] leading-snug text-text-muted">
+              <p className="text-[12px] leading-snug text-text-muted">
                 Created {createdDate}
               </p>
             </div>

@@ -55,7 +55,7 @@ export function ArchiveEventButton({
         className={cn(
           "inline-flex shrink-0 items-center gap-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50",
           compact
-            ? "rounded-[17px] border border-border px-3.5 py-[7px] text-[12px] font-medium text-text-primary hover:bg-surface-secondary"
+            ? "rounded-[17px] border border-border px-3.5 py-[8px] text-[13px] font-medium text-text-primary hover:bg-surface-secondary"
             : "rounded-lg border px-2.5 py-1.5 text-xs font-medium sm:gap-2 sm:rounded-xl sm:px-4 sm:py-2.5 sm:text-sm",
           !compact &&
             (canArchive

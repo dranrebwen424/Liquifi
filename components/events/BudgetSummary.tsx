@@ -57,14 +57,14 @@ export function BudgetSummary({
       <>
         <div className={cn("rounded-[20px] bg-surface-inverse p-5 shadow-card", className)}>
           {/* BUDGET label */}
-          <p className="text-[11px] font-medium uppercase tracking-wide text-text-inverse/60">
+          <p className="text-[12px] font-medium uppercase tracking-wide text-text-inverse/60">
             BUDGET
           </p>
 
-          {/* Main budget amount */}
+          {/* Main budget amount — biggest element */}
           <p
             className={cn(
-              "mt-1 text-[26px] font-bold leading-tight tabular-nums",
+              "mt-0.5 text-[28px] font-bold leading-tight tabular-nums",
               remaining < 0 ? "text-error" : "text-text-inverse",
             )}
           >
@@ -73,28 +73,28 @@ export function BudgetSummary({
               : formatPHP(remaining)}
           </p>
 
-          {/* Total + Spent row */}
-          <div className="mt-3.5 flex gap-7">
+          {/* Total + Spent row — smaller */}
+          <div className="mt-3 flex gap-6">
             <div>
-              <p className="text-[11px] font-medium uppercase tracking-wide text-text-inverse/60">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-text-inverse/60">
                 TOTAL
               </p>
-              <p className="mt-0.5 text-[14px] font-bold tabular-nums text-text-inverse">
+              <p className="mt-0 text-[12px] font-semibold tabular-nums text-text-inverse">
                 {formatPHP(budgetTotal)}
               </p>
             </div>
             <div>
-              <p className="text-[11px] font-medium uppercase tracking-wide text-text-inverse/60">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-text-inverse/60">
                 SPEND
               </p>
-              <p className="mt-0.5 text-[14px] font-bold tabular-nums text-text-inverse">
+              <p className="mt-0 text-[12px] font-semibold tabular-nums text-text-inverse">
                 {formatPHP(totalSpent)}
               </p>
             </div>
           </div>
 
           {/* Progress bar + percentage */}
-          <div className="mt-3.5 flex items-center gap-3">
+          <div className="mt-3 flex items-center gap-3">
             <div className="h-[6px] flex-1 overflow-hidden rounded-full bg-white/10">
               <div
                 className="h-full rounded-full transition-all"
