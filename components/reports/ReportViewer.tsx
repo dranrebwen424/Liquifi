@@ -34,15 +34,7 @@ export function ReportViewer({ report, isArchived, readOnly }: ReportViewerProps
         </div>
       )}
 
-      {cancellable && (
-        <>
-          <div className="rounded-xl border border-warning bg-warning-lightest p-3 text-xs text-text-secondary">
-            Your event is locked while this report is pending — no new entries,
-            voids, or budget edits until your adviser decides.
-          </div>
-          <CancelReportButton reportId={report.id} />
-        </>
-      )}
+      {cancellable && <CancelReportButton reportId={report.id} />}
     </div>
   );
 }

@@ -1,11 +1,10 @@
-import { Download, Eye, FileText } from "lucide-react";
+import { Download, Eye } from "lucide-react";
 import { StatusBadge, reportStatusMap } from "@/components/ui/StatusBadge";
 
-// Replaces the inline full-PDF renderer with a compact "file" card — the
-// report is a downloadable document, not an embedded canvas. View opens the
-// streamed PDF (via the session-authed proxy) in a fresh tab; Download saves
-// it as an attachment. Renders for every report state so the PDF stays
-// reachable after generation, regardless of where the review landed.
+// Plain list row for a report — no card chrome. The report is a download
+// document: View opens the streamed PDF (via the session-authed proxy) in a
+// fresh tab; Download saves it as an attachment. Renders for every report
+// state so the PDF stays reachable after generation.
 
 type ReportFileCardProps = {
   report: { id: string; fs_document_number: string; status: string };
@@ -17,12 +16,7 @@ export function ReportFileCard({ report }: ReportFileCardProps) {
   const downloadUrl = `${viewUrl}?dl=1`;
 
   return (
-    <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-border-strong bg-surface p-4 shadow-card transition-shadow hover:shadow-md sm:flex-nowrap sm:p-5">
-      {/* File type tile */}
-      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent-light">
-        <FileText className="h-6 w-6 text-accent" />
-      </div>
-
+    <div className="flex flex-wrap items-center gap-3 border-b border-border py-3 last:border-b-0 sm:flex-nowrap">
       {/* Report identity */}
       <div className="min-w-0 flex-1">
         <p className="flex items-center gap-2 text-sm font-semibold tabular-nums text-text-primary">
@@ -39,7 +33,7 @@ export function ReportFileCard({ report }: ReportFileCardProps) {
             {status.label}
           </span>
         </p>
-        <p className="mt-1 text-xs text-text-muted">
+        <p className="mt-0.5 text-xs text-text-muted">
           Liquidation financial statement report
         </p>
       </div>

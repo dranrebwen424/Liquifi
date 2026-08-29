@@ -102,11 +102,6 @@ export function ReportGenerationFlow({ eventId, previousReport }: ReportGenerati
         <div className="flex flex-col gap-4">
           <ReportFileCard report={{ id: reportId, fs_document_number: fsNumber ?? "", status: "pending_adviser_approval" }} />
 
-          <div className="rounded-xl border border-warning bg-warning-lightest p-3 text-xs text-text-secondary">
-            Your event is locked while this report is pending — no new entries,
-            voids, or budget edits until your adviser decides.
-          </div>
-
           {/* Cancel Report — treasurer-only, before the adviser acts */}
           <CancelReportButton reportId={reportId} onCancelled={handleCancelled} />
         </div>
