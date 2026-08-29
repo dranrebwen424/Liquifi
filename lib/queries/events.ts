@@ -84,7 +84,7 @@ export async function getDepartmentEvents(
 
   const spentMap: Record<string, number> = {};
   const entryCountMap: Record<string, number> = {};
-  const everDeductedIds = new Set<string>();
+  const anyEntryIds = new Set<string>();
   const overspendEventIds = new Set<string>();
   if (entryRows) {
     for (const row of entryRows) {
@@ -92,8 +92,9 @@ export async function getDepartmentEvents(
       if (row.status === "deducted") {
         spentMap[row.event_id] = (spentMap[row.event_id] ?? 0) + Number(row.amount);
       }
+      // Budget locks once ANY entry exists (any status) — see lib/budget-lock.ts
       if (deriveBudgetLocked([row.status])) {
-        everDeductedIds.add(row.event_id);
+        anyEntryIds.add(row.event_id);
       }
       if (isUnresolvedOverspendEntry(row.status, row.causes_overspend, row.overspend_resolved_at)) {
         overspendEventIds.add(row.event_id);
@@ -116,8 +117,8 @@ export async function getDepartmentEvents(
     }
   }
 
-  // Check which events have at least one ever-deducted entry (budget_locked)
-  const budgetLockedIds = everDeductedIds;
+  // Which events have at least one entry (budget_locked)
+  const budgetLockedIds = anyEntryIds;
 
   // Batch-fetch creator names
   const creatorIds = [...new Set(events.map((e: { created_by: string }) => e.created_by).filter(Boolean))];

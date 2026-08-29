@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Plus, FileText } from "lucide-react";
+import { Plus, FileText, Pencil } from "lucide-react";
 import { formatPHP } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { LogEntryModal } from "@/components/entries/LogEntryModal";
+import { EditBudgetModal } from "@/components/events/EditBudgetModal";
 
 type BudgetSummaryProps = {
   budgetTotal: number;
@@ -14,6 +15,8 @@ type BudgetSummaryProps = {
   canMutate: boolean;
   isArchived: boolean;
   isLocked: boolean;
+  /** Budget immutable once any entry exists, or a report is pending/approved. */
+  budgetLocked?: boolean;
   /** Adviser/admin read-only mode — omits all mutating controls entirely. */
   readOnly?: boolean;
   /** Mobile-only Figma layout — shows budget info with creator details. */
@@ -32,6 +35,7 @@ export function BudgetSummary({
   canMutate,
   isArchived,
   isLocked,
+  budgetLocked = false,
   readOnly,
   mobileOnly,
   createdByName,
@@ -39,8 +43,13 @@ export function BudgetSummary({
   className,
 }: BudgetSummaryProps) {
   const [logEntryOpen, setLogEntryOpen] = useState(false);
+  const [editBudgetOpen, setEditBudgetOpen] = useState(false);
   const remaining = budgetTotal - totalSpent;
   const pctUsed = budgetTotal > 0 ? (totalSpent / budgetTotal) * 100 : 0;
+
+  // A budget edit is allowed only while the event is fully untouched:
+  // not archived, no pending/approved report, and no entries (any status).
+  const canEditBudget = canMutate && !budgetLocked;
 
   // Step 18: no text label at/over budget — negative red number is the signal
   // (user decision). Empty string keeps the layout row for a stable height.
@@ -56,10 +65,36 @@ export function BudgetSummary({
     return (
       <>
         <div className={cn("rounded-[20px] bg-surface-inverse p-5 shadow-card", className)}>
-          {/* BUDGET label */}
-          <p className="text-[12px] font-medium uppercase tracking-wide text-text-inverse/60">
-            BUDGET
-          </p>
+          {/* BUDGET label + Edit budget (right-aligned, treasurer only) */}
+          <div className="flex items-center justify-between">
+            <p className="text-[12px] font-medium uppercase tracking-wide text-text-inverse/60">
+              BUDGET
+            </p>
+            {!readOnly && (
+              <button
+                onClick={() => setEditBudgetOpen(true)}
+                disabled={!canEditBudget}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
+                  canEditBudget
+                    ? "border-white/30 text-text-inverse active:bg-white/10"
+                    : "cursor-not-allowed border-white/10 text-text-inverse/40",
+                )}
+                title={
+                  isArchived
+                    ? "Archived — read-only."
+                    : isLocked
+                      ? "Budget is locked while a report is pending."
+                      : budgetLocked
+                        ? "Budget is locked once the first expense is added."
+                        : "Edit the event budget"
+                }
+              >
+                <Pencil className="h-3 w-3" />
+                Edit
+              </button>
+            )}
+          </div>
 
           {/* Main budget amount — biggest element */}
           <p
@@ -119,6 +154,13 @@ export function BudgetSummary({
           open={logEntryOpen}
           onClose={() => setLogEntryOpen(false)}
           eventId={eventId}
+        />
+
+        <EditBudgetModal
+          open={editBudgetOpen}
+          onClose={() => setEditBudgetOpen(false)}
+          eventId={eventId}
+          currentBudget={budgetTotal}
         />
       </>
     );
@@ -213,6 +255,29 @@ export function BudgetSummary({
                 Generate Report
               </button>
             )}
+
+            <button
+              onClick={() => setEditBudgetOpen(true)}
+              disabled={!canEditBudget}
+              className={cn(
+                "inline-flex items-center justify-center gap-2 rounded-lg border px-5 py-2.5 text-sm font-medium transition-[color,transform,shadow] hover:scale-[1.02]",
+                canEditBudget
+                  ? "border-white/30 text-text-inverse hover:bg-white/10 hover:shadow-sm active:scale-[0.98]"
+                  : "cursor-not-allowed border-white/10 text-text-inverse/50",
+              )}
+              title={
+                isArchived
+                  ? "Archived — read-only."
+                  : isLocked
+                    ? "Budget is locked while a report is pending."
+                    : budgetLocked
+                      ? "Budget is locked once the first expense is added."
+                      : "Edit the event budget"
+              }
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Edit Budget
+            </button>
             </div>
           )}
         </div>
@@ -243,6 +308,13 @@ export function BudgetSummary({
         open={logEntryOpen}
         onClose={() => setLogEntryOpen(false)}
         eventId={eventId}
+      />
+
+      <EditBudgetModal
+        open={editBudgetOpen}
+        onClose={() => setEditBudgetOpen(false)}
+        eventId={eventId}
+        currentBudget={budgetTotal}
       />
     </>
   );
