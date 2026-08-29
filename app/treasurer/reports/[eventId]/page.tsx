@@ -3,11 +3,12 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Lock } from "lucide-react";
 import { requireRole } from "@/lib/auth-guard";
 import { getEventDashboard } from "@/lib/queries/events";
-import { getLatestReportByEvent } from "@/lib/queries/reports";
+import { getAllReportsByEvent } from "@/lib/queries/reports";
 import { computeSpendingBreakdown } from "@/lib/spending-breakdown";
 import { formatPHP } from "@/lib/format";
 import { ReportGenerationFlow } from "@/components/reports/ReportGenerationFlow";
 import { ReportViewer } from "@/components/reports/ReportViewer";
+import { ReportFileCard } from "@/components/reports/ReportFileCard";
 import { EventStatusBadge } from "@/components/ui/StatusBadge";
 import { LockedBanner } from "@/components/events/LockedBanner";
 
@@ -29,8 +30,13 @@ export default async function ReportPage({ params }: Props) {
     notFound();
   }
 
-  // Latest report on file — drives the precondition gate (no pending/approved report)
-  const latestReport = await getLatestReportByEvent(eventId);
+  // Every report on file for this event, newest first — the full history.
+  // Reports are never overwritten (regeneration = a new row), so rejected/
+  // cancelled/approved revisions all stay visible. The newest report drives
+  // the precondition gate (no pending/approved report → generation allowed).
+  const reports = await getAllReportsByEvent(eventId);
+  const latestReport = reports[0] ?? null;
+  const olderReports = reports.slice(1);
   const isLocked = LOCKED_STATUSES.includes(latestReport?.status ?? "");
 
   const isArchived = event.status === "archived";
@@ -170,6 +176,25 @@ export default async function ReportPage({ params }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Earlier revisions — the newest report stays at the top (cancel if
+          pending); every superseded report (rejected/cancelled) remains here
+          as a list item labeled by its status, like the archive pattern. */}
+      {olderReports.length > 0 && (
+        <div className="rounded-xl border border-border bg-surface p-5 shadow-card sm:p-6">
+          <h2 className="text-base font-semibold text-text-primary">
+            Previous revisions
+          </h2>
+          <p className="mt-0.5 text-xs text-text-muted">
+            Superseded reports stay on record — the current report is above.
+          </p>
+          <div className="mt-3">
+            {olderReports.map((report) => (
+              <ReportFileCard key={report.id} report={report} />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

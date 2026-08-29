@@ -11,6 +11,28 @@ export type ReportForDashboard = {
   generated_at: string;
 };
 
+/**
+ * Every Report row for an event, newest first. Reports are never overwritten:
+ * a regenerated report is a new row with revision_count+1, so the full stack
+ * is the event's report history (rejected/cancelled/approved all present).
+ */
+export async function getAllReportsByEvent(
+  eventId: string,
+): Promise<ReportForDashboard[]> {
+  const insforge = await createInsforgeServer();
+
+  const { data, error } = await insforge.database
+    .from("reports")
+    .select(
+      "id, event_id, fs_document_number, status, revision_count, generated_at",
+    )
+    .eq("event_id", eventId)
+    .order("generated_at", { ascending: false });
+
+  if (error || !data) return [];
+  return data as ReportForDashboard[];
+}
+
 export async function getLatestReportByEvent(
   eventId: string,
 ): Promise<ReportForDashboard | null> {
