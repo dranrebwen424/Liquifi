@@ -10,7 +10,7 @@ import { formatPHP } from "@/lib/format";
 import { isUnresolvedOverspendEntry } from "@/lib/overspend";
 import { entryTitle } from "@/components/entries/entry-title";
 import { EntryList, type EntryListItem } from "@/components/entries/EntryList";
-import { PdfViewer } from "@/components/reports/PdfViewer";
+import { ReportFileCard } from "@/components/reports/ReportFileCard";
 import { StatusBadge, reportStatusMap } from "@/components/ui/StatusBadge";
 
 type EventDashboard = NonNullable<Awaited<ReturnType<typeof getEventDashboard>>>;
@@ -207,12 +207,12 @@ export function AdviserReportReview({ event, report }: Props) {
         </div>
       )}
 
-      {/* Signed report preview */}
+      {/* Signed report — a file card with View (full PDF) + Download */}
       <section className="flex flex-col gap-2">
         <h2 className="text-base font-semibold text-text-primary">
           Signed report
         </h2>
-        <PdfViewer url={`/api/reports/${report.id}/pdf`} />
+        <ReportFileCard report={report} />
       </section>
 
       {/* Entries */}

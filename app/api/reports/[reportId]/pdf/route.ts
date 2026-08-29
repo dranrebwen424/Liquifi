@@ -10,12 +10,16 @@ function errorResponse(message: string, status: number) {
 // Mirrors the receipt image proxy: streams the private signed-reports blob
 // (pdf_url stores a key, never a browser-loadable URL) behind session auth
 // scoped to the owning department.
+//
+// Defaults to inline (View — renders in the browser). Pass ?dl=1 to force an
+// attachment download (Download button on the report file card).
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ reportId: string }> },
 ) {
   try {
     const { reportId } = await params;
+    const download = request.nextUrl.searchParams.get("dl") === "1";
 
     const insforge = await createInsforgeServer();
     const { data: report, error } = await insforge.database
@@ -44,7 +48,9 @@ export async function GET(
     return new Response(blob, {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": 'inline; filename="report.pdf"',
+        "Content-Disposition": download
+          ? 'attachment; filename="report.pdf"'
+          : 'inline; filename="report.pdf"',
         "Cache-Control": "private, max-age=3600",
       },
     });
