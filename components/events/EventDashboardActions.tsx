@@ -36,7 +36,7 @@ export function EventDashboardActions({
           onClick={() => setLogEntryOpen(true)}
           disabled={!canMutate}
           className={cn(
-            "inline-flex flex-1 items-center justify-center gap-1.5 rounded-[17px] px-4 py-[10px] text-[12px] font-medium transition-[color,transform,shadow]",
+            "inline-flex flex-1 items-center justify-center gap-1.5 rounded-[17px] px-4 py-[10px] text-[14px] font-medium transition-[color,transform,shadow]",
             canMutate
               ? "bg-surface-inverse text-text-inverse hover:bg-accent-hover hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
               : "cursor-not-allowed bg-neutral text-text-inverse/50",
@@ -49,7 +49,7 @@ export function EventDashboardActions({
                 : "Log a new expense"
           }
         >
-          <Plus className="h-3 w-3" />
+          <Plus className="h-4 w-4" />
           Log Entry
         </button>
 
