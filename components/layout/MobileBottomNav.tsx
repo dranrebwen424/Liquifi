@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { NavItem, type NavItemConfig } from "@/components/layout/NavItem";
-import { isEventPage } from "@/lib/event-route";
+import { isImmersivePage } from "@/lib/event-route";
 import { cn } from "@/lib/utils";
 
 type MobileBottomNavProps = {
@@ -11,7 +11,7 @@ type MobileBottomNavProps = {
 
 export function MobileBottomNav({ navItems }: MobileBottomNavProps) {
   const pathname = usePathname();
-  const hidden = isEventPage(pathname);
+  const hidden = isImmersivePage(pathname);
 
   return (
     <nav

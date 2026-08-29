@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { isEventPage } from "@/lib/event-route";
+import { isImmersivePage } from "@/lib/event-route";
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "liquifi:sidebar-collapsed";
@@ -10,7 +10,8 @@ const STORAGE_KEY = "liquifi:sidebar-collapsed";
 /**
  * Shared shell that syncs main content padding with the collapsible Sidebar.
  * On mobile: no sidebar offset. On desktop: left padding synced with sidebar.
- * On event pages: bottom padding animates from pb-20 → pb-0 (navs slide out).
+ * On immersive pages (event/report detail): bottom padding animates from
+ * pb-20 → pb-0 (navs slide out).
  */
 export function SidebarShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -51,7 +52,7 @@ export function SidebarShell({ children }: { children: React.ReactNode }) {
     );
   }, [collapsed]);
 
-  const eventPage = isEventPage(pathname);
+  const eventPage = isImmersivePage(pathname);
 
   return (
     <main

@@ -130,10 +130,12 @@ export default async function ReportPage({ params }: Props) {
           </div>
         </div>
 
-        {/* Right: full Spending Breakdown — target of "See more" on the dashboard */}
+        {/* Right: full Spending Breakdown — target of "See more" on the dashboard.
+            Ponytail: hidden on mobile per product decision — the per-category
+            breakdown lives on the event dashboard; desktop keeps it for context. */}
         <div
           id="spending-breakdown"
-          className="scroll-mt-6 lg:w-2/5"
+          className="hidden scroll-mt-6 lg:block lg:w-2/5"
         >
           <div className="rounded-xl border border-border bg-surface p-5 shadow-card sm:p-6">
             <h2 className="text-base font-semibold text-text-primary">

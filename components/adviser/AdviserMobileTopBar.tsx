@@ -1,12 +1,12 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { isEventPage } from "@/lib/event-route";
+import { isImmersivePage } from "@/lib/event-route";
 import { cn } from "@/lib/utils";
 
 export function AdviserMobileTopBar() {
   const pathname = usePathname();
-  const hidden = isEventPage(pathname);
+  const hidden = isImmersivePage(pathname);
 
   return (
     <div

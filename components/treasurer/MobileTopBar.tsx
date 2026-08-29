@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { ArrowLeft, Search } from "lucide-react";
-import { isEventPage } from "@/lib/event-route";
+import { isImmersivePage } from "@/lib/event-route";
 import { cn } from "@/lib/utils";
 
 export function MobileTopBar() {
@@ -13,7 +13,7 @@ export function MobileTopBar() {
   const isSearching = searchParams.get("search") === "1";
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const hidden = isEventPage(pathname);
+  const hidden = isImmersivePage(pathname);
 
   // ponytail: debounce URL sync so router.replace doesn't fire on every keystroke
   useEffect(() => {
