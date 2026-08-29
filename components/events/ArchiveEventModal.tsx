@@ -71,7 +71,7 @@ export function ArchiveEventButton({
         }
       >
         <Archive className="h-3 w-3" />
-        Archive Report
+        Archive
       </button>
 
       <ArchiveEventModal

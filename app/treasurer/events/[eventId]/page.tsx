@@ -76,12 +76,12 @@ export default async function EventDashboardPage({ params }: Props) {
               <h1 className="min-w-0 truncate text-[20px] font-semibold leading-tight text-text-primary">
                 {event.name}
               </h1>
-              <p className="mt-0.5 text-[11px] leading-snug text-text-muted">
+              <p className="mt-0.5 text-[10px] leading-snug text-text-muted">
                 {event.created_by_name && event.created_by_name !== "Unknown" && (
                   <>By: {event.created_by_name}</>
                 )}
               </p>
-              <p className="text-[11px] leading-snug text-text-muted">
+              <p className="text-[10px] leading-snug text-text-muted">
                 Created {createdDate}
               </p>
             </div>
