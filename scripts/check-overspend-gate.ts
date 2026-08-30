@@ -31,6 +31,28 @@ assert.equal(entryCausesOverspend(500, [{ amount: 600 }], 1), false); // overspe
 assert.equal(entryCausesOverspend(500, [], 500), false); // exact budget, no trip
 assert.equal(entryCausesOverspend(500, [], 500.01), true); // first entry over
 
+// Pending-aware committed budget (manual gate): pending_approval entries count
+// toward the projected total the same way deducted ones do, so stacking pending
+// entries correctly trips the overspend prompt before any deduction.
+const pendingRows = [
+  { amount: 100 },
+  { amount: 100 },
+  { amount: 100 },
+]; // three pending 100s -> committed 300 on a 500 budget
+assert.equal(entryCausesOverspend(500, pendingRows, 100), false); // 300 + 100 = 400, still under
+assert.equal(entryCausesOverspend(500, pendingRows, 200), false); // 300 + 200 = 500, exact, no trip
+assert.equal(entryCausesOverspend(500, pendingRows, 200.01), true); // 300 + 200.01 -> over, trip
+assert.equal(
+  entryCausesOverspend(500, [...pendingRows, { amount: 200.01 }], 1),
+  false,
+); // already over committed, no re-fire
+assert.equal(remainingAfterEntryCents(500, pendingRows, 200.01), -0.01 * 100);
+
+// Rejection drops a row out of committed, so a later submission can re-cross.
+const afterReject = pendingRows.slice(0, 2); // one of the three rejected
+assert.equal(entryCausesOverspend(500, afterReject, 300), false); // 200 + 300 = 500, exact
+assert.equal(entryCausesOverspend(500, afterReject, 300.01), true); // re-cross after drop
+
 // Predicate: only deducted + causes_overspend + not-yet-resolved counts
 assert.equal(isUnresolvedOverspendEntry("deducted", true, null), true);
 assert.equal(isUnresolvedOverspendEntry("deducted", true, "2026-08-07T00:00:00.000Z"), false); // resolved

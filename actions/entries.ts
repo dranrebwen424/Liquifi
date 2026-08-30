@@ -404,14 +404,15 @@ export async function submitManualEntry(
       return { success: false, error: "Explanation is too long." };
     }
 
-    // ─── Step 18 gate: cumulative overspend (remaining vs SUM of deducted) ──
-    // Mirrors confirmReceiptEntry's cents math — the budget-remaining check
-    // AFTER this entry, against already-deducted entries only. Zero-write: a
-    // negative remaining with no explanation returns `overspendRequired` and
-    // nothing is persisted (no photo upload, no row). With an explanation the
-    // entry is inserted at `pending_approval` flagged causes_overspend=true —
-    // adviser review is still the gate, and rejection auto-resolves overspend
-    // because the derivation counts `deducted` rows only.
+    // ─── Step 18 gate: cumulative overspend (remaining vs COMMITTED total) ──
+    // Committed = deducted + pending_approval. Pending manual entries count
+    // toward the projected budget so a treasurer stacking pending entries gets
+    // the overspend prompt before submission — deduction itself still happens
+    // only when the adviser approves. Mirrors confirmReceiptEntry's cents math.
+    // Zero-write: a negative remaining with no explanation returns
+    // `overspendRequired` and nothing is persisted (no photo upload, no row).
+    // With an explanation the entry is inserted at `pending_approval` flagged
+    // causes_overspend=true — adviser review is still the gate.
     const overspendExplanation = (payload.overspendExplanation ?? "").trim();
     if (overspendExplanation.length > MANUAL_EXPLANATION_MAX) {
       return { success: false, error: "Explanation is too long." };
@@ -420,19 +421,30 @@ export async function submitManualEntry(
       .from("entries")
       .select("amount")
       .eq("event_id", eventId)
-      .eq("status", "deducted");
+      .in("status", ["deducted", "pending_approval"]);
     const remainingCents = remainingAfterEntryCents(
       Number(eventBudget.budget_total),
       spentRows ?? [],
       amount,
     );
-    // Fires once — only the FIRST entry that pushes the event below zero.
-    // An event already over budget never re-triggers the explanation gate.
-    const causesOverspend = entryCausesOverspend(
-      Number(eventBudget.budget_total),
-      spentRows ?? [],
-      amount,
-    );
+    // Fires ONCE PER EVENT — only the first submission that pushes the event's
+    // committed total below zero. causes_overspend is a durable flag (rejection
+    // doesn't clear it), so once any entry carries it we stop prompting and
+    // stop flagging, even if pending entries are later rejected.
+    const { data: flaggedRows } = await insforge.database
+      .from("entries")
+      .select("id")
+      .eq("event_id", eventId)
+      .eq("causes_overspend", true)
+      .limit(1);
+    const alreadyFlagged = (flaggedRows?.length ?? 0) > 0;
+    const causesOverspend =
+      !alreadyFlagged &&
+      entryCausesOverspend(
+        Number(eventBudget.budget_total),
+        spentRows ?? [],
+        amount,
+      );
     if (causesOverspend && !overspendExplanation) {
       return {
         success: true,
