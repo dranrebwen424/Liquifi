@@ -273,7 +273,6 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
           <LottiePlayer
             src="/Auth%20pages/success.json"
             className="h-32 w-32"
-            loop={false}
           />
           <div className="text-center">
             <h3 className="text-lg font-semibold text-text-primary">
