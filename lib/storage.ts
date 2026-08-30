@@ -1,4 +1,5 @@
 import { createInsforgeServer } from "@/lib/insforge-server";
+import { parseEntryImageKeys } from "@/lib/image-keys";
 
 // ponytail: presigned URL expiry is S3 default, adjust if needed
 const RECEIPT_BUCKET = "receipts" as const;
@@ -20,12 +21,15 @@ async function getUserDeptId(): Promise<string | null> {
 // ─── Receipts ──────────────────────────────────────────────────────
 
 /**
- * Upload receipt image.
+ * Upload receipt image. `index` disambiguates the key when an entry carries
+ * multiple images (`{entryId}.jpg` for index 0, `{entryId}-{n}.jpg` after),
+ * keeping single-image keys byte-identical to the pre-multi format.
  */
 export async function uploadReceipt(
   eventId: string,
   entryId: string,
   file: File | Blob,
+  index?: number,
 ): Promise<{ url: string; key: string }> {
   const deptId = await getUserDeptId();
   if (!deptId) throw new Error("Authentication required");
@@ -40,7 +44,8 @@ export async function uploadReceipt(
   if (eventError || !event) throw new Error("Event not found");
   if (event.department_id !== deptId) throw new Error("Unauthorized");
 
-  const key = `${deptId}/events/${eventId}/receipts/${entryId}.jpg`;
+  const suffix = index ? `-${index}` : "";
+  const key = `${deptId}/events/${eventId}/receipts/${entryId}${suffix}.jpg`;
   const { data, error } = await insforge.storage
     .from(RECEIPT_BUCKET)
     .upload(key, file);
@@ -50,9 +55,9 @@ export async function uploadReceipt(
 }
 
 /**
- * Delete a receipt image by entry id. Best-effort by design: a failed or
- * orphaned delete logs and never throws — the caller must not fail the
- * discard because the blob is gone. Uses the stored `image_url` key as-is.
+ * Delete an entry's receipt image blob(s) by entry id. Best-effort by design:
+ * a failed or orphaned delete logs and never throws — the caller must not fail
+ * the discard because the blob is gone. Uses the stored `image_url` key(s) as-is.
  *
  * `knownImageUrl` skips the DB re-read — required when the caller has already
  * deleted the entry row (the key captured before the delete must be passed in,
@@ -64,24 +69,25 @@ export async function deleteReceiptBlob(
 ): Promise<void> {
   try {
     const insforge = await createInsforgeServer();
-    let key: string | null | undefined = knownImageUrl;
-    if (!key) {
+    let imageUrl: string | null | undefined = knownImageUrl;
+    if (!imageUrl) {
       const { data: entry } = await insforge.database
         .from("entries")
         .select("image_url")
         .eq("id", entryId)
         .maybeSingle();
-      key = entry?.image_url;
+      imageUrl = entry?.image_url;
     }
 
-    if (!key) return; // nothing to delete — already gone or never uploaded
-
-    const { error } = await insforge.storage
-      .from(RECEIPT_BUCKET)
-      .remove(key);
-    if (error) {
-      // ponytail: orphaned blob is acceptable; audit trail keeps the entry history
-      console.error("[storage] deleteReceiptBlob: blob delete failed:", key, error);
+    // Multi-image entries store a JSON array — remove every key. Missing blobs
+    // are tolerated per-key (a failed remove logs, never throws).
+    const keys = parseEntryImageKeys(imageUrl);
+    for (const key of keys) {
+      const { error } = await insforge.storage.from(RECEIPT_BUCKET).remove(key);
+      if (error) {
+        // ponytail: orphaned blob is acceptable; audit trail keeps the entry history
+        console.error("[storage] deleteReceiptBlob: blob delete failed:", key, error);
+      }
     }
   } catch (error) {
     console.error("[storage] deleteReceiptBlob:", error);
@@ -89,11 +95,13 @@ export async function deleteReceiptBlob(
 }
 
 /**
- * Download a receipt image blob for an entry.
+ * Download a receipt image blob for an entry. `index` selects which image when
+ * an entry carries multiple (multi-image entries store a JSON array in
+ * `image_url`); default 0 returns the first/only image.
  * Ownership is enforced by the caller (route-level requireRole) — the stored
  * `image_url` key is used as-is, so this stays valid if the key pattern changes.
  */
-export async function getReceiptBlob(entryId: string): Promise<Blob> {
+export async function getReceiptBlob(entryId: string, index = 0): Promise<Blob> {
   const insforge = await createInsforgeServer();
   const { data: entry, error } = await insforge.database
     .from("entries")
@@ -101,11 +109,15 @@ export async function getReceiptBlob(entryId: string): Promise<Blob> {
     .eq("id", entryId)
     .single();
 
-  if (error || !entry || !entry.image_url) throw new Error("Entry not found");
+  if (error || !entry) throw new Error("Entry not found");
+
+  const keys = parseEntryImageKeys(entry.image_url);
+  const key = keys[index];
+  if (!key) throw new Error("Receipt not found");
 
   const { data: blob, error: downloadError } = await insforge.storage
     .from(RECEIPT_BUCKET)
-    .download(entry.image_url);
+    .download(key);
 
   if (downloadError || !blob) throw new Error("Receipt not found");
   return blob;

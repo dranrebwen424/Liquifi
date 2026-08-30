@@ -112,7 +112,7 @@ export function EntryCard({
   // Subtitle: doc type for receipts, category label for manual entries
   const subtitle = supplierName ? description : (category ?? null);
   const [imgFailed, setImgFailed] = useState(false);
-  const showImage = type === "receipt" && Boolean(imageUrl) && !imgFailed;
+  const showImage = Boolean(imageUrl) && !imgFailed;
   const voidDate = voidedAt
     ? new Date(voidedAt).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })
     : null;

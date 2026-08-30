@@ -184,6 +184,8 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Notes
 
+- **2026-08-30 Multi-image manual entries (see also Decisions deb storm):** up to 4 photos per manual entry. `image_url` is a JSON array string when N>1, bare key when N=1 (legacy-safe, no schema change - `text` column). New web-safe module `lib/image-keys.ts` holds `parseEntryImageKeys` on purpose: `lib/storage.ts` pulls the server SDK so client components can't import it. `uploadReceipt(..., index)`, `getReceiptBlob(entryId, index)`, `deleteReceiptBlob` resolve arrays. Read route `GET /api/entries/[entryId]/image?i=N`. Manual photo route reads `index` + caps at 4. `ManualQuickForm` collects `photoFiles[]` and submits `imageKeys[]`; `submitManualEntry` stores array/single. `EntryCard` thumbnail shows first image for manual + receipt; `EntryDetailModal` 2-col clickable grid + `ImageViewer` paging. Cap is `MAX_PHOTOS`/`MAX_IMAGES_PER_ENTRY=4` in both client and server - raise both together.
+
 *(Environment quirks, sandbox limitations, verification commands that passed/failed, and anything a future agent needs to know before touching this codebase again. Append, don't overwrite.)*
 
 - **SDK import correction (flagged):** `architecture.md` imports the server client as `from "@insforge/ssr"`. The installed package is `@insforge/sdk@1.4.4` (per AGENTS.md), which exposes the server client at the subpath `@insforge/sdk/ssr` (`createServerClient`). There is no standalone `@insforge/ssr` package installed. `lib/insforge-server.ts` uses `@insforge/sdk/ssr`. Corrected import path only — API matches the architecture's intent. If a future session adds `@insforge/ssr` separately, this should be reconciled.

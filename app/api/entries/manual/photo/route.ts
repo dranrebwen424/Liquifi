@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/auth-guard";
 import { uploadReceipt } from "@/lib/storage";
 
 const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_IMAGES_PER_ENTRY = 4; // ponytail: cap so an abuse-or-mistake burst can't spam the bucket
 
 function errorResponse(message: string, status: number) {
   return NextResponse.json({ success: false, error: message }, { status });
@@ -27,6 +28,8 @@ export async function POST(request: NextRequest) {
     const eventId = form.get("eventId");
     const entryId = form.get("entryId");
     const image = form.get("image");
+    const rawIndex = form.get("index");
+    const index = rawIndex ? Number.parseInt(String(rawIndex), 10) : 0;
 
     if (typeof eventId !== "string" || !eventId) {
       return errorResponse("Event is required.", 400);
@@ -42,6 +45,9 @@ export async function POST(request: NextRequest) {
     }
     if (image.size > MAX_SIZE) {
       return errorResponse("Image is too large (max 10MB).", 413);
+    }
+    if (!Number.isFinite(index) || index < 0 || index >= MAX_IMAGES_PER_ENTRY) {
+      return errorResponse("Too many images (max 4 per entry).", 400);
     }
 
     // Same guard as the manual submit: treasurer of the owning department,
@@ -66,7 +72,7 @@ export async function POST(request: NextRequest) {
       if (reportError || report) throw new Error("Event is locked by an active report.");
     });
 
-    const uploaded = await uploadReceipt(eventId, entryId, image);
+    const uploaded = await uploadReceipt(eventId, entryId, image, index);
 
     return NextResponse.json({ success: true, key: uploaded.key });
   } catch (err) {

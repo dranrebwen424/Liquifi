@@ -8,11 +8,16 @@ function errorResponse(message: string, status: number) {
 }
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ entryId: string }> },
 ) {
   try {
     const { entryId } = await params;
+    // `i` selects which image of a multi-image entry (0 = first/only). The
+    // storage column can hold a JSON array of keys; parseEntryImageKeys covers
+    // both the array and legacy bare-key forms.
+    const rawIndex = request.nextUrl.searchParams.get("i");
+    const index = rawIndex ? Number.parseInt(rawIndex, 10) : 0;
 
     const insforge = await createInsforgeServer();
     const { data: entry, error } = await insforge.database
@@ -37,7 +42,7 @@ export async function GET(
     // Treasurers/advisers scoped to the owning department; admin unrestricted
     await requireRole(["treasurer", "adviser", "admin"], event.department_id);
 
-    const blob = await getReceiptBlob(entryId);
+    const blob = await getReceiptBlob(entryId, Number.isFinite(index) ? index : 0);
     return new Response(blob, {
       headers: {
         "Content-Type": blob.type || "image/jpeg",

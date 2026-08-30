@@ -229,3 +229,10 @@ Files: lib/event-route.ts, components/layout/{MobileBottomNav, SidebarShell}.tsx
 | `ui-tokens.md` | Raw token values — colors, spacing, radius, typography scale |
 | `ui-rules.md` | Component specs — how to compose tokens into cards, buttons, inputs, badges, etc. |
 | `ui-registry.md` (this file) | Living inventory of what was built, with exact classes used |
+
+## 2026-08-30 Addendum - Multi-image manual entries
+
+- **EntryCard** - `showImage` gate relaxed from `type === "receipt"` to any entry with `image_url`; manual entries now show their first image as the card thumbnail (falls back to `ManualPlaceholder` only when no image). Thumbnail hits `/api/entries/[id]/image` (index 0).
+- **EntryDetailModal** - image area renders a 2-col grid of thumbnails when an entry has >1 image (receipt or manual); each opens `ImageViewer` at its index via `/api/entries/[id]/image?i=N`. `ImageViewer` gained `index`/`count`/`onNavigate` with left/right arrow buttons, arrow-key paging, and an `n / total` counter.
+- **ManualQuickForm** - multi-select + camera photo attachments (max 4); grid of removable thumbnails replaces the single-photo chip.
+- **lib/image-keys.ts** - web-safe `parseEntryImageKeys()` (pure, client/server shareable) - intentionally not in `lib/storage.ts` which is server-only.

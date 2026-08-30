@@ -49,7 +49,7 @@ export type ManualSubmitPayload = {
   entryId: string;
   /** Storage key of the already-uploaded supporting photo, if any. The File
    * itself never crosses the server-action boundary — it's moved via FormData. */
-  imageKey?: string;
+  imageKeys?: string[];
   justification: string;
   /** Present only when resubmitting after an `explanationRequired` gate result. */
   aboveRangeExplanation?: string;
@@ -86,8 +86,8 @@ export function ManualQuickForm({
 
   // Common extras
   const [witness, setWitness] = useState("");
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
+  const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [justification, setJustification] = useState("");
   const [showJustification, setShowJustification] = useState(false);
   const [error, setError] = useState("");
@@ -111,7 +111,7 @@ export function ManualQuickForm({
   // once per picked photo (File can't cross the server-action boundary, so the
   // image is sent via FormData and only its storage key reaches the action).
   const entryIdRef = useRef<string | null>(null);
-  const uploadedImageKeyRef = useRef<string | null>(null);
+  const uploadedImageKeysRef = useRef<string[] | null>(null);
 
   // People reuse
   const { read, write } = usePeopleReuse(eventId);
@@ -218,28 +218,46 @@ export function ManualQuickForm({
 
   // ─── Photo attachment ──────────────────────────────────────────
 
-  /** Validate + attach a photo — shared by the library input and the camera shutter. */
-  const applyPhoto = useCallback((file: File) => {
-    if (!file.type.startsWith("image/")) {
-      setError("Only image files are accepted.");
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      setError("File too large (max 10 MB).");
-      return;
-    }
-    setPhotoFile(file);
-    setPhotoPreview(URL.createObjectURL(file));
-    setError("");
-  }, []);
+  /** Validate + attach photo(s) — shared by the library input and the camera shutter. */
+  const MAX_PHOTOS = 4; // ponytail: receipt-style cap; ask before raising
+  const applyPhoto = useCallback(
+    (files: File | File[]) => {
+      const list = Array.isArray(files) ? files : [files];
+      const accepted: File[] = [];
+      let rejected = "";
+      for (const file of list) {
+        if (!file.type.startsWith("image/")) {
+          rejected = "Only image files are accepted.";
+          continue;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+          rejected = "File too large (max 10 MB).";
+          continue;
+        }
+        accepted.push(file);
+      }
+      if (rejected) {
+        setError(rejected);
+        if (accepted.length === 0) return;
+      }
+      // Cap at MAX_PHOTOS — keep the newest additions, drop the overflow
+      const next = [...photoFiles, ...accepted].slice(-MAX_PHOTOS);
+      setPhotoFiles(next);
+      setPhotoPreviews((prev) => {
+        const prep = [...prev, ...accepted.map((f) => URL.createObjectURL(f))];
+        return prep.slice(-MAX_PHOTOS);
+      });
+      setError("");
+    },
+    [photoFiles],
+  );
 
   const handlePhotoSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) {
-        setShowCamera(false); // picked via the camera overlay's "Use Photo Library"
-        applyPhoto(file);
-      }
+      const files = e.target.files ? Array.from(e.target.files) : [];
+      if (files.length === 0) return;
+      setShowCamera(false); // picked via the camera overlay's "Use Photo Library"
+      applyPhoto(files);
     },
     [applyPhoto],
   );
@@ -252,14 +270,6 @@ export function ManualQuickForm({
     },
     [applyPhoto],
   );
-
-  const clearPhoto = useCallback(() => {
-    setPhotoFile(null);
-    setPhotoPreview(null);
-    entryIdRef.current = null;
-    uploadedImageKeyRef.current = null;
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  }, []);
 
   // ─── Submit ────────────────────────────────────────────────────
 
@@ -287,39 +297,45 @@ export function ManualQuickForm({
 
       write(witness);
 
-      // Upload the supporting photo (if any) via FormData — a File can't cross
-      // the server-action boundary in this build. Upload before the action so a
-      // failed upload shows a form error with NO row written. The key is cached
-      // on a ref so a gate-triggered resubmit reuses it instead of re-uploading
-      // (storage uses upsert:false, so a second upload of the same key fails).
-      let imageKey = uploadedImageKeyRef.current;
-      if (photoFile && !imageKey) {
+      // Upload each supporting photo sequentially via FormData — a File can't
+      // cross the server-action boundary in this build. Upload before the action
+      // so a failed upload shows a form error with NO row written. Keys are
+      // cached on a ref so a gate-triggered resubmit reuses them instead of
+      // re-uploading (storage uses upsert:false, so re-uploading a key fails).
+      // Skipping a key (the `!index` variant) is a deliberate overwrite of the
+      // previous single-image key collision at index 0 — see uploadReceipt.
+      if (photoFiles.length > 0 && !uploadedImageKeysRef.current) {
         entryIdRef.current ??= crypto.randomUUID();
-        const uploadForm = new FormData();
-        uploadForm.append("eventId", eventId);
-        uploadForm.append("entryId", entryIdRef.current);
-        uploadForm.append("image", await prepareImage(photoFile));
-        try {
-          const res = await fetch("/api/entries/manual/photo", {
-            method: "POST",
-            body: uploadForm,
-          });
-          const data = await res.json();
-          if (!res.ok || !data?.success) {
-            setError(data?.error ?? "Failed to upload the photo. Please try again.");
+        const keys: string[] = [];
+        for (let index = 0; index < photoFiles.length; index++) {
+          const uploadForm = new FormData();
+          uploadForm.append("eventId", eventId);
+          uploadForm.append("entryId", entryIdRef.current);
+          uploadForm.append("index", String(index));
+          uploadForm.append("image", await prepareImage(photoFiles[index]));
+          try {
+            const res = await fetch("/api/entries/manual/photo", {
+              method: "POST",
+              body: uploadForm,
+            });
+            const data = await res.json();
+            if (!res.ok || !data?.success) {
+              setError(data?.error ?? `Failed to upload photo ${index + 1}. Please try again.`);
+              setSubmitting(false);
+              submitLockRef.current = false;
+              return;
+            }
+            keys.push(data.key as string);
+          } catch {
+            setError(`Failed to upload photo ${index + 1}. Please try again.`);
             setSubmitting(false);
             submitLockRef.current = false;
             return;
           }
-          uploadedImageKeyRef.current = data.key;
-          imageKey = data.key;
-        } catch {
-          setError("Failed to upload the photo. Please try again.");
-          setSubmitting(false);
-          submitLockRef.current = false;
-          return;
         }
+        uploadedImageKeysRef.current = keys;
       }
+      const imageKeysOut = uploadedImageKeysRef.current ?? [];
 
       // Currency/number fields are stored as raw strings while typing so decimal
       // points survive keystroke-by-keystroke; coerce them back to numbers here.
@@ -340,7 +356,7 @@ export function ManualQuickForm({
         totalAmount: total,
         witness: witness.trim(),
         entryId: entryIdRef.current ?? crypto.randomUUID(),
-        imageKey: imageKey ?? undefined,
+        imageKeys: imageKeysOut.length > 0 ? imageKeysOut : undefined,
         justification: justification.trim() || "",
         aboveRangeExplanation: gate ? gateExplanation.trim() : undefined,
         overspendExplanation: overspendGate ? overspendExplanation.trim() : undefined,
@@ -385,7 +401,7 @@ export function ManualQuickForm({
       items,
       otherMode,
       total,
-      photoFile,
+      photoFiles,
       eventId,
       justification,
       onSubmit,
@@ -828,25 +844,48 @@ export function ManualQuickForm({
           </button>
         )}
 
-        {/* Photo attachment (always visible, optional) */}
-        <div className="flex items-center gap-3">
-          {!photoFile ? (
+        {/* Photo attachments (always visible, optional, up to 4) */}
+        <div className="flex flex-wrap items-center gap-2">
+          {photoPreviews.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {photoPreviews.map((src, i) => (
+                <div key={src} className="group relative h-12 w-12 overflow-hidden rounded-lg border border-border">
+                  <img src={src} alt={`Attachment ${i + 1}`} className="h-full w-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPhotoFiles((prev) => prev.filter((_, j) => j !== i));
+                      setPhotoPreviews((prev) => prev.filter((_, j) => j !== i));
+                      uploadedImageKeysRef.current = null; // force re-upload of the remaining set
+                    }}
+                    className="absolute right-0 top-0 flex h-4 w-4 items-center justify-center bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                    aria-label={`Remove attachment ${i + 1}`}
+                  >
+                    <X className="h-2.5 w-2.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {photoFiles.length < MAX_PHOTOS && (
             <>
-              {/* Desktop — single library picker */}
+              {/* Desktop — library picker */}
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 className="hidden items-center gap-1.5 text-xs font-medium text-text-secondary transition-colors hover:text-text-primary md:inline-flex"
               >
                 <Paperclip className="h-3.5 w-3.5" />
-                Attach screenshot (optional)
+                {photoFiles.length === 0 ? "Attach (optional)" : "Add"}
               </button>
               {/* Mobile — camera + library pair */}
               <div className="flex gap-2 md:hidden">
                 <button
                   type="button"
                   onClick={() => setShowCamera(true)}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent-hover"
+                  disabled={photoFiles.length >= MAX_PHOTOS}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent-hover disabled:opacity-50"
                 >
                   <Camera className="h-3.5 w-3.5" />
                   Take Photo
@@ -854,39 +893,23 @@ export function ManualQuickForm({
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary"
+                  disabled={photoFiles.length >= MAX_PHOTOS}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary disabled:opacity-50"
                 >
                   <Image className="h-3.5 w-3.5" />
                   Choose from Library
                 </button>
               </div>
             </>
-          ) : (
-            <div className="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2">
-              {photoPreview && (
-                <img
-                  src={photoPreview}
-                  alt="Screenshot"
-                  className="h-10 w-10 rounded-md object-cover"
-                />
-              )}
-              <span className="max-w-[160px] truncate text-xs text-text-primary">
-                {photoFile.name}
-              </span>
-              <button
-                type="button"
-                onClick={clearPhoto}
-                className="ml-auto flex h-5 w-5 items-center justify-center rounded text-text-muted hover:bg-error-lightest hover:text-error"
-                aria-label="Remove photo"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </div>
+          )}
+          {photoFiles.length >= MAX_PHOTOS && (
+            <span className="text-xs text-text-muted">Max {MAX_PHOTOS} attachments</span>
           )}
           <input
             ref={fileInputRef}
             type="file"
             accept="image/jpeg,image/png,image/webp,image/heic"
+            multiple
             onChange={handlePhotoSelect}
             className="hidden"
             aria-hidden="true"

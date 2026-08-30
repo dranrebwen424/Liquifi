@@ -346,9 +346,14 @@ export async function submitManualEntry(
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(entryId)) {
       return { success: false, error: "Invalid entry." };
     }
-    // Supporting photo is uploaded client-side (FormData route) and only its
-    // storage key reaches here — a File can't cross the server-action boundary.
-    const imageKey = (payload.imageKey ?? "").trim() || null;
+    // Supporting photos are uploaded client-side (FormData route) and only their
+    // storage keys reach here — a File can't cross the server-action boundary.
+    // Multi-image: stored as a JSON array in `image_url`; single: the bare key.
+    const imageKeys = (payload.imageKeys ?? [])
+      .map((k) => (k ?? "").trim())
+      .filter(Boolean)
+      .slice(0, 4);
+    const imageUrl = imageKeys.length > 1 ? JSON.stringify(imageKeys) : (imageKeys[0] ?? null);
 
     // Itemized categories need at least one valid line
     const itemized =
@@ -436,9 +441,8 @@ export async function submitManualEntry(
       };
     }
 
-    // Photo was already uploaded client-side (FormData route) before the
-    // action ran — this step only stores the key. Nothing left to upload here.
-    const imageUrl = imageKey;
+    // Photos were already uploaded client-side (FormData route) — `imageUrl`
+    // (bare key or JSON array) was computed above. Nothing left to upload here.
 
     // ─── Insert (only now — a successful photo is already persisted) ──
     const formPayload = {
