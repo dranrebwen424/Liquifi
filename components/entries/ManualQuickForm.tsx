@@ -43,7 +43,12 @@ export type ManualSubmitPayload = {
   otherMode: "flat" | "itemized";
   totalAmount: number;
   witness: string;
-  photoFile: File | null;
+  /** Row id (and storage-key id) for the entry. Generated client-side so the
+   * photo upload (client-side via FormData) and the row insert agree on one key. */
+  entryId: string;
+  /** Storage key of the already-uploaded supporting photo, if any. The File
+   * itself never crosses the server-action boundary — it's moved via FormData. */
+  imageKey?: string;
   justification: string;
   /** Present only when resubmitting after an `explanationRequired` gate result. */
   aboveRangeExplanation?: string;
@@ -100,6 +105,12 @@ export function ManualQuickForm({
   // Synchronous double-submit latch — set before the first await, released on
   // EVERY result (including explanationRequired, which must allow a second submit)
   const submitLockRef = useRef(false);
+
+  // Entry id + uploaded-photo key for the current photo. Generated/uploaded
+  // once per picked photo (File can't cross the server-action boundary, so the
+  // image is sent via FormData and only its storage key reaches the action).
+  const entryIdRef = useRef<string | null>(null);
+  const uploadedImageKeyRef = useRef<string | null>(null);
 
   // People reuse
   const { read, write } = usePeopleReuse(eventId);
@@ -244,6 +255,8 @@ export function ManualQuickForm({
   const clearPhoto = useCallback(() => {
     setPhotoFile(null);
     setPhotoPreview(null);
+    entryIdRef.current = null;
+    uploadedImageKeyRef.current = null;
     if (fileInputRef.current) fileInputRef.current.value = "";
   }, []);
 
@@ -273,6 +286,40 @@ export function ManualQuickForm({
 
       write(witness);
 
+      // Upload the supporting photo (if any) via FormData — a File can't cross
+      // the server-action boundary in this build. Upload before the action so a
+      // failed upload shows a form error with NO row written. The key is cached
+      // on a ref so a gate-triggered resubmit reuses it instead of re-uploading
+      // (storage uses upsert:false, so a second upload of the same key fails).
+      let imageKey = uploadedImageKeyRef.current;
+      if (photoFile && !imageKey) {
+        entryIdRef.current ??= crypto.randomUUID();
+        const uploadForm = new FormData();
+        uploadForm.append("eventId", eventId);
+        uploadForm.append("entryId", entryIdRef.current);
+        uploadForm.append("image", photoFile);
+        try {
+          const res = await fetch("/api/entries/manual/photo", {
+            method: "POST",
+            body: uploadForm,
+          });
+          const data = await res.json();
+          if (!res.ok || !data?.success) {
+            setError(data?.error ?? "Failed to upload the photo. Please try again.");
+            setSubmitting(false);
+            submitLockRef.current = false;
+            return;
+          }
+          uploadedImageKeyRef.current = data.key;
+          imageKey = data.key;
+        } catch {
+          setError("Failed to upload the photo. Please try again.");
+          setSubmitting(false);
+          submitLockRef.current = false;
+          return;
+        }
+      }
+
       // Currency/number fields are stored as raw strings while typing so decimal
       // points survive keystroke-by-keystroke; coerce them back to numbers here.
       const numericKeys = new Set(
@@ -291,7 +338,8 @@ export function ManualQuickForm({
         otherMode: category === "others" ? otherMode : "flat",
         totalAmount: total,
         witness: witness.trim(),
-        photoFile,
+        entryId: entryIdRef.current ?? crypto.randomUUID(),
+        imageKey: imageKey ?? undefined,
         justification: justification.trim() || "",
         aboveRangeExplanation: gate ? gateExplanation.trim() : undefined,
         overspendExplanation: overspendGate ? overspendExplanation.trim() : undefined,
@@ -337,6 +385,7 @@ export function ManualQuickForm({
       otherMode,
       total,
       photoFile,
+      eventId,
       justification,
       onSubmit,
     ],

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createInsforgeServer } from "@/lib/insforge-server";
 import { requireRole } from "@/lib/auth-guard";
-import { uploadReceipt, deleteReceiptBlob } from "@/lib/storage";
+import { deleteReceiptBlob } from "@/lib/storage";
 import { VOID_REASON_MAX } from "@/lib/limits";
 import { remainingAfterEntryCents, entryCausesOverspend } from "@/lib/overspend";
 import { CATEGORIES, manualGateThresholdCents } from "@/components/entries/manual-categories";
@@ -283,8 +283,10 @@ const MANUAL_EXPLANATION_MAX = 500;
  * writes; the treasurer explains and resubmits. The gate never blocks — with
  * an explanation the entry is always accepted (adviser review is the gate).
  *
- * Upload-first ordering: the photo (optional) uploads BEFORE the row insert,
- * so a failed upload returns an error with no row created and the form intact.
+ * Upload-first ordering: the supporting photo (optional) is uploaded CLIENT-side
+ * via the FormData route `POST /api/entries/manual/photo` (a File can't cross a
+ * server-action boundary), and only its storage key is passed here. A failed
+ * upload therefore shows a form error with no row created and the form intact.
  * A duplicate submission is prevented client-side (ref latch); the action is
  * safe to re-run after failure since nothing was written.
  */
@@ -340,18 +342,13 @@ export async function submitManualEntry(
       return { success: false, error: "A justification is required for Other expenses." };
     }
 
-    let photoFile: File | null = payload.photoFile ?? null;
-    if (photoFile) {
-      if (!(photoFile instanceof File)) {
-        return { success: false, error: "Invalid photo attachment." };
-      }
-      if (!photoFile.type.startsWith("image/")) {
-        return { success: false, error: "Only image files are accepted." };
-      }
-      if (photoFile.size > 10 * 1024 * 1024) {
-        return { success: false, error: "Photo is too large (max 10 MB)." };
-      }
+    const entryId = (payload.entryId ?? "").trim();
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(entryId)) {
+      return { success: false, error: "Invalid entry." };
     }
+    // Supporting photo is uploaded client-side (FormData route) and only its
+    // storage key reaches here — a File can't cross the server-action boundary.
+    const imageKey = (payload.imageKey ?? "").trim() || null;
 
     // Itemized categories need at least one valid line
     const itemized =
@@ -439,21 +436,9 @@ export async function submitManualEntry(
       };
     }
 
-    // ─── Upload-first: photo before row (failure leaves no row behind) ──
-    const entryId = crypto.randomUUID();
-    let imageUrl: string | null = null;
-    if (photoFile) {
-      try {
-        const uploaded = await uploadReceipt(eventId, entryId, photoFile);
-        imageUrl = uploaded.key;
-      } catch (uploadError) {
-        console.error("[actions/entries] manual photo upload failed:", uploadError);
-        return {
-          success: false,
-          error: "Failed to upload the photo. Nothing was saved — please try again.",
-        };
-      }
-    }
+    // Photo was already uploaded client-side (FormData route) before the
+    // action ran — this step only stores the key. Nothing left to upload here.
+    const imageUrl = imageKey;
 
     // ─── Insert (only now — a successful photo is already persisted) ──
     const formPayload = {
