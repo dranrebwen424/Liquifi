@@ -230,6 +230,11 @@ Files: lib/event-route.ts, components/layout/{MobileBottomNav, SidebarShell}.tsx
 | `ui-rules.md` | Component specs — how to compose tokens into cards, buttons, inputs, badges, etc. |
 | `ui-registry.md` (this file) | Living inventory of what was built, with exact classes used |
 
+## 2026-08-30 Addendum b - Manual-entry title + detail modal
+
+- **entry-title.ts** - manual entry title returns only the free-text detail (recipient/route/occasion/first line item), dropping the `Category - ` prefix; falls back to category label when no detail.
+- **EntryDetailModal / EntryDetailContent** - new manual-form details block (same `DetailRow` surface as the general rows): Recipient, Route, Occasion/Purpose, Witness, Purpose (from `form_payload_json`). Shown for `type === "manual"` when `formPayload` present.
+
 ## 2026-08-30 Addendum - Multi-image manual entries
 
 - **EntryCard** - `showImage` gate relaxed from `type === "receipt"` to any entry with `image_url`; manual entries now show their first image as the card thumbnail (falls back to `ManualPlaceholder` only when no image). Thumbnail hits `/api/entries/[id]/image` (index 0).

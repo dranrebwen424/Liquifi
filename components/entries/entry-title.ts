@@ -35,5 +35,5 @@ export function entryTitle(e: TitleSource): string {
     (typeof payload?.occasion === "string" && payload.occasion.trim()) ||
     firstBreakdownItem(e.itemBreakdown);
 
-  return detail ? `${label} — ${detail}` : label;
+  return detail ? detail : label;
 }

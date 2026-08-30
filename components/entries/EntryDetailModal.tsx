@@ -38,6 +38,16 @@ type EntryDetail = {
   voidedByName?: string | null;
 };
 
+/** Persisted `form_payload_json` for manual entries — mirrors what the
+ *  treasurer filled out in `ManualQuickForm`. */
+type ManualFormPayload = {
+  witness?: string;
+  justification?: string;
+  recipient?: string;
+  route?: string;
+  occasion?: string;
+};
+
 type EntryDetailModalProps = {
   open: boolean;
   onClose: () => void;
@@ -324,6 +334,8 @@ function EntryDetailContent({
   const itemBreakdown = isItemBreakdown(entry.itemBreakdown)
     ? entry.itemBreakdown.map(normalizeItem)
     : null;
+  // Everything the treasurer typed into the manual form, persisted verbatim.
+  const formPayload = (entry.formPayload ?? null) as ManualFormPayload | null;
   const [imgFailed, setImgFailed] = useState(false);
   // Multi-image entries store a JSON array in `image_url`; the helper normalizes
   // both that and the legacy bare-key form. `showImage` only needs the first key.
@@ -416,6 +428,27 @@ function EntryDetailContent({
           <DetailRow label="Created" value={formatDate(entry.createdAt)} />
         )}
       </div>
+
+      {/* Manual-form details — every field the treasurer filled out */}
+      {entry.type === "manual" && formPayload && (
+        <div className="divide-y divide-border rounded-lg border border-border bg-surface-secondary/50 px-4">
+          {formPayload.recipient && (
+            <DetailRow label="Recipient" value={formPayload.recipient} />
+          )}
+          {formPayload.route && (
+            <DetailRow label="Route" value={formPayload.route} />
+          )}
+          {formPayload.occasion && (
+            <DetailRow label="Occasion / Purpose" value={formPayload.occasion} />
+          )}
+          {formPayload.witness && (
+            <DetailRow label="Witness" value={formPayload.witness} />
+          )}
+          {formPayload.justification && (
+            <DetailRow label="Purpose" value={formPayload.justification} />
+          )}
+        </div>
+      )}
 
       {/* Item breakdown */}
       {itemBreakdown && itemBreakdown.length > 0 && (
