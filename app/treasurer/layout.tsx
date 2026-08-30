@@ -4,6 +4,7 @@ import { TreasurerSidebar } from "@/components/treasurer/TreasurerSidebar";
 import { TreasurerMobileBottomNav } from "@/components/treasurer/TreasurerMobileBottomNav";
 import { MobileTopBar } from "@/components/treasurer/MobileTopBar";
 import { PushSubscriber } from "@/components/notifications/PushSubscriber";
+import { PushEnableToast } from "@/components/notifications/PushEnableToast";
 import { SidebarShell } from "@/components/layout/SidebarShell";
 
 export default async function TreasurerLayout({
@@ -26,6 +27,7 @@ export default async function TreasurerLayout({
   return (
     <div className="min-h-screen bg-background">
       <PushSubscriber />
+      <PushEnableToast />
       <TreasurerSidebar unreadCount={unreadCount} />
 
       <MobileTopBar />

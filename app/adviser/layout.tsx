@@ -4,6 +4,7 @@ import { AdviserSidebar } from "@/components/adviser/AdviserSidebar";
 import { AdviserMobileBottomNav } from "@/components/adviser/AdviserMobileBottomNav";
 import { AdviserMobileTopBar } from "@/components/adviser/AdviserMobileTopBar";
 import { PushSubscriber } from "@/components/notifications/PushSubscriber";
+import { PushEnableToast } from "@/components/notifications/PushEnableToast";
 import { SidebarShell } from "@/components/layout/SidebarShell";
 
 export default async function AdviserLayout({
@@ -26,6 +27,7 @@ export default async function AdviserLayout({
   return (
     <div className="min-h-screen bg-background">
       <PushSubscriber />
+      <PushEnableToast />
       <AdviserSidebar unreadCount={unreadCount} />
 
       <AdviserMobileTopBar />
