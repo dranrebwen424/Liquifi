@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatPHP, formatNumberInput, toNumber } from "@/lib/format";
+import { prepareImage } from "@/lib/image";
 import { CATEGORIES, type ExpenseType, type ComputeField } from "@/components/entries/manual-categories";
 import { FloatingInput } from "@/components/entries/FloatingInput";
 import { usePeopleReuse } from "@/hooks/usePeopleReuse";
@@ -297,7 +298,7 @@ export function ManualQuickForm({
         const uploadForm = new FormData();
         uploadForm.append("eventId", eventId);
         uploadForm.append("entryId", entryIdRef.current);
-        uploadForm.append("image", photoFile);
+        uploadForm.append("image", await prepareImage(photoFile));
         try {
           const res = await fetch("/api/entries/manual/photo", {
             method: "POST",
