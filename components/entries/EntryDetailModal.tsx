@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, FileText, ZoomIn, CircleMinus, CircleX, ChevronLeft, ChevronRight } from "lucide-react";
-import { formatPHP } from "@/lib/format";
+import { formatPHP, toNumber } from "@/lib/format";
+import { CATEGORIES, type ExpenseType } from "@/components/entries/manual-categories";
 import { StatusBadge, entryStatusMap } from "@/components/ui/StatusBadge";
 import { entryTitle } from "@/components/entries/entry-title";
 import { Button } from "@/components/ui/button";
@@ -46,7 +47,41 @@ type ManualFormPayload = {
   recipient?: string;
   route?: string;
   occasion?: string;
+  /** Per-category computed inputs (fare, passengers, rate, headcount, ...). */
+  field_values?: Record<string, number | string | boolean>;
 };
+
+/** Renders the per-category trip/rate details the treasurer computed. */
+function manualSpecRows(
+  category: ExpenseType,
+  values: Record<string, number | string | boolean> | undefined,
+): { label: string; value: string }[] {
+  const config = CATEGORIES[category];
+  if (!config || !values) return [];
+  const rows: { label: string; value: string }[] = [];
+
+  const add = (label: string, v: string) =>
+    rows.push({ label, value: v });
+
+  for (const f of config.fields) {
+    const v = values[f.key];
+    if (v === undefined || v === "" || v === null) continue;
+    const suffix = f.suffix ? ` ${f.suffix}` : "";
+    add(
+      f.label,
+      f.type === "currency" ? `${formatPHP(toNumber(v))}${suffix}` : `${v}${suffix}`,
+    );
+  }
+
+  // Transportation extras beyond the two main fields.
+  if (category === "transportation") {
+    if (values.roundTrip === true) add("Trip Type", "Round-trip");
+    if (typeof values.trips === "number" && values.trips > 0)
+      add("One-way Rides", `${values.trips}`);
+  }
+
+  return rows;
+}
 
 type EntryDetailModalProps = {
   open: boolean;
@@ -431,22 +466,36 @@ function EntryDetailContent({
 
       {/* Manual-form details — every field the treasurer filled out */}
       {entry.type === "manual" && formPayload && (
-        <div className="divide-y divide-border rounded-lg border border-border bg-surface-secondary/50 px-4">
-          {formPayload.recipient && (
-            <DetailRow label="Recipient" value={formPayload.recipient} />
-          )}
-          {formPayload.route && (
-            <DetailRow label="Route" value={formPayload.route} />
-          )}
-          {formPayload.occasion && (
-            <DetailRow label="Occasion / Purpose" value={formPayload.occasion} />
-          )}
-          {formPayload.witness && (
-            <DetailRow label="Witness" value={formPayload.witness} />
-          )}
-          {formPayload.justification && (
-            <DetailRow label="Purpose" value={formPayload.justification} />
-          )}
+        <div className="rounded-lg border border-border bg-surface-secondary/50 p-4">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-secondary">
+            Details
+          </p>
+          <div className="divide-y divide-border">
+            {/* Category-specific specs (trip/rate/headcount/etc.) */}
+            {manualSpecRows(
+              entry.category as ExpenseType,
+              formPayload.field_values,
+            ).map((r) => (
+              <DetailRow key={r.label} label={r.label} value={r.value} />
+            ))}
+            {/* Free-text locations / people */}
+            {formPayload.route && (
+              <DetailRow label="Route" value={formPayload.route} />
+            )}
+            {formPayload.recipient && (
+              <DetailRow label="Recipient" value={formPayload.recipient} />
+            )}
+            {/* Extra information */}
+            {formPayload.occasion && (
+              <DetailRow label="Occasion" value={formPayload.occasion} />
+            )}
+            {formPayload.witness && (
+              <DetailRow label="Witness" value={formPayload.witness} />
+            )}
+            {formPayload.justification && (
+              <DetailRow label="Purpose" value={formPayload.justification} />
+            )}
+          </div>
         </div>
       )}
 

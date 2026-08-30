@@ -233,7 +233,7 @@ Files: lib/event-route.ts, components/layout/{MobileBottomNav, SidebarShell}.tsx
 ## 2026-08-30 Addendum b - Manual-entry title + detail modal
 
 - **entry-title.ts** - manual entry title returns only the free-text detail (recipient/route/occasion/first line item), dropping the `Category - ` prefix; falls back to category label when no detail.
-- **EntryDetailModal / EntryDetailContent** - new manual-form details block (same `DetailRow` surface as the general rows): Recipient, Route, Occasion/Purpose, Witness, Purpose (from `form_payload_json`). Shown for `type === "manual"` when `formPayload` present.
+- **EntryDetailModal / EntryDetailContent** - new "Details" section for manual entries, driven by `CATEGORIES[category].fields` + `form_payload_json.field_values` so each category shows the exact computed inputs (Transportation: Fare, Passengers, Trip Type, one-way rides; Meals: Per-head Rate, Headcount; Printing: Rate/page, Pages, Copies; Rental: Daily Rate, Days; Honorarium: Amount). Free-text rows below: Route, Recipient, Occasion, Witness, Purpose. New `manualSpecRows()` helper formats currency fields with `formatPHP`.
 
 ## 2026-08-30 Addendum - Multi-image manual entries
 
