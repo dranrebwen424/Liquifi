@@ -163,7 +163,7 @@ export async function confirmReceiptEntry(
     // Server-authoritative cents math — remaining AFTER this entry
     const { data: eventBudget, error: budgetErr } = await insforge.database
       .from("events")
-      .select("budget_total")
+      .select("budget_total, name")
       .eq("id", eventId)
       .maybeSingle();
     if (budgetErr || !eventBudget) return { success: false, error: "Event not found." };
@@ -246,6 +246,30 @@ export async function confirmReceiptEntry(
         ...(explanation ? { overspend_explanation: explanation } : {}),
       },
     }]);
+
+    // Notify the department adviser when this receipt's deduction is the TRUE
+    // crossing that pushed the event over budget. Fires once per event: the
+    // durable causes_overspend flag / entryCausesOverspend (returns false once
+    // already over) guarantee a single deducted crossing per event. Best-effort.
+    if (overspend) {
+      try {
+        const { data: adviser } = await insforge.database
+          .from("users")
+          .select("id")
+          .eq("department_id", user.departmentId)
+          .eq("role", "adviser")
+          .eq("account_status", "active")
+          .maybeSingle();
+        if (adviser && eventBudget.name) {
+          await createNotification(adviser.id, "event_overspend", {
+            event_id: eventId,
+            event_name: eventBudget.name,
+          });
+        }
+      } catch (notifErr) {
+        console.error("[actions/entries] event_overspend notification failed:", notifErr);
+      }
+    }
 
     revalidatePath("/treasurer/home");
     revalidatePath(`/treasurer/events/${eventId}`);

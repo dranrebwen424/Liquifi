@@ -385,7 +385,7 @@ export async function batchApproveEntries(entryIds: string[]) {
     // Fetch all entries with their events to verify department + state
     const { data: entries, error: fetchErr } = await insforge.database
       .from("entries")
-      .select("id, event_id, status, type, amount, events(department_id, status)")
+      .select("id, event_id, status, type, amount, created_by, events(department_id, status)")
       .in("id", entryIds);
 
     if (fetchErr || !entries || entries.length === 0) {
@@ -445,7 +445,7 @@ export async function batchApproveEntries(entryIds: string[]) {
     for (const eventId of flaggedEventIds) {
       const { data: ev } = await insforge.database
         .from("events")
-        .select("budget_total")
+        .select("budget_total, name")
         .eq("id", eventId)
         .maybeSingle();
       if (!ev || ev.budget_total === null) continue;
@@ -495,6 +495,29 @@ export async function batchApproveEntries(entryIds: string[]) {
           console.error("[actions/approvals] stale overspend flag clear failed for", eventId, clearErr);
         }
       }
+
+      // This batch produced the TRUE crossing that pushed the event below zero
+      // (receipts were never pending, so the only deducted crossing is here or
+      // in confirmReceiptEntry). Alert the adviser once per event — best-effort.
+      if (crossingId !== null) {
+        try {
+          const { data: adviser } = await insforge.database
+            .from("users")
+            .select("id")
+            .eq("department_id", actor.departmentId)
+            .eq("role", "adviser")
+            .eq("account_status", "active")
+            .maybeSingle();
+          if (adviser && ev.name) {
+            await createNotification(adviser.id, "event_overspend", {
+              event_id: eventId,
+              event_name: ev.name,
+            });
+          }
+        } catch (notifErr) {
+          console.error("[actions/approvals] event_overspend notification failed:", notifErr);
+        }
+      }
     }
 
     // Audit log per entry — best-effort
@@ -508,6 +531,20 @@ export async function batchApproveEntries(entryIds: string[]) {
           target_id: entry.id,
           metadata_json: { entry_event_id: entry.event_id, amount: entry.amount },
         }]);
+
+        // Notify the submitting treasurer that their entry was approved — best-effort.
+        if (entry.created_by) {
+          const amountNum =
+            typeof entry.amount === "number"
+              ? entry.amount
+              : typeof entry.amount === "string"
+                ? Number(entry.amount)
+                : NaN;
+          await createNotification(entry.created_by, "entry_approved", {
+            event_id: entry.event_id,
+            ...(Number.isFinite(amountNum) ? { amount: amountNum } : {}),
+          });
+        }
       } catch (logErr) {
         console.error("[actions/approvals] entry approval audit log failed:", logErr);
       }

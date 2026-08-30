@@ -81,6 +81,21 @@ export function notificationContent(type: string, payload: Payload): Notificatio
         url: `/treasurer/events/${eventId}`,
       };
     }
+    case "entry_approved": {
+      const amount = typeof payload.amount === "number" ? payload.amount : null;
+      return {
+        title: "Entry approved",
+        body: `A manual entry${amount !== null ? ` of ₱${amount.toFixed(2)}` : ""} was approved.`,
+        url: `/treasurer/events/${eventId}`,
+      };
+    }
+    case "event_overspend": {
+      return {
+        title: "Budget overrun",
+        body: `${eventName} exceeded its budget.`,
+        url: `/adviser/events/${eventId}`,
+      };
+    }
     default:
       return { title: "Notification", body: "You have a new notification.", url: "" };
   }

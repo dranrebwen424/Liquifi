@@ -1,4 +1,4 @@
-# Progress Tracker
+﻿# Progress Tracker
 
 Update this file after every completed feature. Any AI agent reading this should immediately know what is done, what is in progress, and what is next.
 
@@ -181,6 +181,7 @@ Update this file after every completed feature. Any AI agent reading this should
 - **2026-08-02 — Camera UX (4 iterations):** fullscreen viewfinder portal to body (parent transforms break fixed); flash only when torch capability; green sweet-spot brackets + live dim/close/far/blur hints; thumb-comfort sizing; mobile-only, no FAB; real-device QA outstanding.
 - **2026-08-03 — Expense category at parse time:** AI infers (7-way taxonomy, doubt → `others`), stored on insert; AI final — review read-only; no backfill.
 - **2026-08-01 — EventCard Figma "folder 2" + refinements:** all info on paper sheet, framer-motion hover, grid capped 5 cols, neutral hover only, mobile filter popover; mock data removed (breakdown deducted-only; card always rendered).
+- **2026-08-30 - Notification gaps filled (adviser overspend + treasurer entry-approved):** two new createNotification types via lib/notifications.ts notificationContent - event_overspend (adviser, title 'Budget overrun', -> /adviser/events/[id]) and entry_approved (treasurer, -> /treasurer/events/[id]). Web Push automatic (the createNotification choke point already calls sendPushToUser). Fires: (1) event_overspend in confirmReceiptEntry (actions/entries.ts) and in batchApproveEntries backstop (actions/approvals.ts) on the TRUE deducted crossing only - NOT the provisional pending-submit flag, so a rejected/withdrawn pending entry never sends a false alert. Once-per-event is guaranteed by the durable causes_overspend flag + entryCausesOverspend returning false once already over, so at most one adviser push per event. (2) entry_approved inside batchApproveEntries' per-entry audit loop to entry.created_by (added created_by to that select). Reject-report (report_rejected) and reject-entry (entry_rejected) pushes to the treasurer were ALREADY firing - no new code. The treasurer 'event approved' leg was already report_approved on report approval. No schema, no pages, no RLS, no UI changes; UI list + badge render the new types via the shared content map.
 ---
 
 ## Notes
