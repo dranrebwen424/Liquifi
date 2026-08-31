@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -150,31 +150,38 @@ export default function AdviserApprovalsClient({ pendingUsers: initialUsers, pen
     setConfirmingAction({ type: "reject", userId: user.id, userName: `${user.first_name} ${user.last_name}` });
   };
 
+  // Guards a rapid double-click on the dialog confirm from firing the same
+  // user approve/reject twice after the dialog already closed (instant path).
+  const userActionRef = useRef<Promise<void> | null>(null);
+
   const executeUserAction = async () => {
-    if (!confirmingAction || !confirmingAction.userId || approving) return;
+    if (!confirmingAction || !confirmingAction.userId || userActionRef.current) return;
 
     const userId = confirmingAction.userId;
     const type = confirmingAction.type;
     setError("");
-    // Disable the confirm button + show a spinner while the action runs. The
-    // dialog stays open as the single gate — this blocks a double-click from
-    // firing approve/reject twice. Row removal happens on success.
-    setApproving(true);
 
-    const result = type === "approve" ? await approveTreasurerSignup(userId) : await rejectTreasurerSignup(userId);
-    setApproving(false);
+    // Instant + background: remove the row and close the dialog NOW; the server
+    // mutation (incl. the reject purge) runs async. userActionRef is the single
+    // gate so a second click in the same frame can't fire it twice.
+    const removed = pendingUsers.find((u) => u.id === userId);
+    setPendingUsers((prev) => prev.filter((u) => u.id !== userId));
     setConfirmingAction(null);
 
-    if (!result.success) {
-      // Roll back + surface error
-      setError(result.error);
-      return;
-    }
-
-    // Remove the row now that the server confirmed (best-effort render update;
-    // router.refresh() is the real source of truth).
-    setPendingUsers((prev) => prev.filter((u) => u.id !== userId));
-    router.refresh();
+    const promise = (async () => {
+      const result = type === "approve" ? await approveTreasurerSignup(userId) : await rejectTreasurerSignup(userId);
+      if (!result.success) {
+        // Roll back + surface error
+        setError(result.error);
+        if (removed) setPendingUsers((prev) => (prev.some((u) => u.id === userId) ? prev : [removed, ...prev]));
+      } else {
+        // refresh() is the real source of truth after the server confirms
+        router.refresh();
+      }
+    })().finally(() => {
+      userActionRef.current = null;
+    });
+    userActionRef.current = promise;
   };
 
   // ─── Tab bar ──────────────────────────────────────────────────────
