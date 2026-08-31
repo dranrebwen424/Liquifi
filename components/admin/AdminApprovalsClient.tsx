@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -49,47 +49,52 @@ export function AdminApprovalsClient({ applicants }: Props) {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState("");
 
-  const handleApprove = useCallback(async (userId: string) => {
-    setTogglingId(userId);
-    setActionError("");
+  // Refs guard against a rapid double-click firing the background action twice
+  // before React re-renders the row away (the row itself is removed instantly).
+  const pendingRef = useRef<Set<string>>(new Set());
 
-    // Optimistic: remove immediately, mutate in the background
-    const removed = localApplicants.find((a) => a.id === userId);
-    setLocalApplicants((prev) => prev.filter((a) => a.id !== userId));
+  const runOptimistic = useCallback(
+    async (userId: string, action: (uid: string) => Promise<{ success: boolean; error?: string }>, isReject: boolean) => {
+      // If reject, take the same instant path — the confirm was removed so the
+      // row disappears on click; the server purge runs in the background.
+      if (pendingRef.current.has(userId)) return;
+      pendingRef.current.add(userId);
+      setActionError("");
 
-    const result = await approveAdviserSignup(userId);
-    if (result.success) {
-      router.refresh();
-      setTogglingId(null);
-    } else {
-      // Roll back + surface error
-      if (removed) setLocalApplicants((prev) => (prev.some((a) => a.id === userId) ? prev : [removed, ...prev]));
-      setActionError(result.error);
-      setTogglingId(null);
-    }
-  }, [router, localApplicants]);
+      // Optimistic: remove immediately, mutate in the background
+      const removed = localApplicants.find((a) => a.id === userId);
+      setLocalApplicants((prev) => prev.filter((a) => a.id !== userId));
+      setTogglingId(userId);
 
-  const handleReject = useCallback(async (userId: string) => {
-    if (!window.confirm("Reject this adviser signup?")) return;
+      const result = await action(userId);
+      pendingRef.current.delete(userId);
 
-    setTogglingId(userId);
-    setActionError("");
+      if (result.success) {
+        router.refresh();
+        setTogglingId(null);
+      } else {
+        // Roll back + surface error
+        if (removed) setLocalApplicants((prev) => (prev.some((a) => a.id === userId) ? prev : [removed, ...prev]));
+        setActionError(result.error ?? "Something went wrong.");
+        setTogglingId(null);
+      }
+    },
+    [router, localApplicants],
+  );
 
-    // Optimistic: remove immediately, mutate in the background
-    const removed = localApplicants.find((a) => a.id === userId);
-    setLocalApplicants((prev) => prev.filter((a) => a.id !== userId));
+  const handleApprove = useCallback(
+    (userId: string) => {
+      void runOptimistic(userId, (uid) => approveAdviserSignup(uid), false);
+    },
+    [runOptimistic],
+  );
 
-    const result = await rejectAdviserSignup(userId);
-    if (result.success) {
-      router.refresh();
-      setTogglingId(null);
-    } else {
-      // Roll back + surface error
-      if (removed) setLocalApplicants((prev) => (prev.some((a) => a.id === userId) ? prev : [removed, ...prev]));
-      setActionError(result.error);
-      setTogglingId(null);
-    }
-  }, [router, localApplicants]);
+  const handleReject = useCallback(
+    (userId: string) => {
+      void runOptimistic(userId, (uid) => rejectAdviserSignup(uid), true);
+    },
+    [runOptimistic],
+  );
 
   if (localApplicants.length === 0) {
     return (

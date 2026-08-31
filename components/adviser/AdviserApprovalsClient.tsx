@@ -11,6 +11,7 @@ import {
   rejectEntry,
 } from "@/actions/approvals";
 import { cn } from "@/lib/utils";
+import { Loader2 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────
 
@@ -150,28 +151,29 @@ export default function AdviserApprovalsClient({ pendingUsers: initialUsers, pen
   };
 
   const executeUserAction = async () => {
-    if (!confirmingAction || !confirmingAction.userId) return;
+    if (!confirmingAction || !confirmingAction.userId || approving) return;
 
     const userId = confirmingAction.userId;
+    const type = confirmingAction.type;
     setError("");
+    // Disable the confirm button + show a spinner while the action runs. The
+    // dialog stays open as the single gate — this blocks a double-click from
+    // firing approve/reject twice. Row removal happens on success.
+    setApproving(true);
 
-    // Optimistic: remove immediately, mutate in the background
-    const removed = pendingUsers.find((u) => u.id === userId);
-    setPendingUsers((prev) => prev.filter((u) => u.id !== userId));
+    const result = type === "approve" ? await approveTreasurerSignup(userId) : await rejectTreasurerSignup(userId);
+    setApproving(false);
     setConfirmingAction(null);
-
-    const result =
-      confirmingAction.type === "approve"
-        ? await approveTreasurerSignup(userId)
-        : await rejectTreasurerSignup(userId);
 
     if (!result.success) {
       // Roll back + surface error
       setError(result.error);
-      if (removed) setPendingUsers((prev) => (prev.some((u) => u.id === userId) ? prev : [removed, ...prev]));
       return;
     }
 
+    // Remove the row now that the server confirmed (best-effort render update;
+    // router.refresh() is the real source of truth).
+    setPendingUsers((prev) => prev.filter((u) => u.id !== userId));
     router.refresh();
   };
 
@@ -487,7 +489,7 @@ export default function AdviserApprovalsClient({ pendingUsers: initialUsers, pen
               </p>
             )}
             <div className="flex gap-3 justify-end">
-              <Button variant="outline" onClick={() => setConfirmingAction(null)}>
+              <Button variant="outline" onClick={() => setConfirmingAction(null)} disabled={approving}>
                 Cancel
               </Button>
               <Button
@@ -495,7 +497,16 @@ export default function AdviserApprovalsClient({ pendingUsers: initialUsers, pen
                 disabled={approving}
                 onClick={() => (confirmingAction.userId ? executeUserAction() : executeBatchApprove())}
               >
-                {approving ? "Approving…" : confirmingAction.type === "approve" ? "Approve" : "Reject"}
+                {approving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {confirmingAction.type === "reject" ? "Rejecting…" : "Approving…"}
+                  </>
+                ) : confirmingAction.type === "reject" ? (
+                  "Reject"
+                ) : (
+                  "Approve"
+                )}
               </Button>
             </div>
           </div>
