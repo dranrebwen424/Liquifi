@@ -9,10 +9,14 @@ export type AuditLogRow = {
   action: string;
   target_type: string;
   target_id: string | null;
+  actor_id: string | null;
   actor: string;
+  actor_role: string | null;
   metadata_json: Record<string, unknown> | null;
   created_at: string;
 };
+
+export type AuditActor = { id: string; name: string };
 
 export default async function DepartmentDetailPage({
   params,
@@ -53,7 +57,7 @@ export default async function DepartmentDetailPage({
     const { data: actors } = actorIds.length
       ? await insforge.database
           .from("users")
-          .select("id, first_name, last_name")
+          .select("id, first_name, last_name, role")
           .in("id", actorIds)
       : { data: [] };
     const nameById = new Map(
@@ -62,12 +66,15 @@ export default async function DepartmentDetailPage({
         `${actor.first_name} ${actor.last_name}`.trim(),
       ]),
     );
+    const roleById = new Map((actors ?? []).map((actor) => [actor.id, actor.role]));
     auditLogs = logs.map((log) => ({
       id: log.id,
       action: log.action,
       target_type: log.target_type,
       target_id: log.target_id,
+      actor_id: log.actor_id ?? null,
       actor: nameById.get(log.actor_id) ?? "Unknown",
+      actor_role: roleById.get(log.actor_id) ?? null,
       metadata_json: log.metadata_json,
       created_at: log.created_at,
     }));
@@ -101,11 +108,19 @@ export default async function DepartmentDetailPage({
       };
     });
 
+  // Distinct actors for the audit-log "who" filter
+  const auditActors = Array.from(
+    new Map(auditLogs.map((log) => [log.actor_id, log])).values(),
+  )
+    .sort((a, b) => a.actor.localeCompare(b.actor))
+    .map((log) => ({ id: log.actor_id ?? "unknown", name: log.actor }));
+
   return (
     <DepartmentDetailClient
       department={department}
       initialUsers={users ?? []}
       auditLogs={auditLogs}
+      auditActors={auditActors}
       events={eventRows}
       reports={reportRows}
     />

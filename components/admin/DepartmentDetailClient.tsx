@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useCallback, Fragment } from "react";
+import { useState, useCallback, useMemo, Fragment } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Folder, Loader2, CircleCheckBig, CircleMinus, ChevronDown, ChevronUp } from "lucide-react";
+import { Folder, Loader2, CircleCheckBig, CircleMinus, ChevronDown, ChevronUp, RotateCcw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   StatusBadge,
@@ -15,6 +15,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { EventBrowser } from "@/components/events/EventBrowser";
 import { staggerContainer, fadeUpItem } from "@/lib/motion-variants";
 import { setUserAccountStatus } from "@/actions/departments";
+import { auditLogView } from "@/lib/audit-log-view";
 import type { AccountStatus } from "@/types";
 
 // ─── Types ───────────────────────────────────────────────────────────
@@ -59,10 +60,14 @@ type AuditLog = {
   action: string;
   target_type: string;
   target_id: string | null;
+  actor_id: string | null;
   actor: string;
+  actor_role: string | null;
   metadata_json: Record<string, unknown> | null;
   created_at: string;
 };
+
+type AuditActor = { id: string; name: string };
 
 type Props = {
   department: Department;
@@ -70,6 +75,7 @@ type Props = {
   events?: Event[];
   reports?: Report[];
   auditLogs?: AuditLog[];
+  auditActors?: AuditActor[];
 };
 
 const TABS = ["Users", "Events", "Reports", "Audit Logs"] as const;
@@ -81,6 +87,7 @@ export function DepartmentDetailClient({
   events = [],
   reports = [],
   auditLogs = [],
+  auditActors = [],
 }: Props) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>("Users");
@@ -191,7 +198,7 @@ export function DepartmentDetailClient({
             <ReportsTab departmentId={department.id} reports={reports} />
           )}
           {activeTab === "Audit Logs" && (
-            <AuditTab logs={auditLogs} />
+            <AuditTab logs={auditLogs} actors={auditActors} />
           )}
         </motion.div>
       </AnimatePresence>
@@ -399,8 +406,12 @@ function ReportsTab({
 
 // ─── Tab: Audit Logs ───────────────────────────────────────────────
 
-function AuditTab({ logs }: { logs: AuditLog[] }) {
+function AuditTab({ logs, actors }: { logs: AuditLog[]; actors: AuditActor[] }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [actorFilter, setActorFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
 
   if (logs.length === 0) {
     return (
@@ -411,124 +422,269 @@ function AuditTab({ logs }: { logs: AuditLog[] }) {
     );
   }
 
-  const hasMetadata = (log: AuditLog) =>
-    log.metadata_json !== null &&
-    Object.keys(log.metadata_json).length > 0;
+  // Distinct categories derived from the mapper for the filter dropdown.
+  const categories = useMemo(() => {
+    const set = new Set(logs.map((log) => auditLogView(log.action, log.metadata_json).category));
+    return Array.from(set).sort();
+  }, [logs]);
+
+  const { filterActorList, hasActiveFilters, filteredLogs } = useMemo(() => {
+    const from = fromDate ? new Date(`${fromDate}T00:00:00`) : null;
+    const to = toDate ? new Date(`${toDate}T23:59:59`) : null;
+    const list = logs.filter((log) => {
+      if (actorFilter !== "all" && (log.actor_id ?? "unknown") !== actorFilter) return false;
+      if (categoryFilter !== "all" && auditLogView(log.action, log.metadata_json).category !== categoryFilter)
+        return false;
+      if (from) {
+        const t = new Date(log.created_at).getTime();
+        if (t < from.getTime()) return false;
+      }
+      if (to) {
+        const t = new Date(log.created_at).getTime();
+        if (t > to.getTime()) return false;
+      }
+      return true;
+    });
+    return {
+      filterActorList: actors,
+      hasActiveFilters:
+        actorFilter !== "all" || categoryFilter !== "all" || !!fromDate || !!toDate,
+      filteredLogs: list,
+    };
+  }, [logs, actors, actorFilter, categoryFilter, fromDate, toDate]);
+
+  const clearFilters = () => {
+    setActorFilter("all");
+    setCategoryFilter("all");
+    setFromDate("");
+    setToDate("");
+  };
+
+  const fmtDate = (iso: string) =>
+    new Date(iso).toLocaleString("en-PH", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+
+  const FilterBar = (
+    <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
+      <label className="flex min-w-[180px] flex-col gap-1 text-xs font-medium text-text-secondary">
+        Who (actor)
+        <select
+          value={actorFilter}
+          onChange={(e) => setActorFilter(e.target.value)}
+          className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none"
+        >
+          <option value="all">All actors</option>
+          {filterActorList.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="flex min-w-[150px] flex-col gap-1 text-xs font-medium text-text-secondary">
+        Category
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none"
+        >
+          <option value="all">All categories</option>
+          {categories.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="flex min-w-[160px] flex-col gap-1 text-xs font-medium text-text-secondary">
+        From date
+        <input
+          type="date"
+          value={fromDate}
+          onChange={(e) => setFromDate(e.target.value)}
+          className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none"
+        />
+      </label>
+
+      <label className="flex min-w-[160px] flex-col gap-1 text-xs font-medium text-text-secondary">
+        To date
+        <input
+          type="date"
+          value={toDate}
+          onChange={(e) => setToDate(e.target.value)}
+          className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none"
+        />
+      </label>
+
+      {hasActiveFilters && (
+        <button
+          onClick={clearFilters}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-tertiary hover:text-text-primary md:mb-0.5"
+        >
+          <RotateCcw className="h-3.5 w-3.5" />
+          Clear
+        </button>
+      )}
+    </div>
+  );
+
+  const toneIcon = (tone: string) => {
+    switch (tone) {
+      case "success": return "bg-success-light text-success";
+      case "error": return "bg-error-light text-error";
+      case "warning": return "bg-warning-light text-warning";
+      case "neutral": return "bg-neutral-light text-neutral";
+      default: return "bg-info-light text-info";
+    }
+  };
 
   return (
-    <>
-      <div className="hidden overflow-x-auto rounded-xl border border-border-strong bg-surface md:block">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-border text-xs font-medium uppercase tracking-wide text-text-muted">
-              <th className="px-6 py-3 font-medium">Action</th>
-              <th className="px-6 py-3 font-medium">Target</th>
-              <th className="px-6 py-3 font-medium">Actor</th>
-              <th className="px-6 py-3 font-medium">Date</th>
-              <th className="w-10" />
-            </tr>
-          </thead>
-          <tbody>
-            {logs.map((log) => {
+    <div className="flex flex-col gap-4">
+      {FilterBar}
+
+      {hasActiveFilters && (
+        <p className="text-xs text-text-muted">
+          Showing {filteredLogs.length} of {logs.length} log{logs.length === 1 ? "" : "s"}.
+        </p>
+      )}
+
+      {filteredLogs.length === 0 ? (
+        <EmptyState
+          title="No matching logs"
+          description="No audit logs match the current filters."
+        />
+      ) : (
+        <>
+          {/* Desktop: table */}
+          <div className="hidden overflow-x-auto rounded-xl border border-border-strong bg-surface md:block">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-border text-xs font-medium uppercase tracking-wide text-text-muted">
+                  <th className="px-6 py-3 font-medium">Action</th>
+                  <th className="px-6 py-3 font-medium">Actor</th>
+                  <th className="px-6 py-3 font-medium">Date</th>
+                  <th className="w-10" />
+                </tr>
+              </thead>
+              <tbody>
+                {filteredLogs.map((log) => {
+                  const view = auditLogView(log.action, log.metadata_json);
+                  const Icon = view.icon;
+                  const isExpanded = expandedId === log.id;
+                  return (
+                    <Fragment key={log.id}>
+                      <tr className="border-b border-border transition-colors last:border-0 hover:bg-surface-secondary">
+                        <td className="px-6 py-3">
+                          <div className="flex items-center gap-3">
+                            <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${toneIcon(view.tone)}`}>
+                              <Icon className="h-4 w-4" />
+                            </span>
+                            <div className="min-w-0">
+                              <p className="font-medium text-text-primary">{view.label}</p>
+                              <p className="truncate text-xs text-text-muted">{view.summary}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-3">
+                          <div className="flex flex-col">
+                            <span className="whitespace-nowrap font-medium text-text-primary">{log.actor}</span>
+                            {log.actor_role && (
+                              <span className="text-xs capitalize text-text-muted">{log.actor_role}</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-3 whitespace-nowrap text-text-muted">{fmtDate(log.created_at)}</td>
+                        <td className="px-4 py-3 text-right">
+                          {view.details.length > 0 && (
+                            <button
+                              onClick={() => setExpandedId(isExpanded ? null : log.id)}
+                              aria-label={isExpanded ? "Hide details" : "Show details"}
+                              className="rounded-md p-1 text-text-muted transition-colors hover:bg-surface-tertiary hover:text-text-primary"
+                            >
+                              {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                      {isExpanded && view.details.length > 0 && (
+                        <tr className="border-b border-border bg-surface-secondary/50 last:border-0">
+                          <td colSpan={4} className="px-6 py-4">
+                            <table className="w-full text-left text-sm">
+                              <tbody>
+                                {view.details.map((d) => (
+                                  <tr key={d.label} className="border-t border-border/60 first:border-t-0">
+                                    <td className="w-44 py-1.5 pr-4 text-xs font-medium uppercase tracking-wide text-text-muted">{d.label}</td>
+                                    <td className="py-1.5 text-text-secondary">{d.value}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile: stacked cards */}
+          <div className="flex flex-col gap-4 md:hidden">
+            {filteredLogs.map((log) => {
+              const view = auditLogView(log.action, log.metadata_json);
+              const Icon = view.icon;
               const isExpanded = expandedId === log.id;
               return (
-                <Fragment key={log.id}>
-                  <tr className="border-b border-border transition-colors last:border-0 hover:bg-surface-secondary">
-                    <td className="px-6 py-3 font-medium text-text-primary">{log.action}</td>
-                    <td className="px-6 py-3">
-                      <span className="text-text-secondary">{log.target_type}</span>
-                      {log.target_id && (
-                        <span className="ml-1.5 text-xs text-text-muted">
-                          #{log.target_id.slice(0, 8)}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-3 text-text-secondary">{log.actor}</td>
-                    <td className="px-6 py-3 whitespace-nowrap text-text-muted">
-                      {new Date(log.created_at).toLocaleString("en-PH", {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                        hour: "numeric",
-                        minute: "2-digit",
-                      })}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      {hasMetadata(log) && (
-                        <button
-                          onClick={() => setExpandedId(isExpanded ? null : log.id)}
-                          aria-label={isExpanded ? "Hide details" : "Show details"}
-                          className="rounded-md p-1 text-text-muted transition-colors hover:bg-surface-tertiary hover:text-text-primary"
-                        >
-                          {isExpanded ? (
-                            <ChevronUp className="h-4 w-4" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4" />
-                          )}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                  {isExpanded && hasMetadata(log) && (
-                    <tr className="border-b border-border bg-surface-secondary/50 last:border-0">
-                      <td colSpan={5} className="px-6 py-4">
-                        <pre className="overflow-x-auto rounded-lg border border-border bg-surface p-3 text-xs leading-relaxed text-text-secondary">
-                          {JSON.stringify(log.metadata_json, null, 2)}
-                        </pre>
-                      </td>
-                    </tr>
+                <div key={log.id} className="rounded-xl border border-border-strong bg-surface p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${toneIcon(view.tone)}`}>
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-text-primary">{view.label}</p>
+                        <p className="text-xs text-text-muted">
+                          {log.actor}
+                          {log.actor_role && <span className="capitalize"> · {log.actor_role}</span>}
+                        </p>
+                      </div>
+                    </div>
+                    {view.details.length > 0 && (
+                      <button
+                        onClick={() => setExpandedId(isExpanded ? null : log.id)}
+                        aria-label={isExpanded ? "Hide details" : "Show details"}
+                        className="shrink-0 rounded-md p-1 text-text-muted transition-colors hover:bg-surface-tertiary hover:text-text-primary"
+                      >
+                        {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                      </button>
+                    )}
+                  </div>
+                  <p className="mt-2 text-sm text-text-secondary">{view.summary}</p>
+                  <p className="mt-1 text-xs text-text-muted">{fmtDate(log.created_at)}</p>
+                  {isExpanded && view.details.length > 0 && (
+                    <dl className="mt-3 space-y-1.5 rounded-lg border border-border bg-surface-secondary/50 p-3">
+                      {view.details.map((d) => (
+                        <div key={d.label} className="flex flex-col">
+                          <dt className="text-xs font-medium uppercase tracking-wide text-text-muted">{d.label}</dt>
+                          <dd className="text-sm text-text-primary">{d.value}</dd>
+                        </div>
+                      ))}
+                    </dl>
                   )}
-                </Fragment>
+                </div>
               );
             })}
-          </tbody>
-        </table>
-      </div>
-      <div className="flex flex-col gap-4 md:hidden">
-        {logs.map((log) => {
-          const isExpanded = expandedId === log.id;
-          return (
-            <div key={log.id} className="rounded-xl border border-border-strong bg-surface p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-text-primary">{log.action}</p>
-                  <p className="mt-1 text-xs text-text-muted">
-                    {log.target_type}
-                    {log.target_id && ` · #${log.target_id.slice(0, 8)}`} · {log.actor}
-                  </p>
-                </div>
-                {hasMetadata(log) && (
-                  <button
-                    onClick={() => setExpandedId(isExpanded ? null : log.id)}
-                    aria-label={isExpanded ? "Hide details" : "Show details"}
-                    className="shrink-0 rounded-md p-1 text-text-muted transition-colors hover:bg-surface-tertiary hover:text-text-primary"
-                  >
-                    {isExpanded ? (
-                      <ChevronUp className="h-4 w-4" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4" />
-                    )}
-                  </button>
-                )}
-              </div>
-              <p className="mt-2 text-xs text-text-secondary">
-                {new Date(log.created_at).toLocaleString("en-PH", {
-                  year: "numeric",
-                  month: "short",
-                  day: "numeric",
-                  hour: "numeric",
-                  minute: "2-digit",
-                })}
-              </p>
-              {isExpanded && hasMetadata(log) && (
-                <pre className="mt-3 overflow-x-auto rounded-lg border border-border bg-surface-secondary/50 p-3 text-xs leading-relaxed text-text-secondary">
-                  {JSON.stringify(log.metadata_json, null, 2)}
-                </pre>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </>
+          </div>
+        </>
+      )}
+    </div>
   );
 }
