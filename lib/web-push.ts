@@ -72,17 +72,24 @@ export async function sendPushNotification(
  * Best-effort push to every subscription a user has registered. Never throws.
  */
 export async function sendPushToUser(userId: string, payload: PushPayload) {
-  if (!vapidConfigured) return;
+  if (!vapidConfigured) {
+    return;
+  }
+  let subs: unknown = null;
   try {
     const insforge = await createInsforgeServer();
-    const { data: subs } = await insforge.database
-      .from("push_subscriptions")
-      .select("endpoint, keys_json")
-      .eq("user_id", userId);
-    if (!subs?.length) return;
+    // ponytail: RLS policy `user_id = auth.uid()` blocks cross-user reads, so a
+    // server action pushing to ANOTHER user's subscription gets 0 rows here. Use
+    // the SECURITY DEFINER rpc (get_user_push_subscriptions) to bypass user RLS.
+    const { data } = await insforge.database
+      .rpc("get_user_push_subscriptions", { target_user: userId });
+    subs = data;
+    if (!data?.length) {
+      return;
+    }
     await Promise.allSettled(
-      subs.map((row) =>
-        sendPushNotification(toPushSubscription(row as PushSubscriptionRow), payload),
+      (subs as PushSubscriptionRow[]).map((row) =>
+        sendPushNotification(toPushSubscription(row), payload),
       ),
     );
   } catch (err) {

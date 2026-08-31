@@ -1,4 +1,5 @@
 import { requireLayoutRole } from "@/lib/layout-guard";
+import { PushSubscriber } from "@/components/notifications/PushSubscriber";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminMobileBottomNav } from "@/components/admin/MobileBottomNav";
 import { AdminMobileTopBar } from "@/components/admin/AdminMobileTopBar";
@@ -13,6 +14,8 @@ export default async function AdminLayout({
 
   return (
     <div className="min-h-screen bg-background">
+      <PushSubscriber />
+
       <AdminSidebar />
 
       <AdminMobileTopBar />

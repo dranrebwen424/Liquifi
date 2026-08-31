@@ -53,15 +53,21 @@ export function AdminApprovalsClient({ applicants }: Props) {
     setTogglingId(userId);
     setActionError("");
 
+    // Optimistic: remove immediately, mutate in the background
+    const removed = localApplicants.find((a) => a.id === userId);
+    setLocalApplicants((prev) => prev.filter((a) => a.id !== userId));
+
     const result = await approveAdviserSignup(userId);
     if (result.success) {
-      setLocalApplicants((prev) => prev.filter((a) => a.id !== userId));
       router.refresh();
+      setTogglingId(null);
     } else {
+      // Roll back + surface error
+      if (removed) setLocalApplicants((prev) => (prev.some((a) => a.id === userId) ? prev : [removed, ...prev]));
       setActionError(result.error);
+      setTogglingId(null);
     }
-    setTogglingId(null);
-  }, [router]);
+  }, [router, localApplicants]);
 
   const handleReject = useCallback(async (userId: string) => {
     if (!window.confirm("Reject this adviser signup?")) return;
@@ -69,15 +75,21 @@ export function AdminApprovalsClient({ applicants }: Props) {
     setTogglingId(userId);
     setActionError("");
 
+    // Optimistic: remove immediately, mutate in the background
+    const removed = localApplicants.find((a) => a.id === userId);
+    setLocalApplicants((prev) => prev.filter((a) => a.id !== userId));
+
     const result = await rejectAdviserSignup(userId);
     if (result.success) {
-      setLocalApplicants((prev) => prev.filter((a) => a.id !== userId));
       router.refresh();
+      setTogglingId(null);
     } else {
+      // Roll back + surface error
+      if (removed) setLocalApplicants((prev) => (prev.some((a) => a.id === userId) ? prev : [removed, ...prev]));
       setActionError(result.error);
+      setTogglingId(null);
     }
-    setTogglingId(null);
-  }, [router]);
+  }, [router, localApplicants]);
 
   if (localApplicants.length === 0) {
     return (

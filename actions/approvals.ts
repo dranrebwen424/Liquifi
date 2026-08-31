@@ -134,13 +134,16 @@ export async function rejectAdviserSignup(userId: string) {
       return { success: false as const, error: "User is no longer pending approval." };
     }
 
-    const { error: updateErr } = await insforge.database
-      .from("users")
-      .update({ account_status: "rejected" })
-      .eq("id", userId);
+    // Reject = purge the applicant entirely (profile, auth user, notifications,
+    // push subs) so their email is freed for a fresh signup. Deleting auth.users
+    // cascades to public.users + auth.user_providers; notifications + push subs
+    // (NO ACTION FKs) are removed inside the SECURITY DEFINER function.
+    const { error: purgeErr } = await insforge.database.rpc("purge_rejected_user", {
+      p_id: userId,
+    });
 
-    if (updateErr) {
-      console.error("[actions/approvals] reject failed:", updateErr);
+    if (purgeErr) {
+      console.error("[actions/approvals] reject purge failed:", purgeErr);
       return { success: false as const, error: "Failed to reject user." };
     }
 
@@ -151,7 +154,8 @@ export async function rejectAdviserSignup(userId: string) {
       console.error("[actions/approvals] rejection email failed:", emailErr);
     }
 
-    // Audit log
+    // Audit log (no FK on audit_logs → kept as an admin trail even though the
+    // applicant row is gone)
     await insforge.database.from("audit_logs").insert([{
       actor_id: user.id,
       department_id: applicant.department_id,
@@ -163,16 +167,6 @@ export async function rejectAdviserSignup(userId: string) {
         name: `${applicant.first_name} ${applicant.last_name}`,
       },
     }]);
-
-    // Notification — best-effort
-    try {
-      await createNotification(userId, "signup_rejected", {
-        applicant_name: `${applicant.first_name} ${applicant.last_name}`,
-        department_id: applicant.department_id,
-      });
-    } catch (notifErr) {
-      console.error("[actions/approvals] signup_rejected notification failed:", notifErr);
-    }
 
     revalidatePath("/admin/approvals");
     return { success: true as const };
@@ -320,13 +314,14 @@ export async function rejectTreasurerSignup(userId: string) {
       return { success: false as const, error: "This applicant does not belong to your department." };
     }
 
-    const { error: updateErr } = await insforge.database.rpc("update_user_account_status", {
+    // Reject = purge the applicant entirely (profile, auth user, notifications,
+    // push subs) so their email is freed for a fresh signup.
+    const { error: purgeErr } = await insforge.database.rpc("purge_rejected_user", {
       p_id: userId,
-      p_account_status: "rejected",
     });
 
-    if (updateErr) {
-      console.error("[actions/approvals] rejectTreasurer failed:", updateErr);
+    if (purgeErr) {
+      console.error("[actions/approvals] rejectTreasurer purge failed:", purgeErr);
       return { success: false as const, error: "Failed to reject user." };
     }
 
@@ -337,7 +332,8 @@ export async function rejectTreasurerSignup(userId: string) {
       console.error("[actions/approvals] rejection email failed:", emailErr);
     }
 
-    // Audit log
+    // Audit log (no FK on audit_logs → kept as an admin trail even though the
+    // applicant row is gone)
     await insforge.database.from("audit_logs").insert([{
       actor_id: actor.id,
       department_id: applicant.department_id,
@@ -349,16 +345,6 @@ export async function rejectTreasurerSignup(userId: string) {
         name: `${applicant.first_name} ${applicant.last_name}`,
       },
     }]);
-
-    // Notification — best-effort
-    try {
-      await createNotification(userId, "signup_rejected", {
-        applicant_name: `${applicant.first_name} ${applicant.last_name}`,
-        department_id: applicant.department_id,
-      });
-    } catch (notifErr) {
-      console.error("[actions/approvals] signup_rejected notification failed:", notifErr);
-    }
 
     revalidatePath("/adviser/approvals");
     return { success: true as const };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import AuthShell from "@/components/auth/AuthShell";
 import AuthCard from "@/components/auth/AuthCard";
@@ -26,6 +26,56 @@ const STEP_REQUIRED: Record<number, Array<keyof SignupForm>> = {
 /** ponytail: stricter than InsForge's own minimum — a client gate can only over-block, never let one slip to the last page. */
 const MIN_PASSWORD_LENGTH = 8;
 
+/** ponytail: pragmatic format guard — catches "not an email" before the last step without over-engineering a full RFC validator. */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** ponytail: resend cooldown mirrors the /otp page's 60s timer, persisted per email so back-nav never resends. */
+const RESEND_COOLDOWN_MS = 60_000;
+/** sessionStorage: the wizard draft (step + form) so back-from-/otp restores step 3 with fields intact. */
+const DRAFT_KEY = "signup_draft";
+/** sessionStorage: per-email "OTP last sent at" epoch ms — powers the persistent resend cooldown. */
+const OTP_SENT_KEY = "signup_otp_sent";
+
+function loadDraft(): { step: number; form: Partial<SignupForm> } | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(DRAFT_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveDraft(step: number, form: SignupForm) {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ step, form }));
+  } catch {
+    // ponytail: non-fatal — draft is a nicety
+  }
+}
+
+function getOtpSentAt(email: string): number | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const map = JSON.parse(sessionStorage.getItem(OTP_SENT_KEY) || "{}");
+    return typeof map[email] === "number" ? map[email] : null;
+  } catch {
+    return null;
+  }
+}
+
+function setOtpSentAt(email: string, ms: number) {
+  if (typeof window === "undefined") return;
+  try {
+    const map = JSON.parse(sessionStorage.getItem(OTP_SENT_KEY) || "{}");
+    map[email] = ms;
+    sessionStorage.setItem(OTP_SENT_KEY, JSON.stringify(map));
+  } catch {
+    // ignore
+  }
+}
+
 type SignupForm = {
   firstName: string;
   middleName: string;
@@ -50,13 +100,34 @@ export default function SignupPage() {
     department: "",
   });
 
+  // Indicates the saved draft (if any) has been applied; persistence is disabled until then
+  // so a fresh mount never clobbers a returning user's saved step with step 1.
+  const hydrated = useRef(false);
+
+  // Restore the saved wizard draft on mount (covers back-from-/otp and mid-wizard navigation).
+  useEffect(() => {
+    const draft = loadDraft();
+    if (draft) {
+      setStep(draft.step);
+      setForm((prev) => ({ ...prev, ...draft.form }));
+    }
+    hydrated.current = true;
+  }, []);
+
+  // Persist step + form whenever they change, once hydration is done.
+  useEffect(() => {
+    if (!hydrated.current) return;
+    saveDraft(step, form);
+  }, [step, form]);
+
   useEffect(() => {
     fetch("/api/departments")
       .then((r) => r.json())
       .then((data) => {
         if (data.success && data.departments.length > 0) {
           setDepartments(data.departments);
-          setForm((prev) => ({ ...prev, department: data.departments[0].code }));
+          // Only set a default department if none was restored from the draft.
+          setForm((prev) => (prev.department ? prev : { ...prev, department: data.departments[0].code }));
         }
       })
       .catch(() => {
@@ -97,8 +168,12 @@ export default function SignupPage() {
           setStepError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
           return;
         }
-        // Creating the auth account now lets InsForge's duplicate-email error
-        // surface on this step instead of after role/department.
+        if (!EMAIL_RE.test(form.email.trim())) {
+          setStepError("Please enter a valid email address.");
+          return;
+        }
+        // Validates the email (duplicate check) — the auth account and OTP
+        // email are created later, on step 3, right before the /otp redirect.
         const res = await fetch("/api/auth/signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -106,7 +181,7 @@ export default function SignupPage() {
             firstName: form.firstName,
             middleName: form.middleName,
             lastName: form.lastName,
-            email: form.email,
+            email: form.email.trim(),
             password: form.password,
           }),
         });
@@ -120,7 +195,27 @@ export default function SignupPage() {
         return;
       }
 
-      // Step 3 — council selection; completes the signup started on step 2.
+      // Step 3 — council selection; creates the account and sends the OTP
+      // email here (not on step 2), right before redirecting to /otp.
+      const normalEmail = form.email.trim();
+      const sentAt = getOtpSentAt(normalEmail);
+      const withinCooldown = sentAt !== null && Date.now() - sentAt < RESEND_COOLDOWN_MS;
+
+      // Same email already got its OTP within cooldown (e.g. user backed from /otp and
+      // proceeded again) — don't resend, just refresh the pending payload and return to /otp.
+      if (withinCooldown) {
+        sessionStorage.setItem("pending_signup", JSON.stringify({
+          firstName: form.firstName,
+          middleName: form.middleName,
+          lastName: form.lastName,
+          email: normalEmail,
+          role: form.role,
+          departmentCode: form.department,
+        }));
+        router.push(`/otp?email=${encodeURIComponent(normalEmail)}&intent=signup`);
+        return;
+      }
+
       const res = await fetch("/api/auth/signup/complete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -131,23 +226,45 @@ export default function SignupPage() {
           lastName: form.lastName,
           role: form.role,
           departmentCode: form.department,
+          password: form.password,
         }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
+        // InsForge rejects a 2nd signUp for an email that's still in_progress (ghost not
+        // purged, ~10 min). That's the graceful back-from-/otp case: the OTP from the
+        // earlier send is still valid (ghost purges before the 15-min OTP expiry), so we
+        // return to /otp instead of blocking. Distinct from the truly-registered case
+        // ("Email already exists"), which must keep blocking. Don't touch otpSentAt here —
+        // no new send happened, so /otp keeps showing the real remaining cooldown.
+        if (data.error && data.error.includes("just started")) {
+          sessionStorage.setItem("pending_signup", JSON.stringify({
+            firstName: form.firstName,
+            middleName: form.middleName,
+            lastName: form.lastName,
+            email: normalEmail,
+            role: form.role,
+            departmentCode: form.department,
+          }));
+          router.push(`/otp?email=${encodeURIComponent(normalEmail)}&intent=signup`);
+          return;
+        }
         setApiError(data.error || "Signup failed. Please try again.");
         return;
       }
+      // Remember this email's OTP send time so backing + re-proceeding doesn't resend,
+      // and /otp can show the remaining cooldown accurately.
+      setOtpSentAt(normalEmail, Date.now());
       // Store signup data so the OTP page can create the users row after verification
       sessionStorage.setItem("pending_signup", JSON.stringify({
         firstName: form.firstName,
         middleName: form.middleName,
         lastName: form.lastName,
-        email: form.email,
+        email: normalEmail,
         role: form.role,
         departmentCode: form.department,
       }));
-      router.push(`/otp?email=${encodeURIComponent(form.email)}&intent=signup`);
+      router.push(`/otp?email=${encodeURIComponent(normalEmail)}&intent=signup`);
     } catch {
       if (step === 2) setStepError("Something went wrong. Please try again.");
       else setApiError("Something went wrong. Please try again.");
@@ -156,8 +273,12 @@ export default function SignupPage() {
     }
   }
 
+  // Back within the wizard: step 2 -> 1, step 3 -> 2. No back button on step 1.
+  const back =
+    step === 2 ? () => setStep(1) : step === 3 ? () => setStep(2) : undefined;
+
   return (
-    <AuthShell top backHref="/login">
+    <AuthShell top onBack={back}>
       <div className="pt-4">
         <AuthCard title="Get Started" subtitle="Request an account for your council.">
         <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">

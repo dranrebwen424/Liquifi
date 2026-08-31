@@ -116,11 +116,12 @@ export async function createNotification(
 
   try {
     const insforge = await createInsforgeServer();
-    await insforge.database
+    const res = await insforge.database
       .from("notifications")
       .insert(ids.map((user_id) => ({ user_id, type, payload_json: payload, read: false })));
+    if (res.error) throw new Error(res.error.message ?? "insert error");
   } catch (err) {
-    console.error(`[notifications] insert ${type} failed:`, err);
+    console.error("[notifications] createNotification insert failed:", err);
     return;
   }
 

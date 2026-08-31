@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import AuthShell from "@/components/auth/AuthShell";
 import AuthCard from "@/components/auth/AuthCard";
@@ -17,6 +17,15 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState("");
   const [softLocked, setSoftLocked] = useState(false);
+
+  // Leaving signup for login abandons the in-progress wizard draft — next signup starts fresh.
+  useEffect(() => {
+    try {
+      sessionStorage.removeItem("signup_draft");
+    } catch {
+      // ignore
+    }
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

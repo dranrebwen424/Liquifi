@@ -2,7 +2,6 @@ import { requireRole } from "@/lib/auth-guard";
 import { createInsforgeServer } from "@/lib/insforge-server";
 import { notificationContent } from "@/lib/notifications";
 import { NotificationsList } from "@/components/notifications/NotificationsList";
-import { TestPushButton } from "@/components/notifications/TestPushButton";
 import type { NotificationRow } from "@/components/notifications/types";
 
 // Shared server view for the treasurer + adviser notifications pages.
@@ -56,7 +55,6 @@ export async function NotificationsPage({
           <h1 className="text-xl font-semibold text-text-primary md:text-2xl">{title}</h1>
           <p className="mt-1 text-sm text-text-muted">{tagline}</p>
         </div>
-        <TestPushButton />
       </div>
       <NotificationsList items={rows} unreadCount={unreadCount} />
     </div>

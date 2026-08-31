@@ -34,17 +34,29 @@ export default function AuthShell({
   hideLogo,
   top,
   backHref,
+  onBack,
 }: {
   children: React.ReactNode;
   subtitle?: string;
   hideLogo?: boolean;
   top?: boolean;
   backHref?: string;
+  /** Optional function back — renders a button instead of the href Link (used by multi-step wizards). */
+  onBack?: () => void;
 }) {
   return (
     <main className={`flex min-h-full ${top ? "items-start pt-0" : "items-center py-12"} justify-center bg-background px-4 font-sans`}>
       <div className="w-full max-w-sm">
-        {backHref && (
+        {onBack ? (
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label="Go back"
+            className="mb-4 inline-flex h-9 w-9 items-center justify-center rounded-lg text-text-muted outline-none transition-colors hover:bg-surface hover:text-text-primary"
+          >
+            <BackIcon />
+          </button>
+        ) : backHref ? (
           <Link
             href={backHref}
             aria-label="Go back"
@@ -52,11 +64,11 @@ export default function AuthShell({
           >
             <BackIcon />
           </Link>
-        )}
+        ) : null}
         {!hideLogo && (
           <Link
             href="/"
-            className={`mb-8 flex items-center justify-center gap-2 ${top && !backHref ? "mt-8" : ""}`}
+            className={`mb-8 flex items-center justify-center gap-2 ${top && !backHref && !onBack ? "mt-8" : ""}`}
             aria-label="Liquifi home"
           >
             <LogoMark className="text-accent" />

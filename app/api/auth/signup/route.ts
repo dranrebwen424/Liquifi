@@ -3,13 +3,10 @@ import { createInsforgeServer } from "@/lib/insforge-server";
 import {
   SIGNUP_IP_LIMIT,
   checkRateLimit,
-  clearRateLimit,
   recordFailure,
 } from "@/lib/rate-limit";
 
 const EMAIL_EXISTS_MSG = "Email already exists. Try signing in instead.";
-const JUST_STARTED_MSG =
-  "A signup with this email just started. Check your inbox for the code, or try again in a few minutes.";
 
 function formatWait(retryAfterSec: number): string {
   if (retryAfterSec < 90) return `${retryAfterSec} seconds`;
@@ -18,15 +15,15 @@ function formatWait(retryAfterSec: number): string {
 }
 
 /**
- * Creates the InsForge auth user (step 2 of the signup wizard).
+ * Step 2 of the signup wizard — a validation-only gate. It does NOT create
+ * the auth account or send the OTP email (that happens after the last wizard
+ * step, in /api/auth/signup/complete, right before the /otp redirect).
  *
- * Before touching InsForge the route classifies the email via
- * check_signup_email():
- *   'none'        → create fresh (signUp binds name+password+OTP email)
- *   'in_progress' → unverified ghost from an abandoned attempt: purge it
- *                   (time-boxed to 10 min so live sessions can't be hijacked)
- *                   and let the fresh signUp below win with the NEW password.
+ * Classifies the email via check_signup_email():
  *   'registered'  → 409 "Email already exists" right here on the email step.
+ *   'in_progress' → a ghost from an abandoned attempt; left in place here,
+ *                   purged in complete when the account is actually created.
+ *   'none'        → available; proceed to the next step.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -82,46 +79,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (state === "in_progress") {
-      // Abandoned ghost — free it so this attempt's credentials win outright.
-      // Recent ghosts (<10 min) survive the purge; their collision surfaces
-      // below as the friendly "just started" message instead of raw jargon.
-      try {
-        await insforge.database.rpc("purge_signup_ghost", {
-          p_email: normalizedEmail,
-          p_min_age: "10 minutes",
-        });
-      } catch (rpcErr) {
-        console.error("[auth/signup] purge_signup_ghost unavailable:", rpcErr);
-      }
-    }
-
-    const name = [firstName, middleName, lastName].filter(Boolean).join(" ");
-    const { error: signupError } = await insforge.auth.signUp({
-      email: normalizedEmail,
-      password,
-      name,
-    });
-
-    if (signupError) {
-      console.error("[auth/signup] InsForge signup failed:", signupError);
-      const msg = signupError.message || "";
-      const isDuplicate = /exist|duplicate|already/i.test(msg);
-      return NextResponse.json(
-        {
-          success: false,
-          error: isDuplicate
-            ? JUST_STARTED_MSG
-            : msg || "Signup failed. Please try again.",
-        },
-        { status: isDuplicate ? 409 : 400 },
-      );
-    }
-
-    // Account born — this IP's prior probes are forgiven.
-    if (ipKey) clearRateLimit(ipKey);
-
-    return NextResponse.json({ success: true });
+    // Validation-only gate: this step does NOT create the auth account or send
+    // the OTP email. Creation (and the OTP email) happens in
+    // /api/auth/signup/complete — the last wizard step, right before the user
+    // lands on the /otp page. Early duplicate feedback still surfaces here.
+    // 'in_progress' ghosts are left in place; complete purges them when it creates.
+    return NextResponse.json({ success: true, state });
   } catch (error) {
     console.error("[auth/signup]", error);
     return NextResponse.json(

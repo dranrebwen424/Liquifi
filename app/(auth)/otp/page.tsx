@@ -9,6 +9,29 @@ import AuthButton from "@/components/auth/AuthButton";
 import AuthLink from "@/components/auth/AuthLink";
 
 const RESEND_SECONDS = 60;
+/** sessionStorage key shared with signup for the per-email persistent resend cooldown. */
+const OTP_SENT_KEY = "signup_otp_sent";
+
+function getOtpSentAt(email: string): number | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const map = JSON.parse(sessionStorage.getItem(OTP_SENT_KEY) || "{}");
+    return typeof map[email] === "number" ? map[email] : null;
+  } catch {
+    return null;
+  }
+}
+
+function setOtpSentAt(email: string, ms: number) {
+  if (typeof window === "undefined") return;
+  try {
+    const map = JSON.parse(sessionStorage.getItem(OTP_SENT_KEY) || "{}");
+    map[email] = ms;
+    sessionStorage.setItem(OTP_SENT_KEY, JSON.stringify(map));
+  } catch {
+    // ignore
+  }
+}
 
 function OtpPageInner() {
   const router = useRouter();
@@ -18,8 +41,15 @@ function OtpPageInner() {
   const isReset = intentParam === "reset";
   const email = searchParams.get("email") ?? "";
 
+  // For signup intent, start the countdown from when this email's OTP was actually sent,
+  // so back-nav from /signup doesn't reset it to a full 60s (and never auto-resends).
+  const [secondsLeft, setSecondsLeft] = useState(() => {
+    const sentAt = getOtpSentAt(email);
+    if (!sentAt) return RESEND_SECONDS;
+    const elapsed = Math.floor((Date.now() - sentAt) / 1000);
+    return Math.max(0, RESEND_SECONDS - elapsed);
+  });
   const [code, setCode] = useState("");
-  const [secondsLeft, setSecondsLeft] = useState(RESEND_SECONDS);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState("");
@@ -77,6 +107,15 @@ function OtpPageInner() {
             console.error("[otp] create-profile call failed:", e);
           }
         }
+        // The signup is now committed — clear the draft + cooldown so a future signup starts fresh.
+        sessionStorage.removeItem("signup_draft");
+        try {
+          const map = JSON.parse(sessionStorage.getItem(OTP_SENT_KEY) || "{}");
+          delete map[email];
+          sessionStorage.setItem(OTP_SENT_KEY, JSON.stringify(map));
+        } catch {
+          // ignore
+        }
         router.push("/pending-approval");
       }
     } catch {
@@ -98,6 +137,10 @@ function OtpPageInner() {
       const data = await res.json();
       if (!res.ok || !data.success) {
         setApiError(data.error || "Failed to resend code.");
+      } else if (!isReset) {
+        // Track the resend time so back-and-proceed from /signup doesn't re-trigger a send
+        // and the /otp countdown reflects the most recent send.
+        setOtpSentAt(email, Date.now());
       }
     } catch {
       setApiError("Something went wrong.");

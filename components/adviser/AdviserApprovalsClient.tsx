@@ -152,21 +152,26 @@ export default function AdviserApprovalsClient({ pendingUsers: initialUsers, pen
   const executeUserAction = async () => {
     if (!confirmingAction || !confirmingAction.userId) return;
 
+    const userId = confirmingAction.userId;
     setError("");
+
+    // Optimistic: remove immediately, mutate in the background
+    const removed = pendingUsers.find((u) => u.id === userId);
+    setPendingUsers((prev) => prev.filter((u) => u.id !== userId));
+    setConfirmingAction(null);
 
     const result =
       confirmingAction.type === "approve"
-        ? await approveTreasurerSignup(confirmingAction.userId)
-        : await rejectTreasurerSignup(confirmingAction.userId);
+        ? await approveTreasurerSignup(userId)
+        : await rejectTreasurerSignup(userId);
 
     if (!result.success) {
+      // Roll back + surface error
       setError(result.error);
-      setConfirmingAction(null);
+      if (removed) setPendingUsers((prev) => (prev.some((u) => u.id === userId) ? prev : [removed, ...prev]));
       return;
     }
 
-    setConfirmingAction(null);
-    setPendingUsers((prev) => prev.filter((u) => u.id !== confirmingAction.userId));
     router.refresh();
   };
 
