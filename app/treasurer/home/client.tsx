@@ -6,6 +6,8 @@ import { motion } from "framer-motion";
 import { Plus, Search, Archive, ArrowLeft } from "lucide-react";
 import { EventCard } from "@/components/events/EventCard";
 import { EventListItem } from "@/components/events/EventListItem";
+import { FolderCard } from "@/components/events/FolderCard";
+import { ArchiveEventRow } from "@/components/events/ArchiveEventRow";
 import { NewEventModal } from "@/components/events/NewEventModal";
 import { ViewToggle } from "@/components/events/ViewToggle";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -153,98 +155,47 @@ export function TreasurerHomeClient({ events }: Props) {
 
   return (
     <div className="flex flex-col gap-4 md:gap-6">
-      {/* Header — hidden on mobile, shown on desktop */}
-      <div className="hidden items-start justify-between gap-4 md:flex">
-        <div>
-          <h1 className="text-xl font-semibold text-text-primary md:text-2xl">Events</h1>
-          <p className="mt-1 text-xs text-text-muted">Manage your department event budgets and expenses</p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setNewEventOpen(true)}
-          className="hidden shrink-0 items-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground transition-[color,transform,shadow] hover:bg-accent-hover hover:shadow-lg hover:scale-[1.04] active:scale-[0.98] md:inline-flex"
-        >
-          <Plus className="h-4 w-4" />
-          New Event
-        </button>
-      </div>
+      {/* ═══════════════════════════════════════════════════════════
+          MOBILE LAYOUT — Figma "treasurer home page" design
+          ═══════════════════════════════════════════════════════════ */}
+      <div className="md:hidden">
+        {/* WELCOME BACK! */}
+        <h1 className="py-4 text-center text-base font-bold text-text-primary">
+          WELCOME BACK!
+        </h1>
 
-      {/* Search + Filters */}
-      <div className="flex flex-col gap-3">
-        {!isSearching ? (
-          /* ── Default state: Search bar (desktop only) ── */
-          <div className="hidden justify-center md:flex">
-            <div
-              className="flex w-full max-w-[480px] items-center gap-3 rounded-xl border border-border bg-surface px-3 py-2.5 transition-colors focus-within:border-accent focus-within:ring-1 focus-within:ring-accent"
-              onClick={() => router.push("?search=1")}
-            >
-              <Search className="h-4 w-4 shrink-0 text-text-muted" />
-              <span className="flex-1 text-sm text-text-muted">Search events...</span>
-            </div>
-          </div>
-        ) : (
-          /* ── Search active: filters ── */
+        {/* Search active — show filters */}
+        {isSearching && (
           <>
-            {/* Desktop search input — hidden on mobile (top bar handles it) */}
-            <div className="hidden justify-center md:flex">
-              <div className="flex w-full max-w-[480px] items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2.5 focus-within:border-accent focus-within:ring-1 focus-within:ring-accent">
-                <button
-                  type="button"
-                  onClick={exitSearch}
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-text-secondary hover:bg-surface-secondary"
-                  aria-label="Exit search"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </button>
-                <input
-                  type="text"
-                  placeholder="Search events..."
-                  value={search}
-                  onChange={(e) => updateQuery(e.target.value)}
-                  autoFocus
-                  className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-muted focus:outline-none"
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-wrap justify-center gap-2">
+            <div className="flex flex-wrap gap-2">
               <FilterDropdown label="Type" options={typeOptions} value={typeFilter} onChange={setTypeFilter} />
               <FilterDropdown label="Treasurer" options={treasurerOptions} value={treasurerFilter} onChange={setTreasurerFilter} />
               <FilterDropdown label="Date" options={MODIFIED_OPTIONS} value={modifiedFilter} onChange={setModifiedFilter} />
               <FilterDropdown label="Budget" options={BUDGET_OPTIONS} value={budgetFilter} onChange={setBudgetFilter} />
             </div>
-
             {hasActiveFilters && (
               <>
                 <div className="h-px bg-border" />
                 <p className="text-xs font-medium text-text-muted">Search Results</p>
               </>
             )}
+            {!hasActiveFilters && (
+              <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+                <Search className="h-10 w-10 text-text-muted" />
+                <p className="text-sm font-medium text-text-primary">Search events</p>
+                <p className="text-xs text-text-muted">Type a name or use filters above to find events.</p>
+              </div>
+            )}
           </>
         )}
-      </div>
 
-      {/* Events — hidden when searching with no filters */}
-      {isSearching && !hasActiveFilters ? (
-        <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-          <Search className="h-10 w-10 text-text-muted" />
-          <p className="text-sm font-medium text-text-primary">Search events</p>
-          <p className="text-xs text-text-muted">Type a name or use filters above to find events.</p>
-        </div>
-      ) : filtered.length === 0 ? (
-        <EmptyState
-          icon={<Archive className="h-10 w-10 text-text-muted" />}
-          title={hasActiveFilters ? "No events match your filters" : "No events yet"}
-          description={hasActiveFilters ? "Try adjusting your search or filters." : "Create your first event to start tracking expenses."}
-          action={
-            hasActiveFilters ? (
-              <button
-                onClick={clearFilters}
-                className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium text-text-secondary hover:bg-surface-secondary"
-              >
-                Clear filters
-              </button>
-            ) : (
+        {/* Empty state */}
+        {!isSearching && filtered.length === 0 && (
+          <EmptyState
+            icon={<Archive className="h-10 w-10 text-text-muted" />}
+            title="No events yet"
+            description="Create your first event to start tracking expenses."
+            action={
               <button
                 type="button"
                 onClick={() => setNewEventOpen(true)}
@@ -253,121 +204,326 @@ export function TreasurerHomeClient({ events }: Props) {
                 <Plus className="h-4 w-4" />
                 New Event
               </button>
-            )
-          }
-        />
-      ) : (
-        <>
-          {/* ── Active Events ── */}
-          {activeEvents.length > 0 && (
-            <section>
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-base font-semibold text-text-primary">Active Events</h2>
-                <ViewToggle value={viewMode} onChange={setViewMode} />
-              </div>
-              {viewMode === "grid" ? (
+            }
+          />
+        )}
+
+        {/* No search + has events */}
+        {!isSearching && filtered.length > 0 && (
+          <>
+            {/* ── Active Events ── */}
+            {activeEvents.length > 0 && (
+              <section>
+                <div className="mb-3 flex items-center justify-between">
+                  <div>
+                    <h2 className="text-sm font-semibold text-text-primary">Active Events</h2>
+                    <p className="text-[11px] text-text-muted">
+                      Total of {activeEvents.length} {activeEvents.length === 1 ? "Event" : "Events"}
+                    </p>
+                  </div>
+                  <ViewToggle value={viewMode} onChange={setViewMode} />
+                </div>
+
+                {viewMode === "grid" ? (
+                  <motion.div
+                    key={`mobile-active-grid-${activeEvents.length}`}
+                    variants={staggerContainer}
+                    initial="hidden"
+                    animate="show"
+                    className="grid grid-cols-2 gap-x-[45px] gap-y-6"
+                  >
+                    {activeEvents.map((event) => (
+                      <motion.div key={event.id} variants={fadeUpItem}>
+                        <FolderCard id={event.id} name={event.name} />
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key={`mobile-active-list-${activeEvents.length}`}
+                    variants={staggerContainer}
+                    initial="hidden"
+                    animate="show"
+                    className="flex flex-col gap-2"
+                  >
+                    {activeEvents.map((event) => (
+                      <motion.div key={event.id} variants={fadeUpItem}>
+                        <EventListItem
+                          id={event.id}
+                          name={event.name}
+                          status={event.status}
+                          budgetTotal={event.budget_total}
+                          totalSpent={event.total_spent}
+                          numEntries={event.num_entries}
+                          createdAt={event.created_at}
+                        />
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                )}
+              </section>
+            )}
+
+            {/* ── Archive Events ── */}
+            {archivedEvents.length > 0 && (
+              <section className="pt-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <div>
+                    <h2 className="text-sm font-semibold text-text-primary">Archive Events</h2>
+                    <p className="text-[11px] text-text-muted">
+                      Total of {archivedEvents.length} {archivedEvents.length === 1 ? "Event" : "Events"}
+                    </p>
+                  </div>
+                  <FilterDropdown
+                    label="Sort"
+                    options={SORT_OPTIONS}
+                    value={sortBy}
+                    onChange={setSortBy}
+                  />
+                </div>
+
                 <motion.div
-                  key={`active-grid-${activeEvents.length}`}
+                  key={`mobile-archive-${archivedEvents.length}`}
                   variants={staggerContainer}
                   initial="hidden"
                   animate="show"
-                  className="grid grid-cols-2 gap-x-5 gap-y-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+                  className="flex flex-col divide-y divide-border"
                 >
-                  {activeEvents.map((event) => (
+                  {archivedEvents.map((event) => (
                     <motion.div key={event.id} variants={fadeUpItem}>
-                      <EventCard
+                      <ArchiveEventRow
                         id={event.id}
                         name={event.name}
-                        status={event.status}
-                        budgetTotal={event.budget_total}
-                        totalSpent={event.total_spent}
-                        numEntries={event.num_entries}
-                        createdByName={event.created_by_name}
-                      />
-                    </motion.div>
-                  ))}
-                </motion.div>
-              ) : (
-                <motion.div
-                  key={`active-list-${activeEvents.length}`}
-                  variants={staggerContainer}
-                  initial="hidden"
-                  animate="show"
-                  className="flex flex-col gap-2"
-                >
-                  {activeEvents.map((event) => (
-                    <motion.div key={event.id} variants={fadeUpItem}>
-                      <EventListItem
-                        id={event.id}
-                        name={event.name}
-                        status={event.status}
-                        budgetTotal={event.budget_total}
-                        totalSpent={event.total_spent}
-                        numEntries={event.num_entries}
                         createdAt={event.created_at}
                       />
                     </motion.div>
                   ))}
                 </motion.div>
+              </section>
+            )}
+          </>
+        )}
+
+        {/* Mobile FAB */}
+        <button
+          type="button"
+          onClick={() => setNewEventOpen(true)}
+          className="fixed bottom-6 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-lg transition-[color,transform,shadow] hover:bg-accent-hover hover:shadow-xl hover:scale-110 active:scale-95"
+          aria-label="New event"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════════
+          DESKTOP LAYOUT — unchanged from original
+          ═══════════════════════════════════════════════════════════ */}
+      <div className="hidden md:block">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-semibold text-text-primary md:text-2xl">Events</h1>
+            <p className="mt-1 text-xs text-text-muted">Manage your department event budgets and expenses</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setNewEventOpen(true)}
+            className="hidden shrink-0 items-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground transition-[color,transform,shadow] hover:bg-accent-hover hover:shadow-lg hover:scale-[1.04] active:scale-[0.98] md:inline-flex"
+          >
+            <Plus className="h-4 w-4" />
+            New Event
+          </button>
+        </div>
+
+        {/* Search + Filters */}
+        <div className="flex flex-col gap-3">
+          {!isSearching ? (
+            <div className="flex justify-center">
+              <div
+                className="flex w-full max-w-[480px] items-center gap-3 rounded-xl border border-border bg-surface px-3 py-2.5 transition-colors focus-within:border-accent focus-within:ring-1 focus-within:ring-accent"
+                onClick={() => router.push("?search=1")}
+              >
+                <Search className="h-4 w-4 shrink-0 text-text-muted" />
+                <span className="flex-1 text-sm text-text-muted">Search events...</span>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="flex justify-center">
+                <div className="flex w-full max-w-[480px] items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2.5 focus-within:border-accent focus-within:ring-1 focus-within:ring-accent">
+                  <button
+                    type="button"
+                    onClick={exitSearch}
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-text-secondary hover:bg-surface-secondary"
+                    aria-label="Exit search"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </button>
+                  <input
+                    type="text"
+                    placeholder="Search events..."
+                    value={search}
+                    onChange={(e) => updateQuery(e.target.value)}
+                    autoFocus
+                    className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-muted focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-wrap justify-center gap-2">
+                <FilterDropdown label="Type" options={typeOptions} value={typeFilter} onChange={setTypeFilter} />
+                <FilterDropdown label="Treasurer" options={treasurerOptions} value={treasurerFilter} onChange={setTreasurerFilter} />
+                <FilterDropdown label="Date" options={MODIFIED_OPTIONS} value={modifiedFilter} onChange={setModifiedFilter} />
+                <FilterDropdown label="Budget" options={BUDGET_OPTIONS} value={budgetFilter} onChange={setBudgetFilter} />
+              </div>
+
+              {hasActiveFilters && (
+                <>
+                  <div className="h-px bg-border" />
+                  <p className="text-xs font-medium text-text-muted">Search Results</p>
+                </>
               )}
-            </section>
+            </>
           )}
+        </div>
 
-          {/* ── Archive ── */}
-          {archivedEvents.length > 0 && (
-            <section className="pt-4">
-              <div className="mb-4 h-px bg-border" />
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-base font-semibold text-text-primary">Archive</h2>
-                <FilterDropdown
-                  label="Sort"
-                  options={SORT_OPTIONS}
-                  value={sortBy}
-                  onChange={setSortBy}
-                />
-              </div>
-              <div className="flex flex-col gap-5">
-                {archivedByYear.map(([year, yearEvents]) => (
-                  <div key={year}>
-                    <p className="mb-3 text-xs font-medium uppercase tracking-wide text-text-muted">{year}</p>
-                    <motion.div
-                      key={`archive-${year}-${yearEvents.length}`}
-                      variants={staggerContainer}
-                      initial="hidden"
-                      animate="show"
-                      className="flex flex-col gap-2"
-                    >
-                      {yearEvents.map((event) => (
-                        <motion.div key={event.id} variants={fadeUpItem}>
-                          <EventListItem
-                            id={event.id}
-                            name={event.name}
-                            status={event.status}
-                            budgetTotal={event.budget_total}
-                            totalSpent={event.total_spent}
-                            numEntries={event.num_entries}
-                            createdAt={event.created_at}
-                          />
-                        </motion.div>
-                      ))}
-                    </motion.div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-        </>
-      )}
+        {/* Events — hidden when searching with no filters */}
+        {isSearching && !hasActiveFilters ? (
+          <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+            <Search className="h-10 w-10 text-text-muted" />
+            <p className="text-sm font-medium text-text-primary">Search events</p>
+            <p className="text-xs text-text-muted">Type a name or use filters above to find events.</p>
+          </div>
+        ) : filtered.length === 0 ? (
+          <EmptyState
+            icon={<Archive className="h-10 w-10 text-text-muted" />}
+            title={hasActiveFilters ? "No events match your filters" : "No events yet"}
+            description={hasActiveFilters ? "Try adjusting your search or filters." : "Create your first event to start tracking expenses."}
+            action={
+              hasActiveFilters ? (
+                <button
+                  onClick={clearFilters}
+                  className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium text-text-secondary hover:bg-surface-secondary"
+                >
+                  Clear filters
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setNewEventOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-[color,transform,shadow] hover:bg-accent-hover hover:shadow-lg hover:scale-[1.04] active:scale-[0.98]"
+                >
+                  <Plus className="h-4 w-4" />
+                  New Event
+                </button>
+              )
+            }
+          />
+        ) : (
+          <>
+            {/* ── Active Events ── */}
+            {activeEvents.length > 0 && (
+              <section>
+                <div className="mb-3 flex items-center justify-between">
+                  <h2 className="text-base font-semibold text-text-primary">Active Events</h2>
+                  <ViewToggle value={viewMode} onChange={setViewMode} />
+                </div>
+                {viewMode === "grid" ? (
+                  <motion.div
+                    key={`desktop-active-grid-${activeEvents.length}`}
+                    variants={staggerContainer}
+                    initial="hidden"
+                    animate="show"
+                    className="grid grid-cols-2 gap-x-5 gap-y-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+                  >
+                    {activeEvents.map((event) => (
+                      <motion.div key={event.id} variants={fadeUpItem}>
+                        <EventCard
+                          id={event.id}
+                          name={event.name}
+                          status={event.status}
+                          budgetTotal={event.budget_total}
+                          totalSpent={event.total_spent}
+                          numEntries={event.num_entries}
+                          createdByName={event.created_by_name}
+                        />
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key={`desktop-active-list-${activeEvents.length}`}
+                    variants={staggerContainer}
+                    initial="hidden"
+                    animate="show"
+                    className="flex flex-col gap-2"
+                  >
+                    {activeEvents.map((event) => (
+                      <motion.div key={event.id} variants={fadeUpItem}>
+                        <EventListItem
+                          id={event.id}
+                          name={event.name}
+                          status={event.status}
+                          budgetTotal={event.budget_total}
+                          totalSpent={event.total_spent}
+                          numEntries={event.num_entries}
+                          createdAt={event.created_at}
+                        />
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                )}
+              </section>
+            )}
 
-      {/* Mobile FAB */}
-      <button
-        type="button"
-        onClick={() => setNewEventOpen(true)}
-        className="fixed bottom-24 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-lg transition-[color,transform,shadow] hover:bg-accent-hover hover:shadow-xl hover:scale-110 active:scale-95 md:hidden"
-        aria-label="New event"
-      >
-        <Plus className="h-6 w-6" />
-      </button>
+            {/* ── Archive ── */}
+            {archivedEvents.length > 0 && (
+              <section className="pt-4">
+                <div className="mb-4 h-px bg-border" />
+                <div className="mb-3 flex items-center justify-between">
+                  <h2 className="text-base font-semibold text-text-primary">Archive</h2>
+                  <FilterDropdown
+                    label="Sort"
+                    options={SORT_OPTIONS}
+                    value={sortBy}
+                    onChange={setSortBy}
+                  />
+                </div>
+                <div className="flex flex-col gap-5">
+                  {archivedByYear.map(([year, yearEvents]) => (
+                    <div key={year}>
+                      <p className="mb-3 text-xs font-medium uppercase tracking-wide text-text-muted">{year}</p>
+                      <motion.div
+                        key={`desktop-archive-${year}-${yearEvents.length}`}
+                        variants={staggerContainer}
+                        initial="hidden"
+                        animate="show"
+                        className="flex flex-col gap-2"
+                      >
+                        {yearEvents.map((event) => (
+                          <motion.div key={event.id} variants={fadeUpItem}>
+                            <EventListItem
+                              id={event.id}
+                              name={event.name}
+                              status={event.status}
+                              budgetTotal={event.budget_total}
+                              totalSpent={event.total_spent}
+                              numEntries={event.num_entries}
+                              createdAt={event.created_at}
+                            />
+                          </motion.div>
+                        ))}
+                      </motion.div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+          </>
+        )}
+
+        {/* Desktop FAB (hidden — desktop uses header button) */}
+      </div>
 
       <NewEventModal open={newEventOpen} onClose={() => setNewEventOpen(false)} />
     </div>

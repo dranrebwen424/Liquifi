@@ -1,11 +1,9 @@
 import { requireLayoutRole } from "@/lib/layout-guard";
 import { createInsforgeServer } from "@/lib/insforge-server";
 import { TreasurerSidebar } from "@/components/treasurer/TreasurerSidebar";
-import { TreasurerMobileBottomNav } from "@/components/treasurer/TreasurerMobileBottomNav";
-import { MobileTopBar } from "@/components/treasurer/MobileTopBar";
+import { TreasurerLayoutShell } from "@/components/treasurer/TreasurerLayoutShell";
 import { PushSubscriber } from "@/components/notifications/PushSubscriber";
 import { PushEnableToast } from "@/components/notifications/PushEnableToast";
-import { SidebarShell } from "@/components/layout/SidebarShell";
 
 export default async function TreasurerLayout({
   children,
@@ -30,13 +28,9 @@ export default async function TreasurerLayout({
       <PushEnableToast />
       <TreasurerSidebar unreadCount={unreadCount} />
 
-      <MobileTopBar />
-
-      {/* Mobile bottom nav */}
-      <TreasurerMobileBottomNav unreadCount={unreadCount} />
-
-      {/* Main content */}
-      <SidebarShell>{children}</SidebarShell>
+      <TreasurerLayoutShell unreadCount={unreadCount}>
+        {children}
+      </TreasurerLayoutShell>
     </div>
   );
 }

@@ -12,8 +12,10 @@ const STORAGE_KEY = "liquifi:sidebar-collapsed";
  * On mobile: no sidebar offset. On desktop: left padding synced with sidebar.
  * On immersive pages (event/report detail): bottom padding animates from
  * pb-20 → pb-0 (navs slide out).
+ *
+ * @param mobileBottomNav — when false, skip pb-20 on mobile (no bottom nav present).
  */
-export function SidebarShell({ children }: { children: React.ReactNode }) {
+export function SidebarShell({ children, mobileBottomNav = true }: { children: React.ReactNode; mobileBottomNav?: boolean }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(true);
 
@@ -58,7 +60,9 @@ export function SidebarShell({ children }: { children: React.ReactNode }) {
     <main
       className={cn(
         "px-4 pt-6 pb-6 transition-[padding] duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] md:px-12 md:pt-8 md:pb-8 lg:pl-[calc(var(--sidebar-width)+48px)]",
-        eventPage ? "pt-0 pb-0 md:pt-0" : "pb-20 md:pb-0",
+        eventPage
+          ? "pt-0 pb-0 md:pt-0"
+          : mobileBottomNav ? "pb-20 md:pb-0" : "pb-6 md:pb-0",
       )}
     >
       {children}
