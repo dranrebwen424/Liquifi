@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createInsforgeServer } from "@/lib/insforge-server";
 import type { AuthUser, GuardContext, PreconditionCheck, Role } from "@/types";
 
@@ -16,7 +17,10 @@ export class AuthError extends Error {
   }
 }
 
-async function getCurrentUser(): Promise<AuthUser | null> {
+// cache(): guarded routes resolve the current user once per render pass — guards
+// against nested Server Components re-authenticating in the same request tree.
+// Render-scoped, so a profile change in a mutation triggers its own fresh read.
+const getCurrentUser = cache(async function getCurrentUser(): Promise<AuthUser | null> {
   const insforge = await createInsforgeServer();
   const { data, error } = await insforge.auth.getCurrentUser();
   if (error || !data.user) return null;
@@ -36,7 +40,7 @@ async function getCurrentUser(): Promise<AuthUser | null> {
     departmentId: profile.department_id,
     accountStatus: profile.account_status,
   };
-}
+});
 
 export async function requireRole(
   requiredRole: "public",

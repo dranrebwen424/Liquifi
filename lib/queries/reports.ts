@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createInsforgeServer } from "@/lib/insforge-server";
 import type { ReportStatus } from "@/types";
 
@@ -15,8 +16,11 @@ export type ReportForDashboard = {
  * Every Report row for an event, newest first. Reports are never overwritten:
  * a regenerated report is a new row with revision_count+1, so the full stack
  * is the event's report history (rejected/cancelled/approved all present).
+ *
+ * cache(): dedupes identical same-function calls within a render pass — guards
+ * against nested Server Components re-fetching the same report in one request tree.
  */
-export async function getAllReportsByEvent(
+export const getAllReportsByEvent = cache(async function getAllReportsByEvent(
   eventId: string,
 ): Promise<ReportForDashboard[]> {
   const insforge = await createInsforgeServer();
@@ -31,9 +35,9 @@ export async function getAllReportsByEvent(
 
   if (error || !data) return [];
   return data as ReportForDashboard[];
-}
+});
 
-export async function getLatestReportByEvent(
+export const getLatestReportByEvent = cache(async function getLatestReportByEvent(
   eventId: string,
 ): Promise<ReportForDashboard | null> {
   const insforge = await createInsforgeServer();
@@ -50,7 +54,7 @@ export async function getLatestReportByEvent(
 
   if (error || !data) return null;
   return data as ReportForDashboard;
-}
+});
 
 /**
  * Latest Report per event, batched — for the treasurer reports list page.
@@ -61,10 +65,15 @@ export async function getLatestReportByEvent(
  * puts the event back to "no report yet" (unlocked, regeneration allowed),
  * so it must not appear in the "With reports" section. The cancelled PDF
  * stays reachable on the detail page viewer.
+ *
+ * cache(): dedupes identical same-function calls within a render pass. Note this
+ * does NOT remove the reports query inside getDepartmentEvents (a different
+ * function/query) — cross-function redundancy is out of cache()'s scope.
  */
-export async function getLatestReportsByEvent(
-  eventIds: string[],
-): Promise<Map<string, ReportForDashboard>> {
+export const getLatestReportsByEvent = cache(
+  async function getLatestReportsByEvent(
+    eventIds: string[],
+  ): Promise<Map<string, ReportForDashboard>> {
   if (eventIds.length === 0) return new Map();
 
   const insforge = await createInsforgeServer();
@@ -87,4 +96,5 @@ export async function getLatestReportsByEvent(
     if (row.status === "cancelled") latest.delete(eventId);
   }
   return latest;
-}
+  },
+);

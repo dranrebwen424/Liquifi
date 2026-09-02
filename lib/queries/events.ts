@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createInsforgeServer } from "@/lib/insforge-server";
 import { deriveBudgetLocked } from "@/lib/budget-lock";
 import { isUnresolvedOverspendEntry } from "@/lib/overspend";
@@ -58,7 +59,12 @@ export type EntryForDashboard = {
 };
 
 /** Fetch all events for a department with computed `total_spent` and `is_locked`. */
-export async function getDepartmentEvents(
+// ponytail: React cache() dedupes identical same-function calls within a single
+// render pass. Today each page calls each query once, so this guards against
+// future duplicate fetches (e.g. a nested Server Component fetching the event
+// while the page payload already includes it) — and it's render-scoped, so
+// mutations (Server Actions trigger their own re-render) never serve stale data.
+export const getDepartmentEvents = cache(async function getDepartmentEvents(
   departmentId: string,
 ): Promise<EventWithMeta[]> {
   const insforge = await createInsforgeServer();
@@ -151,10 +157,14 @@ export async function getDepartmentEvents(
     created_by: e.created_by,
     created_by_name: nameMap[e.created_by] ?? "Unknown",
   }));
-}
+});
 
 /** Fetch a single event with its entries for the dashboard. */
-export async function getEventDashboard(eventId: string) {
+// cache(): dedupes identical same-function calls within a render pass — guards
+// against nested Server Components re-fetching the same event in one request tree.
+export const getEventDashboard = cache(async function getEventDashboard(
+  eventId: string,
+) {
   const insforge = await createInsforgeServer();
 
   const { data: event, error } = await insforge.database
@@ -243,4 +253,4 @@ export async function getEventDashboard(eventId: string) {
       voidedByName: e.voided_by ? (voidedNameMap[e.voided_by] ?? null) : null,
     })) as EntryForDashboard[],
   };
-}
+});
