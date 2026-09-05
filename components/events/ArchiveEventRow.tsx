@@ -23,12 +23,12 @@ export function ArchiveEventRow({ id, name, createdAt, href }: Props) {
   return (
     <Link
       href={href ?? `/treasurer/events/${id}`}
-      className="flex items-center gap-3 py-3"
+      className="group flex items-center gap-3 border-b border-border py-3 transition-all duration-150 hover:bg-surface-secondary active:scale-[0.98]"
     >
-      <Folder className="h-5 w-5 shrink-0 text-text-muted" />
+      <Folder className="h-5 w-5 shrink-0 text-text-muted transition-colors group-hover:text-text-primary" />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[13px] font-medium text-text-primary">{name}</p>
-        <p className="text-[10px] text-text-muted">{dateStr}</p>
+        <p className="truncate text-base font-semibold text-text-primary">{name}</p>
+        <p className="mt-0.5 text-xs text-text-muted">{dateStr}</p>
       </div>
       <ChevronRight className="h-3.5 w-3.5 shrink-0 text-text-muted" />
     </Link>

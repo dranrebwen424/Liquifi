@@ -13,16 +13,26 @@ type FolderCardProps = {
 
 const MotionLink = motion.create(Link);
 
-const cardHover: Transition = { duration: 0.2, ease: "easeOut" };
+/**
+ * Press animation from the Figma "folder" component (node 57-32).
+ * On press the two light-gray (#D9D9D9) front layers slide down ~22px
+ * against the static dark body (#706D6D). 300ms, cubic-bezier(0,0,0.58,1).
+ */
+const pressTransition: Transition = {
+  duration: 0.3,
+  ease: [0, 0, 0.58, 1],
+};
 
-const folderVariants: Variants = {
-  rest: { x: 0 },
-  hover: { x: -4 },
+/** Light-gray layers (top tab + bottom pocket) drop on press. */
+const slideDownVariants: Variants = {
+  rest: { y: 0 },
+  pressed: { y: 22 },
 };
 
 /**
  * Mobile-only folder card for the home page active events grid.
- * Shows just the folder silhouette + event name — no budget/progress/entries.
+ * Figma "folder" (mobile): a static dark-gray rounded body (#706D6D) with
+ * two light-gray front layers (#D9D9D9) that slide down on press.
  * Desktop uses the full EventCard instead.
  */
 export function FolderCard({ id, name, href }: FolderCardProps) {
@@ -31,32 +41,55 @@ export function FolderCard({ id, name, href }: FolderCardProps) {
       <MotionLink
         href={href ?? `/treasurer/events/${id}`}
         initial="rest"
-        whileHover="hover"
-        className="flex w-full flex-col items-stretch gap-1.5"
+        whileTap="pressed"
+        className="flex w-full flex-col items-stretch gap-1"
       >
-        {/* Folder visual — Figma "folder 1" */}
-        <div className="relative aspect-[353/246] w-full overflow-hidden rounded-xl">
+        {/* Folder visual — Figma "folder" (mobile) */}
+        <motion.div
+          className="relative aspect-[353/268] w-full overflow-visible"
+          style={{ transformOrigin: "50% 100%" }}
+          variants={{
+            rest: { scale: 1 },
+            pressed: { scale: 0.92 },
+          }}
+          transition={{ type: "spring", stiffness: 500, damping: 30 }}
+        >
           <motion.svg
-            variants={folderVariants}
-            transition={cardHover}
-            className="absolute left-0 top-0 h-full w-full text-neutral drop-shadow-md"
-            viewBox="0 0 404 263"
+            className="block h-full w-full"
+            viewBox="0 0 353 268"
             fill="none"
             aria-hidden="true"
           >
+            {/* Dark rounded body — static, never moves. */}
             <path
-              fill="currentColor"
-              d="M404 245.5C404 255.165 396.165 263 386.5 263H17.5C7.83501 263 0 255.165 0 245.5V74.0001H404V245.5Z"
+              d="M0 15C0 6.71574 6.71573 0 15 0H333C341.284 0 348 6.71573 348 15V223C348 231.284 341.284 238 333 238H15C6.71573 238 0 231.284 0 223V15Z"
+              fill="#706D6D"
             />
-            <path
-              fill="currentColor"
-              d="M404 75.1668H0V17.5C0 7.83504 7.83502 0 17.5 0H138.743C142.059 0 145.218 1.41107 147.432 3.88053L165.436 23.9714C167.649 26.4408 170.808 27.8519 174.124 27.8519H386.5C396.165 27.8519 404 35.6869 404 45.3519V75.1668Z"
-            />
+            {/* Light bottom pocket — slides down on press. */}
+            <motion.g
+              variants={slideDownVariants}
+              transition={pressTransition}
+            >
+              <path
+                d="M353 231C353 239.284 346.284 246 338 246H15C6.71573 246 3.8658e-07 239.284 0 231V84H353V231Z"
+                fill="#D9D9D9"
+              />
+            </motion.g>
+            {/* Light top tab — slides down on press. */}
+            <motion.g
+              variants={slideDownVariants}
+              transition={pressTransition}
+            >
+              <path
+                d="M353 85H0V27C0 18.7157 6.71573 12 15 12H120.454C123.784 12 126.896 13.6576 128.754 16.4213L144.619 40.0232C146.476 42.7868 149.588 44.4444 152.918 44.4444H338C346.284 44.4444 353 51.1602 353 59.4444V85Z"
+                fill="#D9D9D9"
+              />
+            </motion.g>
           </motion.svg>
-        </div>
+        </motion.div>
 
         {/* Event name */}
-        <p className="text-center text-[11px] font-medium leading-tight text-text-primary line-clamp-1">
+        <p className="-mt-0.5 text-center text-[12px] font-semibold leading-tight text-text-primary line-clamp-1">
           {name}
         </p>
       </MotionLink>

@@ -28,6 +28,10 @@ Only issue_time may be null; every other missing field is "" (empty string) when
 
 Return exactly: {"classification": {"outcome": "valid" | "multiple" | "borderline" | "invalid", "reason": "..."}, "document_type_raw": "..." or null, "document_type_category": "..." or null, "category": "transportation" | "meals" | "honorarium" | "supplies" | "printing" | "rental" | "others" or null, "document_number": "..." or null, "issue_date": "YYYY-MM-DD" or null, "issue_time": "HH:MM" or null, "supplier_name": "..." or null, "amount": 0.00 or null, "item_breakdown": [{"description": "...", "qty": 1, "unitPrice": 0.00, "lineAmount": 0.00}] or null}`;
 
+// Retry budget ONLY for fast schema-mismatch re-parses (the model already
+// returned; re-running is cheap). Transport/timeout errors are NOT retried —
+// on Vercel Hobby each request shares one ~10s budget, so re-issuing a timed-out
+// Gemini call in the same request can't succeed and multiplies latency 3x.
 const ATTEMPTS = 3;
 
 function stripCodeFences(text: string): string {
@@ -36,12 +40,24 @@ function stripCodeFences(text: string): string {
   return fenced ? fenced[1].trim() : trimmed;
 }
 
+/** True when a Gemini transport call gave up (timeout abort or fetch failure). */
+function isTimeoutError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  // DOMException "The operation was aborted due to timeout" (AbortSignal.timeout)
+  if (err.name === "TimeoutError") return true;
+  // Node/undici timeout variants
+  if (err.name === "AbortError") return true;
+  return /aborted|timeout|timed ?out/i.test(err.message);
+}
+
 /**
  * Parses a receipt image (base64 data URL) into a discriminated outcome.
  * "valid" carries the strict receipt (supplier + amount + items guaranteed by the schema).
  * "borderline"/"invalid" short-circuit with the model's reason — no row, no retry.
  * Retries up to 3 times only on malformed JSON / schema mismatches, per library-docs.
- * @throws GeminiError on transport failure, Error on persistent bad extraction.
+ * Transport/timeout failures throw immediately (no in-request retry — Hobby ceiling;
+ * the caller's one-shot [entryId] route is the retry lane for those).
+ * @throws GeminiError/timeout on transport failure, Error on persistent bad extraction.
  */
 export async function parseReceipt(dataUrl: string): Promise<ParseOutcome> {
   const messages = [
@@ -90,7 +106,10 @@ export async function parseReceipt(dataUrl: string): Promise<ParseOutcome> {
       }
       lastDetail = `schema mismatch: ${result.error.issues[0]?.path.join(".") ?? "?"} — ${result.error.issues[0]?.message ?? "invalid"}`;
     } catch (err) {
-      if (err instanceof GeminiError) throw err; // transport/auth — no retry for a dead key
+      // Transport/auth/timeout — never retry in-request: a dead key, downed
+      // API, or Hobby 10s ceiling can't be fixed by re-issuing the same call.
+      // Let the caller's one-shot [entryId] retry use its own fresh budget.
+      if (err instanceof GeminiError || isTimeoutError(err)) throw err;
       lastDetail = err instanceof Error ? err.message : String(err);
     }
     console.warn(`[agent/receipt-parser] attempt ${attempt}/${ATTEMPTS} failed (${Date.now() - startedAt}ms): ${lastDetail}`);

@@ -20,6 +20,8 @@ export type EventWithMeta = {
   created_at: string;
   created_by: string;
   created_by_name: string;
+  /** Most recent activity (last entry/report) timestamp, else event creation. */
+  latest_activity_at: string;
 };
 
 export type EntryForDashboard = {
@@ -85,16 +87,23 @@ export const getDepartmentEvents = cache(async function getDepartmentEvents(
 
   const { data: entryRows } = await insforge.database
     .from("entries")
-    .select("event_id, amount, status, causes_overspend, overspend_resolved_at")
+    .select("event_id, amount, status, causes_overspend, overspend_resolved_at, created_at")
     .in("event_id", eventIds);
 
   const spentMap: Record<string, number> = {};
   const entryCountMap: Record<string, number> = {};
   const anyEntryIds = new Set<string>();
   const overspendEventIds = new Set<string>();
+  // Most recent activity per event (entry or report timestamp); falls back to
+  // event creation. Used to surface "recently active" events first on home.
+  const latestActivity: Record<string, number> = {};
   if (entryRows) {
     for (const row of entryRows) {
       entryCountMap[row.event_id] = (entryCountMap[row.event_id] ?? 0) + 1;
+      latestActivity[row.event_id] = Math.max(
+        latestActivity[row.event_id] ?? 0,
+        new Date(row.created_at).getTime(),
+      );
       if (row.status === "deducted") {
         spentMap[row.event_id] = (spentMap[row.event_id] ?? 0) + Number(row.amount);
       }
@@ -111,7 +120,7 @@ export const getDepartmentEvents = cache(async function getDepartmentEvents(
   // Check which events have pending/approved reports (is_locked)
   const { data: reportRows } = await insforge.database
     .from("reports")
-    .select("event_id")
+    .select("event_id, created_at")
     .in("event_id", eventIds)
     .in("status", ["pending_adviser_approval", "approved"]);
 
@@ -120,6 +129,10 @@ export const getDepartmentEvents = cache(async function getDepartmentEvents(
   if (reportRows) {
     for (const row of reportRows) {
       lockedEventIds.add(row.event_id);
+      latestActivity[row.event_id] = Math.max(
+        latestActivity[row.event_id] ?? 0,
+        new Date(row.created_at).getTime(),
+      );
     }
   }
 
@@ -156,6 +169,8 @@ export const getDepartmentEvents = cache(async function getDepartmentEvents(
     created_at: e.created_at,
     created_by: e.created_by,
     created_by_name: nameMap[e.created_by] ?? "Unknown",
+    // ponytail: store as an ISO string for direct comparison; fallback to creation
+    latest_activity_at: new Date(latestActivity[e.id] ?? new Date(e.created_at).getTime()).toISOString(),
   }));
 });
 

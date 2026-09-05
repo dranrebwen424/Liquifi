@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { dialogOverlay, dialogContent, sheetSlideUp } from "@/lib/motion-variants";
+import { useDragToDismiss } from "@/lib/use-drag-to-dismiss";
 import { EventForm } from "@/components/events/EventForm";
 import { createEvent } from "@/actions/events";
 
@@ -16,12 +17,17 @@ type NewEventModalProps = {
 export function NewEventModal({ open, onClose }: NewEventModalProps) {
   const router = useRouter();
 
+  // Close the sheet. Drag-to-dismiss + the sheet's slide-up/follow are handled
+  // by the pointer-based hook; the sheet never retracts under a held finger.
+  const closeSheet = useCallback(() => onClose(), [onClose]);
+  const { wrapRef, y, handlers: sheetDrag } = useDragToDismiss(closeSheet);
+
   // Close on Escape
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") closeSheet();
     },
-    [onClose],
+    [closeSheet],
   );
 
   useEffect(() => {
@@ -59,6 +65,9 @@ export function NewEventModal({ open, onClose }: NewEventModalProps) {
     </div>
   );
 
+  // The whole sheet column is the drag surface (`touch-none`, no background
+  // scroll). The hook owns entrance + drag + dismiss on one `y`, so the outer
+  // motion.div only animates exit — nothing competes, nothing freezes.
   return (
     <AnimatePresence>
       {open && (
@@ -71,7 +80,7 @@ export function NewEventModal({ open, onClose }: NewEventModalProps) {
             animate="show"
             exit="hidden"
             className="fixed inset-0 z-50 bg-overlay-alpha"
-            onClick={onClose}
+            onClick={closeSheet}
           />
 
           {/* Web: centered modal */}
@@ -86,7 +95,7 @@ export function NewEventModal({ open, onClose }: NewEventModalProps) {
             <div className="relative w-full max-w-lg rounded-xl border border-border bg-surface p-6 shadow-card">
               <button
                 type="button"
-                onClick={onClose}
+                onClick={closeSheet}
                 className="absolute right-4 top-4 flex h-7 w-7 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-surface-secondary hover:text-text-primary"
                 aria-label="Close"
               >
@@ -103,23 +112,25 @@ export function NewEventModal({ open, onClose }: NewEventModalProps) {
             initial="hidden"
             animate="show"
             exit="exit"
-            drag="y"
-            dragConstraints={{ top: 0 }}
-            dragElastic={0.2}
-            onDragEnd={(_, info) => {
-              if (info.offset.y > 100) onClose();
-            }}
             className="fixed inset-x-0 bottom-0 z-50 sm:hidden"
           >
-            <div className="max-h-[85vh] rounded-t-2xl border-t border-border bg-surface shadow-card">
-              <div className="mx-auto mt-3 h-1 w-10 rounded-full bg-border-strong" />
-              <div className="overflow-y-auto p-6 pb-4">
+            <div
+              ref={wrapRef}
+              {...sheetDrag}
+              style={{ transform: `translateY(${y}px)` }}
+              className="flex max-h-[85dvh] touch-none flex-col rounded-t-2xl border-t border-border bg-surface shadow-card"
+            >
+              {/* Grip / drag handle visual — the whole column is draggable */}
+              <div className="flex shrink-0 flex-col items-center py-3">
+                <div className="h-1 w-10 rounded-full bg-border-strong" />
+              </div>
+              <div className="min-h-0 overflow-y-auto p-6 pb-4">
                 {formContent}
               </div>
               <div className="border-t border-border px-6 py-3">
                 <button
                   type="button"
-                  onClick={onClose}
+                  onClick={closeSheet}
                   className="w-full rounded-full border border-border px-4 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary"
                 >
                   Cancel

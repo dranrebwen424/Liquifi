@@ -23,10 +23,12 @@ type EntryRowProps = {
 function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return "—";
   try {
-    return new Date(dateStr).toLocaleDateString("en-PH", {
+    return new Date(dateStr).toLocaleString("en-PH", {
       month: "short",
       day: "numeric",
       year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
     });
   } catch {
     return "—";

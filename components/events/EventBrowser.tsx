@@ -316,6 +316,7 @@ export function EventBrowser({
                   options={SORT_OPTIONS}
                   value={sortBy}
                   onChange={setSortBy}
+                  align="right"
                 />
               </div>
               <div className="flex flex-col gap-5">

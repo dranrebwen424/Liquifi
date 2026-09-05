@@ -16,16 +16,21 @@ type ReceiptUploadProps = {
   eventId: string;
   /** Called when the server returns a successful parse (Entry row created at ai_parsed). */
   onParsed: (result: ParsedUploadResult) => void;
-  /** Called after 3 failed parse attempts — surface the manual-entry fallback. */
+  /** Called after the bounded reparse attempts run out — surface the manual-entry fallback. */
   onExhausted: () => void;
   /** Called when the model judges the image is not a traceable receipt — one-tap into No Receipt Entry. */
   onNoReceipt: () => void;
+  /** Called with the provisional entryId when an inline parse failed transiently and
+   *  the client retries via the reparse route — so the owner can clean up the
+   *  `pending_ai_parse` row if the modal closes mid-retry. */
+  onPending: (entryId: string) => void;
 };
 
 /**
  * Upload failures. Verdicts (invalid_document/borderline) are guidance, not errors —
- * they render an action banner immediately and never count toward the 3-attempt ceiling.
- * generic/parse_failed keep the inline red text + attempt counting.
+ * they render an action banner immediately and never count toward the attempt ceiling.
+ * generic/parse_failed keep the inline red text + attempt counting. The reparse
+ * ceiling (MAX_ATTEMPTS) only ever trips on genuinely hard-to-read receipt images.
  */
 type FailureKind = "generic" | "parse_failed" | "invalid_document" | "borderline" | "multiple_documents";
 
@@ -36,9 +41,18 @@ const MAX_SIZE = 10 * 1024 * 1024;
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic"];
 
 /** Parse failures that count toward the manual-entry fallback. */
-const MAX_ATTEMPTS = 3;
+// 2026-09-04: 3 total attempts == primary + 2 reparse retries, each an
+// 8s-cold-start round trip → ~25s worst case (the reported 20-30s). The model
+// itself parses in 2-3s warm, so the multiplier is pure cold-start retries, not
+// slow inference. Drop to 2 = primary + 1 reparse (~17s worst). 
+const MAX_ATTEMPTS = 2;
 
-export function ReceiptUpload({ eventId, onParsed, onExhausted, onNoReceipt }: ReceiptUploadProps) {
+/** Backoff between reparse retries after a transient "parsing" response. */
+const RETRY_DELAY_MS = 900;
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+export function ReceiptUpload({ eventId, onParsed, onExhausted, onNoReceipt, onPending }: ReceiptUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -105,37 +119,83 @@ export function ReceiptUpload({ eventId, onParsed, onExhausted, onNoReceipt }: R
     setUploading(true);
     setFailure(null);
 
+    // Prepare ONCE — re-encoding is wasteful, and this same blob backs the reparse retry.
+    const prepared = await prepareImage(file);
+
+    // Map a server error `code` to a banner kind. Verdicts become their guidance
+    // banner; everything else falls back to the generic inline error.
+    const verdictKind = (code: string | undefined): FailureKind => {
+      if (code === "invalid_document" || code === "borderline" || code === "multiple_documents") {
+        return code;
+      }
+      return "generic";
+    };
+
+    // ── Single-request fast path: the server runs Gemini inline and returns the
+    //    parsed receipt in ONE round trip (~2–4s). No poll in the happy path.
     try {
       const formData = new FormData();
       formData.append("eventId", eventId);
-      formData.append("image", await prepareImage(file));
+      formData.append("image", prepared);
 
       const res = await fetch("/api/entries/receipt", { method: "POST", body: formData });
       const body = await res.json().catch(() => null);
 
-      if (!res.ok || !body?.success) {
-        const message = body?.error ?? "Something went wrong.";
-        const code = body?.code;
-        if (code === "invalid_document" || code === "borderline" || code === "multiple_documents") {
-          // Verdicts show guidance immediately and don't count toward the fallback ceiling
-          setFailure({ kind: code, message });
-        } else {
-          if (code === "parse_failed") {
-            setFailedAttempts(failedAttempts + 1);
+      // Success — one round trip, done. The row is already ai_parsed server-side.
+      if (res.ok && body?.status === "parsed" && body?.parsed) {
+        setUploading(false);
+        onParsed({ entryId: body.entry?.id, parsed: body.parsed });
+        return;
+      }
+
+      // Server kicked off the parse but Gemini failed transiently → it returned the
+      // provisional entryId; retry against the reparse route on the SAME row (no
+      // image re-upload, no duplicate blob). Bounded.
+      const entryId = body?.entry?.id;
+      if (res.ok && body?.status === "parsing" && entryId) {
+        // Hand the provisional id up so the modal can discard it if it closes mid-retry.
+        onPending(entryId);
+        let attempt = 0;
+        while (attempt < MAX_ATTEMPTS - 1) {
+          await sleep(RETRY_DELAY_MS);
+          attempt += 1;
+          let rr: Response;
+          let rb: any;
+          try {
+            const fd = new FormData();
+            fd.append("eventId", eventId);
+            rr = await fetch(`/api/entries/receipt/${entryId}`, { method: "POST", body: fd });
+            rb = await rr.json().catch(() => null);
+          } catch {
+            continue; // network blip — retry
           }
-          setFailure({ kind: "generic", message });
+          if (rb?.status === "parsed" && rb?.parsed) {
+            setUploading(false);
+            onParsed({ entryId, parsed: rb.parsed });
+            return;
+          }
+          if (rr.ok && rb?.status === "parsing") continue; // still extracting — retry
+          // Terminal on reparse: verdict or duplicate.
+          setFailure({ kind: verdictKind(rb?.code), message: rb?.error ?? "Something went wrong." });
+          setUploading(false);
+          return;
         }
+        // Reparse exhausted → manual-entry fallback (the provisional row likely
+        // remains; onPending lets the owner discard it on modal close).
+        setFailedAttempts(failedAttempts + MAX_ATTEMPTS);
         setUploading(false);
         return;
       }
 
+      // Terminal on the primary request — verdict/duplicate, or parsing with no
+      // entryId (nothing to retry): surface the message.
+      setFailure({ kind: verdictKind(body?.code), message: body?.error ?? "Something went wrong." });
       setUploading(false);
-      onParsed({ entryId: body.entry.id, parsed: body.parsed });
     } catch {
       setFailure({ kind: "generic", message: "Could not reach the server. Check your connection and try again." });
       setUploading(false);
     }
-  }, [file, eventId, onParsed, failedAttempts]);
+  }, [file, eventId, onParsed, onPending, failedAttempts]);
 
   // ─── Render ──────────────────────────────────────────────────────
 

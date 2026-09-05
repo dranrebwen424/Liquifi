@@ -37,7 +37,7 @@ export function TreasurerLayoutShell({ children, unreadCount }: Props) {
         navItems={navItems}
         role="treasurer"
       />
-      <MobileTopBar onOpenSidebar={openSidebar} />
+      <MobileTopBar onOpenSidebar={openSidebar} unreadCount={unreadCount} />
       <SidebarShell mobileBottomNav={false}>{children}</SidebarShell>
     </>
   );

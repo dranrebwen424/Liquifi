@@ -71,10 +71,12 @@ export function ExpensesSection({ entries, categories, isArchived, canMutate, mo
       result = result.filter((e) => e.documentType === filters.category);
     }
 
-    // Sort
+    // Sort — by log time (created_at), newest first. Falls back to the row's
+    // own timestamp; entries missing one sort to the end either way.
+    const ts = (e: Entry) => (e.createdAt ? new Date(e.createdAt).getTime() : 0);
     switch (filters.sort) {
       case "oldest":
-        result.sort((a, b) => a.id.localeCompare(b.id));
+        result.sort((a, b) => ts(a) - ts(b) || a.id.localeCompare(b.id));
         break;
       case "amount_high":
         result.sort((a, b) => b.amount - a.amount);
@@ -84,7 +86,7 @@ export function ExpensesSection({ entries, categories, isArchived, canMutate, mo
         break;
       case "newest":
       default:
-        result.sort((a, b) => b.id.localeCompare(a.id));
+        result.sort((a, b) => ts(b) - ts(a) || b.id.localeCompare(a.id));
         break;
     }
 

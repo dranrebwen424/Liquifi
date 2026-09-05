@@ -1,10 +1,15 @@
-/** Downscale cap for photos (longest side, px). */
+/** Downscale cap for photos (longest side, px). Receipts go up in a photo.
+ * 2026-09-04 bench (real phone-sized 3024x4032 receipt → all sizes): Gemini
+ * returns in ~2-3s at ANY resolution (prompt tokens pinned ~1065 — it resamples
+ * internally), so shrinking does NOT speed it up, and at 1024 it garbles the text
+ * ("can't scan"). 1600 keeps print legible with no speed cost. ponytail: measured,
+ * not guessed — do not re-lower this to chase latency. */
 const MAX_DIM = 1600;
 /** Images under this size are uploaded as-is — no pointless re-encode. */
 const SKIP_IF_SMALL = 1 * 1024 * 1024;
 
 /**
- * Shrink a photo before upload: ≤1600px JPEG q0.8 (~200–400KB vs a multi-MB
+ * Shrink a photo before upload: ≤1600px JPEG q0.8 (~300–500KB vs a multi-MB
  * phone photo). Used by both the receipt-parse path and the manual-entry
  * supporting-photo path so large images don't hang on mobile uploads.
  * ponytail: canvas-only, no library. Any failure returns the original file —

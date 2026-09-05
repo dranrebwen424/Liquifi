@@ -12,9 +12,11 @@ type Props = {
   value: string;
   onChange: (value: string) => void;
   className?: string;
+  /** Align the open menu to the button's right edge (for right-aligned triggers). */
+  align?: "left" | "right";
 };
 
-export function FilterDropdown({ label, options, value, onChange, className }: Props) {
+export function FilterDropdown({ label, options, value, onChange, className, align = "left" }: Props) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(() =>
     Math.max(0, options.findIndex((o) => o.value === value)),
@@ -93,7 +95,10 @@ export function FilterDropdown({ label, options, value, onChange, className }: P
       {open && (
         <ul
           role="listbox"
-          className="absolute z-30 mt-1 min-w-40 origin-top overflow-hidden rounded-lg border border-border-strong bg-surface py-1 shadow-card sm:w-44"
+          className={cn(
+            "absolute z-30 mt-1 min-w-40 origin-top overflow-hidden rounded-lg border border-border-strong bg-surface py-1 shadow-card sm:w-44",
+            align === "right" ? "right-0" : "left-0",
+          )}
         >
           {options.map((o, i) => (
             <li

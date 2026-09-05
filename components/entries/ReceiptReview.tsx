@@ -254,7 +254,7 @@ export function ReceiptReview({
             }}
             className="fixed inset-x-0 bottom-0 z-50 sm:hidden"
           >
-            <div className="max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-border bg-surface p-6 pb-8 shadow-card">
+            <div className="max-h-[85dvh] overflow-y-auto rounded-t-2xl border-t border-border bg-surface p-6 pb-8 shadow-card">
               <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-border-strong" />
               {content}
             </div>

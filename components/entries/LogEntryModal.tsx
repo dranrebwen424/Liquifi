@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import { formatPHP } from "@/lib/format";
 import { dialogOverlay, dialogContent, sheetSlideUp } from "@/lib/motion-variants";
+import { useDragToDismiss } from "@/lib/use-drag-to-dismiss";
 import { ReceiptUpload, type ParsedUploadResult } from "@/components/entries/ReceiptUpload";
 import { ManualCategoryPicker } from "@/components/entries/ManualCategoryPicker";
 import { ManualQuickForm, type ManualSubmitPayload } from "@/components/entries/ManualQuickForm";
@@ -74,18 +75,25 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
    * Abandoned-review cleanup: an unconfirmed ai_parsed row is provisional —
    * closing the modal without confirming discards it (server-guarded).
    * entryId is nulled on confirm/discard, so post-action closes never discard.
-   * Close waits for the delete so the refresh below lands after it — otherwise
-   * the list behind re-renders before the row is gone and "discard does nothing".
+   * The delete runs in the background — the modal closes instantly, the list
+   * behind refreshes once the row is gone.
    */
-  const closeModal = useCallback(async () => {
-    if (entryId && !discarding) {
-      setDiscarding(true);
-      await discardReceiptEntry(entryId, eventId);
-      setDiscarding(false);
-      router.refresh();
+  const closeModal = useCallback(() => {
+    const id = entryId;
+    const eid = eventId;
+    setEntryId(null);
+    setReviewOpen(false);
+    if (id && !discarding) {
+      discardReceiptEntry(id, eid).then(() => router.refresh());
     }
     onClose();
   }, [entryId, discarding, eventId, onClose, router]);
+
+  // Drag-to-dismiss on the whole sheet column. The hook owns entrance + drag +
+  // dismiss on one `y`; the outer motion.div only animates exit. Never retracts
+  // under a held finger; plain taps still land (content stays clickable).
+  // onDismiss → closeModal so an abandoned ai_parsed row is discarded server-side.
+  const { wrapRef, y, handlers: sheetDrag } = useDragToDismiss(closeModal);
 
   // Close on Escape (not during confirm or submit)
   const handleKeyDown = useCallback(
@@ -114,17 +122,19 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
     setReviewOpen(true);
   }, []);
 
-  const handleDiscard = useCallback(async () => {
+  const handleDiscard = useCallback(() => {
     if (!entryId) return;
-    setDiscarding(true);
-    await discardReceiptEntry(entryId, eventId);
-    setDiscarding(false);
-    setEntryId(null);
+    const id = entryId;
+    const eid = eventId;
+    // Close the review UI instantly — discard happens in the background so the
+    // user isn't stuck on "Discarding…" waiting for the server roundtrip.
     setReviewOpen(false);
+    setEntryId(null);
     setOverspend(null);
     setConfirmError(null);
-    router.refresh(); // row deleted (or raced a confirm) — sync the list behind
-    setTimeout(() => setParsedData(null), 150);
+    setParsedData(null);
+    // Fire-and-forget the server-side delete; refresh the list behind when done.
+    discardReceiptEntry(id, eid).then(() => router.refresh());
   }, [entryId, eventId, router]);
 
   const handleConfirm = useCallback(async () => {
@@ -251,6 +261,7 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
           onParsed={handleParsed}
           onExhausted={switchToManual}
           onNoReceipt={switchToManual}
+          onPending={setEntryId}
         />
       )}
 
@@ -466,7 +477,7 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
             exit="exit"
             className="fixed inset-0 z-50 hidden overflow-y-auto p-4 sm:flex sm:items-center sm:justify-center"
           >
-            <div className="w-full max-w-xl max-h-[85vh] overflow-y-auto rounded-xl border border-border bg-surface p-6 shadow-card">
+            <div className="w-full max-w-xl max-h-[85dvh] overflow-y-auto rounded-xl border border-border bg-surface p-6 shadow-card">
               {reviewOpen ? reviewContent : screenContent}
             </div>
           </motion.div>
@@ -478,16 +489,18 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
             initial="hidden"
             animate="show"
             exit="exit"
-            drag="y"
-            dragConstraints={{ top: 0 }}
-            dragElastic={0.2}
-            onDragEnd={(_, info) => {
-              if (info.offset.y > 100) closeModal();
-            }}
             className="fixed inset-x-0 bottom-0 z-50 sm:hidden"
           >
-            <div className="flex max-h-[85vh] flex-col rounded-t-2xl border-t border-border bg-surface shadow-card">
-              <div className="mx-auto mt-3 h-1 w-10 shrink-0 rounded-full bg-border-strong" />
+            <div
+              ref={wrapRef}
+              {...sheetDrag}
+              style={{ transform: `translateY(${y}px)` }}
+              className="flex max-h-[85dvh] touch-none flex-col rounded-t-2xl border-t border-border bg-surface shadow-card"
+            >
+              {/* Grip / drag handle visual — the whole column is draggable */}
+              <div className="flex shrink-0 flex-col items-center py-3">
+                <div className="h-1 w-10 rounded-full bg-border-strong" />
+              </div>
               <div className="min-h-0 overflow-y-auto p-6 pb-4">
                 {reviewOpen ? reviewContent : screenContent}
               </div>

@@ -752,7 +752,7 @@ export function EntryDetailModal({ open, onClose, entry, canMutate, onVoid }: En
               exit="exit"
               className="fixed inset-0 z-50 hidden items-center justify-center p-4 sm:flex"
             >
-              <div className="relative max-h-[85vh] w-full max-w-lg rounded-xl border border-border bg-surface shadow-card">
+              <div className="relative max-h-[85dvh] w-full max-w-lg rounded-xl border border-border bg-surface shadow-card">
                 {/* Close button — outside scrollable area */}
                 <button
                   onClick={onClose}
@@ -761,7 +761,7 @@ export function EntryDetailModal({ open, onClose, entry, canMutate, onVoid }: En
                   <X className="h-4 w-4" />
                 </button>
 
-                <div className="max-h-[85vh] scrollbar-hide overflow-y-auto rounded-xl p-6 pt-12">
+                <div className="max-h-[85dvh] scrollbar-hide overflow-y-auto rounded-xl p-6 pt-12">
                   <EntryDetailContent
                     entry={entry}
                     canMutate={canMutate}
@@ -782,7 +782,7 @@ export function EntryDetailModal({ open, onClose, entry, canMutate, onVoid }: En
               initial="hidden"
               animate="show"
               exit="exit"
-              className="fixed inset-x-0 bottom-0 z-50 max-h-[85vh] scrollbar-hide overflow-y-auto rounded-t-2xl border-t border-border bg-surface shadow-card sm:hidden"
+              className="fixed inset-x-0 bottom-0 z-50 max-h-[85dvh] scrollbar-hide overflow-y-auto rounded-t-2xl border-t border-border bg-surface shadow-card sm:hidden"
             >
               {/* Drag handle */}
               <div className="mx-auto mb-5 mt-3 h-1 w-10 rounded-full bg-border-strong" />

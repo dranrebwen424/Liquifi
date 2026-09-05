@@ -9,7 +9,10 @@ const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta";
 // same tokens/parse; +$0.0004/parse on paid tier only (free tier $0 both).
 export const GEMINI_MODEL = "gemini-3.5-flash-lite";
 
-const TIMEOUT_MS = 120_000;
+// ponytail: 8s so a hung model call fails fast instead of silently crossing
+// Vercel Hobby's ~10s function ceiling (the old 120s timeout could blow the
+// request). Budget ≈8s in-request + ~1s upload leaves headroom under the limit.
+const TIMEOUT_MS = 8_000;
 const MAX_OUTPUT_TOKENS = 1500;
 
 export class GeminiError extends Error {

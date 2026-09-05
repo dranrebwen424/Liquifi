@@ -90,6 +90,21 @@ function ManualPlaceholder() {
   );
 }
 
+function formatDateTime(dateStr?: string | null): string | null {
+  if (!dateStr) return null;
+  try {
+    return new Date(dateStr).toLocaleString("en-PH", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  } catch {
+    return null;
+  }
+}
+
 export function EntryCard({
   id,
   type,
@@ -101,6 +116,7 @@ export function EntryCard({
   formPayload,
   itemBreakdown,
   imageUrl,
+  createdAt,
   voidReason,
   voidedBy,
   voidedAt,
@@ -166,6 +182,13 @@ export function EntryCard({
                   .join(" \u00B7 ")
               : (subtitle ?? "\u00A0")}
           </p>
+
+          {/* Logged timestamp — date + time */}
+          {formatDateTime(createdAt) && (
+            <p className="text-[11px] text-text-muted/80">
+              {formatDateTime(createdAt)}
+            </p>
+          )}
         </div>
 
         {/* Amount — pushed to bottom */}

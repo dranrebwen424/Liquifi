@@ -35,15 +35,16 @@ export const dialogContent: Variants = {
   exit: { opacity: 0, scale: 0.92, transition: { duration: 0.12 } },
 };
 
-/** Bottom sheet — slides up from below, no scale. */
+/** Bottom sheet — slides up from below, no scale. Tween (not spring) so the
+ *  tall sheet animates linearly/consistently instead of rubberbanding. */
 export const sheetSlideUp: Variants = {
   hidden: { y: "100%" },
   show: {
     y: 0,
-    transition: { type: "spring", stiffness: 300, damping: 30 },
+    transition: { duration: 0.3, ease: "easeOut" },
   },
   exit: {
     y: "100%",
-    transition: { duration: 0.2, ease: "easeIn" },
+    transition: { duration: 0.22, ease: "easeIn" },
   },
 };

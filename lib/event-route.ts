@@ -26,8 +26,15 @@ export function isReportDetailPage(pathname: string): boolean {
 
 /**
  * Pages that go immersive on mobile: chrome (top bar + bottom nav) slides
- * away and content fills the screen. Event + report detail pages.
+ * away and content fills the screen. Event + report detail pages, the
+ * treasurer Active Events list (it owns its own top bar w/ back arrow),
+ * and the notifications page (owns its own back header).
  */
 export function isImmersivePage(pathname: string): boolean {
-  return isEventPage(pathname) || isReportDetailPage(pathname);
+  return (
+    pathname === "/treasurer/events" ||
+    pathname.includes("/notifications") ||
+    isEventPage(pathname) ||
+    isReportDetailPage(pathname)
+  );
 }

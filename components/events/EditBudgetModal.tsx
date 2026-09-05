@@ -179,7 +179,7 @@ export function EditBudgetModal({ open, onClose, eventId, currentBudget }: EditB
             }}
             className="fixed inset-x-0 bottom-0 z-50 sm:hidden"
           >
-            <div className="max-h-[85vh] rounded-t-2xl border-t border-border bg-surface shadow-card">
+            <div className="max-h-[85dvh] rounded-t-2xl border-t border-border bg-surface shadow-card">
               <div className="mx-auto mt-3 h-1 w-10 rounded-full bg-border-strong" />
               <div className="overflow-y-auto p-6 pb-4">{formContent}</div>
               <div className="border-t border-border px-6 py-3">

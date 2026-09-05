@@ -12,8 +12,12 @@ import { createNotification } from "@/lib/notifications";
 import type { ManualSubmitPayload } from "@/components/entries/ManualQuickForm";
 
 /**
- * Discard an ai_parsed receipt entry the treasurer decided not to keep.
+ * Discard a receipt entry the treasurer decided not to keep.
  * Deletes the row (receipt image is removed with it) and audit-logs the discard.
+ * Handles both statuses:
+ *   - `ai_parsed`     — the standard discard from the review screen.
+ *   - `pending_ai_parse` — closing the modal while Phase-2 polling is in flight
+ *     abandons a provisional row; discarding it cleans up the leaked upload.
  */
 export async function discardReceiptEntry(entryId: string, eventId: string) {
   try {
@@ -43,7 +47,7 @@ export async function discardReceiptEntry(entryId: string, eventId: string) {
 
     const insforge = await createInsforgeServer();
 
-    // Only ai_parsed entries can be discarded — anything past review is out of scope here
+    // Only ai_parsed / pending_ai_parse receipts can be discarded — anything past review is out of scope
     const { data: entry, error: fetchErr } = await insforge.database
       .from("entries")
       .select("id, event_id, status, image_url, document_type_raw, document_number")
@@ -51,19 +55,21 @@ export async function discardReceiptEntry(entryId: string, eventId: string) {
       .eq("event_id", eventId)
       .maybeSingle();
     if (fetchErr) throw new Error("Failed to load the entry.");
-    if (!entry || entry.status !== "ai_parsed") {
+    if (!entry || (entry.status !== "ai_parsed" && entry.status !== "pending_ai_parse")) {
       return { success: false as const, error: "Only unconfirmed parsed receipts can be discarded." };
     }
 
     // Conditional delete — the status guard is on the delete itself, so a discard
     // racing a confirm (which moves the entry to `deducted`) deletes 0 rows and
-    // fails cleanly instead of deleting a confirmed expense.
+    // fails cleanly instead of deleting a confirmed expense. Same guard covers a
+    // mid-poll discard racing a Phase-2 verdict's own cleanup (both delete)
+    // and a racing promotion to `ai_parsed`.
     const { data: deleted, error: deleteErr } = await insforge.database
       .from("entries")
       .delete()
       .eq("id", entryId)
       .eq("event_id", eventId)
-      .eq("status", "ai_parsed")
+      .in("status", ["ai_parsed", "pending_ai_parse"])
       .select("id");
     if (deleteErr) {
       console.error("[actions/entries] discard failed:", deleteErr);

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createInsforgeServer } from "@/lib/insforge-server";
 import { requireRole } from "@/lib/auth-guard";
+import { uploadReceipt, deleteReceiptBlob } from "@/lib/storage";
 import { parseReceipt } from "@/agent/receipt-parser";
-import { toParsedReceiptClient, type ReceiptParseResult } from "@/agent/types";
-import { uploadReceipt } from "@/lib/storage";
+import { toParsedReceiptClient } from "@/agent/types";
 
 const MAX_SIZE = 10 * 1024 * 1024; // 10MB
 const ACCEPTED_MIME = ["image/jpeg", "image/png", "image/webp"];
@@ -24,6 +24,22 @@ function errorResponse(message: string, status: number, code?: string) {
   return NextResponse.json({ success: false, error: message, ...(code ? { code } : {}) }, { status });
 }
 
+/**
+ * Single-request receipt parse (the fast path). The client already compressed
+ * the image once (ReceiptUpload → prepareImage), so this route feeds that
+ * in-memory File straight to Gemini — no storage round-trip on the happy path.
+ *
+ * Critical path: formData → [parallel: requireRole + Gemini] → dup check →
+ * 1 insert → audit. The blob upload runs after auth and overlaps the model call
+ * (it's only needed to make a transient failure retryable via [entryId]).
+ *
+ * On success the row is inserted directly as `ai_parsed` (no provisional hop).
+ * On a verdict/duplicate the blob is deleted (no durable row). On a transient
+ * Gemini failure a `pending_ai_parse` row + the already-uploaded blob remain so
+ * the client can retry idempotently against the same entryId.
+ *
+ * Gemini keeps its 8s timeout; with storage off the critical path it's ample.
+ */
 export async function POST(request: NextRequest) {
   try {
     const form = await request.formData();
@@ -37,7 +53,7 @@ export async function POST(request: NextRequest) {
       return errorResponse("Receipt image is required.", 400);
     }
 
-    // HEIC must be rejected BEFORE parsing — it is not counted against the 3-attempt fallback
+    // HEIC must be rejected BEFORE any row is created
     if (HEIC_MIME.includes(image.type) || image.name.toLowerCase().endsWith(".heic")) {
       return errorResponse(HEIC_MESSAGE, 422);
     }
@@ -48,7 +64,14 @@ export async function POST(request: NextRequest) {
       return errorResponse("Image is too large (max 10MB).", 413);
     }
 
-    // Treasurer of the owning department, event open and not locked (derived is_locked)
+    const entryId = crypto.randomUUID();
+    const dataUrl = `data:${image.type || "image/jpeg"};base64,${Buffer.from(await image.arrayBuffer()).toString("base64")}`;
+
+    // Start the long pole (Gemini) immediately; auth runs in parallel.
+    const parsePromise = parseReceipt(dataUrl);
+    parsePromise.catch(() => {}); // noop guard — early auth/upload returns must not leak rejections
+
+    // Treasurer of the owning department, event open and not locked (derived is_locked).
     const user = await requireRole("treasurer", undefined, async ({ user: guardUser }) => {
       const insforge = await createInsforgeServer();
       const { data: event, error } = await insforge.database
@@ -68,14 +91,24 @@ export async function POST(request: NextRequest) {
       if (reportError || report) throw new Error("Event is locked by an active report.");
     });
 
-    // Parse — model verdicts (invalid/borderline) short-circuit with guidance, no row created;
-    // only persistent extraction failure throws (parse_failed → counts toward the client fallback).
-    const buffer = Buffer.from(await image.arrayBuffer());
-    const dataUrl = `data:${image.type};base64,${buffer.toString("base64")}`;
-    const insforge = await createInsforgeServer();
-    let parsed: ReceiptParseResult;
+    // Upload the blob once auth passed — overlaps the rest of the Gemini call.
+    let uploaded;
     try {
-      const outcome = await parseReceipt(dataUrl);
+      uploaded = await uploadReceipt(eventId, entryId, image);
+    } catch (uploadError) {
+      console.error("[api/entries/receipt] upload failed:", uploadError);
+      return errorResponse("Failed to upload the receipt image.", 500);
+    }
+    const imageUrl = uploaded.key;
+    const insforge = await createInsforgeServer();
+
+    const deleteBlob = async () => {
+      await deleteReceiptBlob(entryId, imageUrl);
+    };
+
+    let parsed;
+    try {
+      const outcome = await parsePromise;
       if (outcome.outcome !== "valid") {
         const code =
           outcome.outcome === "invalid"
@@ -83,6 +116,7 @@ export async function POST(request: NextRequest) {
             : outcome.outcome === "multiple"
               ? "multiple_documents"
               : "borderline";
+        await deleteBlob();
         await insforge.database.from("audit_logs").insert([
           {
             actor_id: user.id,
@@ -97,14 +131,43 @@ export async function POST(request: NextRequest) {
       }
       parsed = outcome.receipt;
     } catch (parseError) {
+      // Transient parse failure (Gemini timeout/transport). Keep the uploaded blob +
+      // a provisional row so the client retries this same entryId; the client bounds it.
       console.warn("[api/entries/receipt] parse failed:", parseError);
-      const message =
-        parseError instanceof Error ? parseError.message : "Could not extract receipt data.";
-      return errorResponse(message, 422, "parse_failed");
+      const { error: insertErr } = await insforge.database.from("entries").insert([
+        {
+          id: entryId,
+          event_id: eventId,
+          created_by: user.id,
+          type: "receipt",
+          status: "pending_ai_parse",
+          image_url: imageUrl,
+          amount: 0,
+        },
+      ]);
+      if (insertErr) {
+        console.error("[api/entries/receipt] provisional insert failed:", insertErr);
+        await deleteBlob().catch(() => {});
+        return errorResponse("Failed to save the upload.", 500);
+      }
+      await insforge.database.from("audit_logs").insert([
+        {
+          actor_id: user.id,
+          department_id: user.departmentId,
+          action: "entry.receipt_parse_retry",
+          target_type: "entry",
+          target_id: entryId,
+          metadata_json: { event_id: eventId },
+        },
+      ]);
+      return NextResponse.json(
+        { success: true, status: "parsing", entry: { id: entryId } },
+        { status: 200 },
+      );
     }
 
     // Duplicate check: same (document_type_raw + document_number) in this event,
-    // excluding voided/discarded rows.
+    // excluding voided/discarded rows (nothing to exclude yet — row not inserted).
     if (parsed.document_number) {
       const { data: dup } = await insforge.database
         .from("entries")
@@ -115,6 +178,7 @@ export async function POST(request: NextRequest) {
         .not("status", "in", "('voided','discarded')")
         .maybeSingle();
       if (dup) {
+        await deleteBlob();
         return errorResponse(
           `${parsed.document_type_raw} ${parsed.document_number} is already logged in this event.`,
           409,
@@ -122,7 +186,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const entryId = crypto.randomUUID();
+    // Single insert straight to ai_parsed — no provisional hop on the happy path.
     const { error: insertErr } = await insforge.database.from("entries").insert([
       {
         id: entryId,
@@ -130,6 +194,7 @@ export async function POST(request: NextRequest) {
         created_by: user.id,
         type: "receipt",
         status: "ai_parsed",
+        image_url: imageUrl,
         amount: parsed.amount,
         document_type_raw: parsed.document_type_raw,
         document_type_category: parsed.document_type_category,
@@ -144,20 +209,9 @@ export async function POST(request: NextRequest) {
     ]);
     if (insertErr) {
       console.error("[api/entries/receipt] insert failed:", insertErr);
+      await deleteBlob().catch(() => {});
       return errorResponse("Failed to save the parsed receipt.", 500);
     }
-
-    // Upload image; on failure remove the row so no orphan ai_parsed entry lingers
-    let uploaded;
-    try {
-      uploaded = await uploadReceipt(eventId, entryId, image);
-    } catch (uploadError) {
-      console.error("[api/entries/receipt] upload failed:", uploadError);
-      await insforge.database.from("entries").delete().eq("id", entryId).eq("event_id", eventId);
-      return errorResponse("Failed to upload the receipt image.", 500);
-    }
-
-    await insforge.database.from("entries").update({ image_url: uploaded.key }).eq("id", entryId);
 
     // Audit
     await insforge.database.from("audit_logs").insert([{
@@ -176,12 +230,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      entry: {
-        id: entryId,
-        event_id: eventId,
-        status: "ai_parsed",
-        image_url: uploaded.key,
-      },
+      status: "parsed",
+      entry: { id: entryId, event_id: eventId, status: "ai_parsed" },
       parsed: toParsedReceiptClient(parsed),
     });
   } catch (err) {

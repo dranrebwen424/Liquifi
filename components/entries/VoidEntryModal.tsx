@@ -166,7 +166,7 @@ export function VoidEntryModal({ open, entry, onClose, onSuccess }: VoidEntryMod
             exit="exit"
             className="fixed inset-x-0 bottom-0 z-50 sm:hidden"
           >
-            <div className="flex max-h-[85vh] flex-col rounded-t-2xl border-t border-border bg-surface shadow-card">
+            <div className="flex max-h-[85dvh] flex-col rounded-t-2xl border-t border-border bg-surface shadow-card">
               <div className="mx-auto mt-3 h-1 w-10 shrink-0 rounded-full bg-border-strong" />
               <div className="min-h-0 overflow-y-auto p-6 pb-4">
                 {done ? successContent() : formContent(entry)}

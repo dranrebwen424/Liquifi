@@ -202,6 +202,9 @@ export default function NewEntryPage({ params }: Props) {
               setManualScreen("picker");
               setSelectedCategory(null);
             }}
+            // ponytail: full page (not dismissible modal) — no close-cleanup to trigger,
+            // so the provisional id is a no-op here. Server verdict path cleans up inline.
+            onPending={() => {}}
           />
         ) : manualScreen === "picker" ? (
           <ManualCategoryPicker onSelect={handleCategorySelect} />

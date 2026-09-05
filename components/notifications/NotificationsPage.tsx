@@ -3,6 +3,7 @@ import { createInsforgeServer } from "@/lib/insforge-server";
 import { notificationContent } from "@/lib/notifications";
 import { NotificationsList } from "@/components/notifications/NotificationsList";
 import type { NotificationRow } from "@/components/notifications/types";
+import { NotificationHeader } from "@/components/notifications/NotificationHeader";
 
 // Shared server view for the treasurer + adviser notifications pages.
 // Fetches the acting user's notifications and renders the client list.
@@ -49,13 +50,8 @@ export async function NotificationsPage({
   const unreadCount = rows.filter((row) => !row.read).length;
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-text-primary md:text-2xl">{title}</h1>
-          <p className="mt-1 text-sm text-text-muted">{tagline}</p>
-        </div>
-      </div>
+    <div className="mt-6 flex flex-col gap-5 pb-16 md:pb-24">
+      <NotificationHeader role={role} title={title} tagline={tagline} unreadCount={unreadCount} />
       <NotificationsList items={rows} unreadCount={unreadCount} />
     </div>
   );
