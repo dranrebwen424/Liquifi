@@ -68,10 +68,16 @@ export function AdviserNotificationCard({ notifications }: Props) {
             <BellRing className="h-4 w-4" aria-hidden="true" />
           </span>
           <div>
-            <h2 className="text-sm font-semibold text-text-inverse">Latest notifications</h2>
-            <p className="text-xs text-text-inverse/60">
+            <h2 className="text-sm font-semibold text-text-inverse">
+              <span className="md:hidden">Latest notification</span>
+              <span className="hidden md:inline">Latest notifications</span>
+            </h2>
+            <p className="hidden text-xs text-text-inverse/60 md:block">
               {notifications.length > 0 ? "Keep reviews moving." : "You are all caught up."}
             </p>
+            {notifications.length <= 0 && (
+              <p className="text-xs text-text-inverse/60 md:hidden">You are all caught up.</p>
+            )}
           </div>
         </div>
 
@@ -96,8 +102,8 @@ export function AdviserNotificationCard({ notifications }: Props) {
                     <>
                       <Icon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                       <span className="min-w-0">
-                        <span className="block truncate text-xs font-semibold">{notification.title}</span>
-                        <span className="mt-0.5 block line-clamp-1 text-[11px] font-normal text-text-inverse/65">
+                        <span className="block truncate text-[11px] font-semibold md:text-xs">{notification.title}</span>
+                        <span className="mt-0.5 block line-clamp-1 text-[10px] font-normal text-text-inverse/65 md:text-[11px]">
                           {notification.body}
                         </span>
                       </span>
@@ -126,7 +132,7 @@ export function AdviserNotificationCard({ notifications }: Props) {
 
       <LottiePlayer
         src="/adviser/Wumpus%20Hi.json"
-        className="pointer-events-none absolute bottom-0 right-0 h-32 w-32 sm:h-36 sm:w-36 md:h-40 md:w-40"
+        className="pointer-events-none absolute bottom-16 right-0 h-32 w-32 sm:h-36 sm:w-36 md:bottom-0 md:h-40 md:w-40"
       />
     </section>
   );
