@@ -1,20 +1,20 @@
 import type { Variants } from "framer-motion";
 
-/** Stagger container for card grids and list items — quick enough to avoid sluggish lists. */
+/** Stagger container for card grids and list items — fast enough for longer lists. */
 export const staggerContainer: Variants = {
   hidden: {},
   show: {
-    transition: { staggerChildren: 0.035, delayChildren: 0.04 },
+    transition: { staggerChildren: 0.025, delayChildren: 0.02 },
   },
 };
 
-/** Fade-up spring for individual list items — small travel, softer settle. */
+/** Fade-up for individual list items — fixed tween, no spring tail. */
 export const fadeUpItem: Variants = {
   hidden: { opacity: 0, y: 8 },
   show: {
     opacity: 1,
     y: 0,
-    transition: { type: "spring", stiffness: 88, damping: 24, mass: 0.8 },
+    transition: { duration: 0.22, ease: [0.16, 1, 0.3, 1] },
   },
 };
 

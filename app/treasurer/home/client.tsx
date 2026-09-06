@@ -84,7 +84,7 @@ export function TreasurerHomeClient({
   const pageEntrance = prefersReducedMotion
     ? { initial: false, animate: true } as const
     : { initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 } } as const;
-  const pageEntranceTransition = { type: "spring", stiffness: 88, damping: 24, mass: 0.8 } as const;
+  const pageEntranceTransition = { duration: 0.24, ease: [0.16, 1, 0.3, 1] } as const;
   const router = useRouter();
   const searchParams = useSearchParams();
   const [sortBy, setSortBy] = useState("newest");
@@ -236,7 +236,7 @@ export function TreasurerHomeClient({
       {topSlot && (
         <motion.div
           {...pageEntrance}
-          transition={{ ...pageEntranceTransition, delay: 0.08 }}
+          transition={{ ...pageEntranceTransition, delay: 0.04 }}
           className={isSearching ? "hidden md:block" : undefined}
         >
           {topSlot}
