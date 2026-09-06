@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { Plus, Search, Archive, ArrowLeft, ChevronRight } from "lucide-react";
 import { EventCard } from "@/components/events/EventCard";
 import { EventListItem } from "@/components/events/EventListItem";
@@ -79,6 +79,12 @@ export function TreasurerHomeClient({
   paths = TREASURER_PATHS,
   topSlot,
 }: Props) {
+  const prefersReducedMotion = useReducedMotion();
+  /** Page-level entrance for the mobile adviser home (welcome bar + notification card). */
+  const pageEntrance = prefersReducedMotion
+    ? { initial: false, animate: true } as const
+    : { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } } as const;
+  const pageEntranceTransition = { duration: 0.35, ease: "easeOut" } as const;
   const router = useRouter();
   const searchParams = useSearchParams();
   const [sortBy, setSortBy] = useState("newest");
@@ -197,11 +203,15 @@ export function TreasurerHomeClient({
   return (
     <div className="flex flex-col">
       {!isSearching && (
-        <div className="px-2 pt-4 pb-10 md:hidden">
+        <motion.div
+          {...pageEntrance}
+          transition={pageEntranceTransition}
+          className="px-2 pt-4 pb-10 md:hidden"
+        >
           <h1 className="text-center text-xl font-bold tracking-wide text-text-primary">
             WELCOME BACK!
           </h1>
-        </div>
+        </motion.div>
       )}
 
       <div className="hidden md:block">
@@ -223,7 +233,15 @@ export function TreasurerHomeClient({
         </div>
       </div>
 
-      {topSlot && <div className={isSearching ? "hidden md:block" : undefined}>{topSlot}</div>}
+      {topSlot && (
+        <motion.div
+          {...pageEntrance}
+          transition={{ ...pageEntranceTransition, delay: 0.08 }}
+          className={isSearching ? "hidden md:block" : undefined}
+        >
+          {topSlot}
+        </motion.div>
+      )}
       {/* ═══════════════════════════════════════════════════════════
           MOBILE LAYOUT — Figma "treasurer home page" design
           ═══════════════════════════════════════════════════════════ */}
@@ -305,7 +323,7 @@ export function TreasurerHomeClient({
           <>
             {/* ── Active Events (4 most recent) ── */}
             {recentActive.length > 0 && (
-              <section>
+              <section className="mt-8">
                 <div className="mb-5 flex items-center justify-between px-1">
                   <div>
                     <h2 className="text-lg font-semibold text-text-primary">Active Events</h2>
