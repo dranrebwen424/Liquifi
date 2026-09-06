@@ -3,6 +3,9 @@
 Update this file after every completed feature. Any AI agent reading this should immediately know what is done, what is in progress, and what is next.
 
 ---
+- **2026-09-06 — Adviser entrance animation lag fix:** The prior polish pass used Framer springs for page and list entrance motion; that made the adviser home, adviser all-events, and adviser event detail feel laggy because the spring tail kept settling and long event lists compounded the delay. Replaced those entrances with short fixed tweens: page wrappers `0.24s`, list items `0.22s`, notification swaps `0.18s`, all using only opacity and `y: 8` or less; list stagger tightened to `25ms` with `20ms` initial delay. Verified `npx tsc --noEmit`, `npm run build`, live `/adviser/home`, `/adviser/events`, and `/adviser/events/{eventId}` with no fresh console errors; live trace on `/adviser/home` showed LCP about 1142ms with CLS 0 after deploy. Committed `72dd8dc`, deployed `liquifi-i2tm4roha`, re-aliased `liquifi-app.vercel.app`.
+
+---
 - **2026-09-06 — Adviser entrance animation polish:** Smoothed entrance motion on adviser home, adviser all-events, and adviser event detail without adding any library. `lib/motion-variants.ts` now uses a smaller fade-up (`y: 8`) plus a softer spring (`stiffness: 88`, `damping: 24`, `mass: 0.8`) and tighter stagger (`35ms`). `EventPageEntrance` now uses the same spring and respects reduced motion; `/adviser/events` is wrapped in it; the adviser home welcome/top-slot and notification-card swap animation use the same softer curve. Verified `npx tsc --noEmit`, `npm run build`, live `/adviser/home`, `/adviser/events`, and `/adviser/events/{eventId}` on `liquifi-app.vercel.app`; committed `a11831e`, deployed `liquifi-5oyt1b8x5`, re-aliased.
 
 ---
