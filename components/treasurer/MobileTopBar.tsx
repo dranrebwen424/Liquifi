@@ -10,9 +10,16 @@ import { cn } from "@/lib/utils";
 type Props = {
   onOpenSidebar?: () => void;
   unreadCount?: number;
+  homeHref?: string;
+  notificationsHref?: string;
 };
 
-export function MobileTopBar({ onOpenSidebar, unreadCount = 0 }: Props) {
+export function MobileTopBar({
+  onOpenSidebar,
+  unreadCount = 0,
+  homeHref = "/treasurer/home",
+  notificationsHref = "/treasurer/notifications",
+}: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -65,7 +72,7 @@ export function MobileTopBar({ onOpenSidebar, unreadCount = 0 }: Props) {
   }, [query, isSearching]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const exitSearch = () => {
-    router.replace("/treasurer/home");
+    router.replace(homeHref);
   };
 
   const enterSearch = () => {
@@ -133,7 +140,7 @@ export function MobileTopBar({ onOpenSidebar, unreadCount = 0 }: Props) {
 
       {/* Bell / notifications */}
       <Link
-        href="/treasurer/notifications"
+        href={notificationsHref}
         className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary"
         aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
       >

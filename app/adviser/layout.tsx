@@ -1,11 +1,9 @@
 import { requireLayoutRole } from "@/lib/layout-guard";
 import { createInsforgeServer } from "@/lib/insforge-server";
 import { AdviserSidebar } from "@/components/adviser/AdviserSidebar";
-import { AdviserMobileBottomNav } from "@/components/adviser/AdviserMobileBottomNav";
-import { AdviserMobileTopBar } from "@/components/adviser/AdviserMobileTopBar";
+import { AdviserLayoutShell } from "@/components/adviser/AdviserLayoutShell";
 import { PushSubscriber } from "@/components/notifications/PushSubscriber";
 import { PushEnableToast } from "@/components/notifications/PushEnableToast";
-import { SidebarShell } from "@/components/layout/SidebarShell";
 
 export default async function AdviserLayout({
   children,
@@ -29,14 +27,7 @@ export default async function AdviserLayout({
       <PushSubscriber />
       <PushEnableToast />
       <AdviserSidebar unreadCount={unreadCount} />
-
-      <AdviserMobileTopBar />
-
-      {/* Mobile bottom nav */}
-      <AdviserMobileBottomNav unreadCount={unreadCount} />
-
-      {/* Main content */}
-      <SidebarShell>{children}</SidebarShell>
+      <AdviserLayoutShell unreadCount={unreadCount}>{children}</AdviserLayoutShell>
     </div>
   );
 }

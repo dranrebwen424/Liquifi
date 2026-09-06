@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { motion } from "framer-motion";
 import { Plus, Search, Archive, ArrowLeft, ChevronRight } from "lucide-react";
 import { EventCard } from "@/components/events/EventCard";
@@ -15,7 +16,24 @@ import { FilterDropdown } from "@/components/treasurer/FilterDropdown";
 import { staggerContainer, fadeUpItem } from "@/lib/motion-variants";
 import type { EventWithMeta } from "@/lib/queries/events";
 
-type Props = { events: EventWithMeta[] };
+type HomePaths = {
+  home: string;
+  events: string;
+  event: string;
+};
+
+type Props = {
+  events: EventWithMeta[];
+  readOnly?: boolean;
+  paths?: HomePaths;
+  topSlot?: ReactNode;
+};
+
+const TREASURER_PATHS: HomePaths = {
+  home: "/treasurer/home",
+  events: "/treasurer/events",
+  event: "/treasurer/events",
+};
 
 const MODIFIED_OPTIONS = [
   { value: "all", label: "All dates" },
@@ -55,7 +73,12 @@ function groupByYear(events: EventWithMeta[]) {
   return Object.entries(groups).sort((a, b) => Number(b[0]) - Number(a[0]));
 }
 
-export function TreasurerHomeClient({ events }: Props) {
+export function TreasurerHomeClient({
+  events,
+  readOnly = false,
+  paths = TREASURER_PATHS,
+  topSlot,
+}: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [sortBy, setSortBy] = useState("newest");
@@ -164,7 +187,7 @@ export function TreasurerHomeClient({ events }: Props) {
 
   const exitSearch = () => {
     clearFilters();
-    router.replace("/treasurer/home");
+    router.replace(paths.home);
   };
 
   const updateQuery = (value: string) => {
@@ -172,20 +195,39 @@ export function TreasurerHomeClient({ events }: Props) {
   };
 
   return (
-    <div className="flex flex-col gap-4 md:gap-6">
+    <div className="flex flex-col">
+      {!isSearching && (
+        <div className="px-2 pt-4 pb-10 md:hidden">
+          <h1 className="text-center text-xl font-bold tracking-wide text-text-primary">
+            WELCOME BACK!
+          </h1>
+        </div>
+      )}
+
+      <div className="hidden md:block">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-semibold text-text-primary md:text-2xl">Events</h1>
+            <p className="mt-1 text-xs text-text-muted">Manage your department event budgets and expenses</p>
+          </div>
+          {!readOnly && (
+            <button
+              type="button"
+              onClick={() => setNewEventOpen(true)}
+              className="inline-flex shrink-0 items-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground transition-[color,transform,shadow] hover:bg-accent-hover hover:shadow-lg hover:scale-[1.04] active:scale-[0.98]"
+            >
+              <Plus className="h-4 w-4" />
+              New Event
+            </button>
+          )}
+        </div>
+      </div>
+
+      {topSlot && <div className={isSearching ? "hidden md:block" : undefined}>{topSlot}</div>}
       {/* ═══════════════════════════════════════════════════════════
           MOBILE LAYOUT — Figma "treasurer home page" design
           ═══════════════════════════════════════════════════════════ */}
       <div className="md:hidden">
-        {/* WELCOME BACK! — page hero (hidden while searching) */}
-        {!isSearching && (
-          <div className="px-2 pt-4 pb-10">
-            <h1 className="text-center text-xl font-bold tracking-wide text-text-primary">
-              WELCOME BACK!
-            </h1>
-          </div>
-        )}
-
         {/* Search active — show filters + results */}
         {isSearching && (
           <>
@@ -217,6 +259,7 @@ export function TreasurerHomeClient({ events }: Props) {
                         id={event.id}
                         name={event.name}
                         createdAt={event.created_at}
+                        href={`${paths.event}/${event.id}`}
                       />
                     ))}
                   </div>
@@ -237,16 +280,22 @@ export function TreasurerHomeClient({ events }: Props) {
           <EmptyState
             icon={<Archive className="h-10 w-10 text-text-muted" />}
             title="No events yet"
-            description="Create your first event to start tracking expenses."
+            description={
+              readOnly
+                ? "Your department has not created any events."
+                : "Create your first event to start tracking expenses."
+            }
             action={
-              <button
-                type="button"
-                onClick={() => setNewEventOpen(true)}
-                className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-[color,transform,shadow] hover:bg-accent-hover hover:shadow-lg hover:scale-[1.04] active:scale-[0.98]"
-              >
-                <Plus className="h-4 w-4" />
-                New Event
-              </button>
+              readOnly ? undefined : (
+                <button
+                  type="button"
+                  onClick={() => setNewEventOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-[color,transform,shadow] hover:bg-accent-hover hover:shadow-lg hover:scale-[1.04] active:scale-[0.98]"
+                >
+                  <Plus className="h-4 w-4" />
+                  New Event
+                </button>
+              )
             }
           />
         )}
@@ -265,7 +314,7 @@ export function TreasurerHomeClient({ events }: Props) {
                     </p>
                   </div>
                   <Link
-                    href="/treasurer/events"
+                    href={paths.events}
                     className="inline-flex items-center gap-0.5 text-sm font-semibold text-accent transition-colors hover:text-accent-hover"
                   >
                     View all
@@ -282,7 +331,7 @@ export function TreasurerHomeClient({ events }: Props) {
                 >
                   {recentActive.map((event) => (
                     <motion.div key={event.id} variants={fadeUpItem}>
-                      <FolderCard id={event.id} name={event.name} />
+                      <FolderCard id={event.id} name={event.name} href={`${paths.event}/${event.id}`} />
                     </motion.div>
                   ))}
                 </motion.div>
@@ -328,6 +377,7 @@ export function TreasurerHomeClient({ events }: Props) {
                           id={event.id}
                           name={event.name}
                           createdAt={event.created_at}
+                          href={`${paths.event}/${event.id}`}
                         />
                       </motion.div>
                     ))}
@@ -352,7 +402,7 @@ export function TreasurerHomeClient({ events }: Props) {
         )}
 
         {/* Mobile FAB — hidden while searching */}
-        {!isSearching && (
+        {!isSearching && !readOnly && (
           <button
             type="button"
             onClick={() => setNewEventOpen(true)}
@@ -368,22 +418,6 @@ export function TreasurerHomeClient({ events }: Props) {
           DESKTOP LAYOUT
           ═══════════════════════════════════════════════════════════ */}
       <div className="hidden md:block">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-semibold text-text-primary md:text-2xl">Events</h1>
-            <p className="mt-1 text-xs text-text-muted">Manage your department event budgets and expenses</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setNewEventOpen(true)}
-            className="inline-flex shrink-0 items-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground transition-[color,transform,shadow] hover:bg-accent-hover hover:shadow-lg hover:scale-[1.04] active:scale-[0.98]"
-          >
-            <Plus className="h-4 w-4" />
-            New Event
-          </button>
-        </div>
-
         {/* Search + Filters */}
         <div className="flex flex-col gap-3">
           {!isSearching ? (
@@ -447,7 +481,13 @@ export function TreasurerHomeClient({ events }: Props) {
           <EmptyState
             icon={<Archive className="h-10 w-10 text-text-muted" />}
             title={hasActiveFilters ? "No events match your filters" : "No events yet"}
-            description={hasActiveFilters ? "Try adjusting your search or filters." : "Create your first event to start tracking expenses."}
+            description={
+              hasActiveFilters
+                ? "Try adjusting your search or filters."
+                : readOnly
+                  ? "Your department has not created any events."
+                  : "Create your first event to start tracking expenses."
+            }
             action={
               hasActiveFilters ? (
                 <button
@@ -456,7 +496,7 @@ export function TreasurerHomeClient({ events }: Props) {
                 >
                   Clear filters
                 </button>
-              ) : (
+              ) : readOnly ? undefined : (
                 <button
                   type="button"
                   onClick={() => setNewEventOpen(true)}
@@ -481,7 +521,7 @@ export function TreasurerHomeClient({ events }: Props) {
                     </p>
                   </div>
                   <Link
-                    href="/treasurer/events"
+                    href={paths.events}
                     className="inline-flex items-center gap-0.5 text-sm font-semibold text-accent transition-colors hover:text-accent-hover"
                   >
                     View all
@@ -505,6 +545,7 @@ export function TreasurerHomeClient({ events }: Props) {
                         totalSpent={event.total_spent}
                         numEntries={event.num_entries}
                         createdByName={event.created_by_name}
+                        href={`${paths.event}/${event.id}`}
                       />
                     </motion.div>
                   ))}
@@ -557,6 +598,7 @@ export function TreasurerHomeClient({ events }: Props) {
                                   totalSpent={event.total_spent}
                                   numEntries={event.num_entries}
                                   createdAt={event.created_at}
+                                  href={`${paths.event}/${event.id}`}
                                 />
                               </motion.div>
                             ))}
@@ -585,7 +627,7 @@ export function TreasurerHomeClient({ events }: Props) {
         )}
       </div>
 
-      <NewEventModal open={newEventOpen} onClose={() => setNewEventOpen(false)} />
+      {!readOnly && <NewEventModal open={newEventOpen} onClose={() => setNewEventOpen(false)} />}
     </div>
   );
 }

@@ -1,12 +1,18 @@
+import { AdviserNotificationCard } from "@/components/adviser/AdviserNotificationCard";
+import { TreasurerHomeClient } from "@/app/treasurer/home/client";
 import { requireRole } from "@/lib/auth-guard";
+import { createInsforgeServer } from "@/lib/insforge-server";
+import { notificationContent } from "@/lib/notifications";
 import { getDepartmentEvents } from "@/lib/queries/events";
-import { EventBrowser } from "@/components/events/EventBrowser";
 
 export const dynamic = "force-dynamic";
 
-// Adviser home — read-only event browser mirroring the treasurer home
-// (search bar, grid/list view toggle, folder-card grid, archive by year).
-// No management controls: the adviser's job is review.
+type DbNotification = {
+  id: string;
+  type: string;
+  payload_json: Record<string, unknown> | null;
+};
+
 export default async function AdviserHomePage() {
   const user = await requireRole("adviser");
   const departmentId = user.departmentId;
@@ -19,24 +25,28 @@ export default async function AdviserHomePage() {
   }
 
   const events = await getDepartmentEvents(departmentId);
+  const insforge = await createInsforgeServer();
+  const { data } = await insforge.database
+    .from("notifications")
+    .select("id, type, payload_json")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(12);
+  const notifications = ((data ?? []) as DbNotification[]).map((notification) => {
+    const content = notificationContent(notification.type, notification.payload_json ?? {});
+    return { ...notification, ...content };
+  });
 
   return (
-    <div className="flex flex-col gap-6 pb-16">
-      <div>
-        <h1 className="text-xl font-semibold text-text-primary md:text-2xl">
-          Events
-        </h1>
-        <p className="mt-1 text-xs text-text-muted">
-          View your department&apos;s event budgets and reports
-        </p>
-      </div>
-
-      <EventBrowser
-        events={events}
-        basePath="/adviser/events"
-        emptyTitle="No events yet"
-        emptyDescription="Your department has not created any events."
-      />
-    </div>
+    <TreasurerHomeClient
+      events={events}
+      readOnly
+      paths={{
+        home: "/adviser/home",
+        events: "/adviser/events",
+        event: "/adviser/events",
+      }}
+      topSlot={<AdviserNotificationCard notifications={notifications} />}
+    />
   );
 }
