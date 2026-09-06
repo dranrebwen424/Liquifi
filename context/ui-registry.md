@@ -32,7 +32,7 @@ Established patterns (full behavioral specs live in `ui-rules.md`):
 
 - **Modal/sheet shell** — used by NewEventModal, LogEntryModal, EntryDetailModal, ReceiptReview, VoidEntryModal: overlay `fixed inset-0 z-50 bg-overlay-alpha`; desktop centered `relative w-full max-w-lg rounded-xl border border-border bg-surface p-6 shadow-card`; mobile bottom sheet `max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-border bg-surface p-6 pb-8 shadow-card` + drag handle `mx-auto mb-5 h-1 w-10 rounded-full bg-border-strong`. AnimatePresence; Escape + overlay click close; body scroll locked while open; reuses `dialogOverlay` / `dialogContent` / `sheetSlideUp` from `lib/motion-variants.ts`.
 - **scrollbar-hide** — plain CSS class in `app/globals.css` (`scrollbar-width: none` + `::-webkit-scrollbar { display: none }`). An `@utility` definition of the same rule did NOT compile under Turbopack — use the plain class.
-- **Entry animation** — framer-motion `staggerContainer` + `fadeUpItem` (fixed tween, `y: 8`, `0.22s`, `25ms` stagger) from `lib/motion-variants`. GSAP was migrated out 2026-07-18.
+- **Entry animation** — framer-motion `staggerContainer` + `fadeUpItem` (fixed tween, `y: 10`, `0.28s`, ease `[0.16, 1, 0.3, 1]`, `40ms` stagger / `30ms` first delay) from `lib/motion-variants`. GSAP was migrated out 2026-07-18.
 - **Currency** — `formatPHP()` for all PHP amounts.
 - **Receipt images** — `image_url` stores the storage **key**, never a browser URL; render via `GET /api/entries/{id}/image` (session-authed proxy), with `onError` → styled placeholder.
 - **Tokens only** — `@theme` tokens via generated utilities (`bg-surface`, `text-text-primary`, `border-border`); no hex, no raw Tailwind color classes. Poppins via `font-sans`.
@@ -206,7 +206,7 @@ Files: lib/event-route.ts, components/layout/{MobileBottomNav, SidebarShell}.tsx
 - **AdviserMobileTopBar** — lightweight role-path wrapper around the shared Treasurer `MobileTopBar`, preserving the same scroll/immersive-page transition, menu button, search mode, and unread-badged bell without duplicating behavior.
 - **AdminMobileTopBar** (new) — extracted from `admin/layout.tsx` inline JSX. Same slide-up transition.
 - **SidebarShell** — route-aware: `isEventPage` → swaps `pb-20` to `pb-0` on mobile (existing `transition-[padding] duration-300` animates it). Desktop `md:pb-0` unchanged.
-- **EventPageEntrance** — framer-motion wrapper: `initial={{ opacity: 0, y: 8 }}` → `animate={{ opacity: 1, y: 0 }}` with a short fixed tween (`0.24s`, ease `[0.16, 1, 0.3, 1]`); reduced motion skips the initial transform. Wraps all 3 event detail root `<div>` elements plus `/adviser/events`. One-time entrance on mount.
+- **EventPageEntrance** — framer-motion wrapper: `initial={{ opacity: 0, y: 10 }}` → `animate={{ opacity: 1, y: 0 }}` with a short fixed tween (`0.28s`, ease `[0.16, 1, 0.3, 1]`) + optional `delay`/`className` props; reduced motion skips the initial transform. Used per-section (not whole-page) on the adviser event detail (header 0 → budget → banner → expenses, ~0.04–0.06s apart) and `/adviser/events` root. One-time entrance on mount.
 
 ---
 
