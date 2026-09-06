@@ -1,4 +1,5 @@
 import { ActiveEventsClient } from "@/app/treasurer/events/client";
+import { EventPageEntrance } from "@/components/events/EventPageEntrance";
 import { requireRole } from "@/lib/auth-guard";
 import { getDepartmentEvents } from "@/lib/queries/events";
 
@@ -12,5 +13,9 @@ export default async function AdviserEventsPage() {
 
   const events = await getDepartmentEvents(user.departmentId);
 
-  return <ActiveEventsClient events={events} basePath="/adviser/events" homePath="/adviser/home" />;
+  return (
+    <EventPageEntrance>
+      <ActiveEventsClient events={events} basePath="/adviser/events" homePath="/adviser/home" />
+    </EventPageEntrance>
+  );
 }

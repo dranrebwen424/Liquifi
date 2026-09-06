@@ -80,11 +80,11 @@ export function TreasurerHomeClient({
   topSlot,
 }: Props) {
   const prefersReducedMotion = useReducedMotion();
-  /** Page-level entrance for the mobile adviser home (welcome bar + notification card). */
+  /** Page-level entrance for the mobile home shell (welcome bar + notification card). */
   const pageEntrance = prefersReducedMotion
     ? { initial: false, animate: true } as const
-    : { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } } as const;
-  const pageEntranceTransition = { duration: 0.35, ease: "easeOut" } as const;
+    : { initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 } } as const;
+  const pageEntranceTransition = { type: "spring", stiffness: 88, damping: 24, mass: 0.8 } as const;
   const router = useRouter();
   const searchParams = useSearchParams();
   const [sortBy, setSortBy] = useState("newest");

@@ -88,10 +88,10 @@ export function AdviserNotificationCard({ notifications }: Props) {
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
                 key={`${visibleNotifications[0]?.id}-${visibleNotifications[1]?.id ?? ""}`}
-                initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
+                initial={prefersReducedMotion ? false : { opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={prefersReducedMotion ? undefined : { opacity: 0, y: -4 }}
-                transition={{ type: "spring", stiffness: 180, damping: 22, duration: 0.2 }}
+                exit={prefersReducedMotion ? undefined : { opacity: 0, y: -3 }}
+                transition={{ type: "spring", stiffness: 110, damping: 24, mass: 0.8 }}
                 className="space-y-2"
               >
                 {visibleNotifications.map((notification) => {
