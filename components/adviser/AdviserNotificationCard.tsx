@@ -82,9 +82,7 @@ export function AdviserNotificationCard({ notifications }: Props) {
         </div>
 
         {notifications.length === 0 ? (
-          <div className="rounded-lg border border-text-inverse/20 bg-nav px-3 py-3 text-xs text-text-inverse/75">
-            No new items need your attention.
-          </div>
+          <p className="text-xs text-text-inverse/75">No new items need your attention.</p>
         ) : (
           <div className="space-y-2" aria-live="polite">
             <AnimatePresence mode="wait" initial={false}>
