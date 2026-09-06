@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowUpRight } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { requireRole } from "@/lib/auth-guard";
 import { getEventDashboard } from "@/lib/queries/events";
 import { getLatestReportByEvent } from "@/lib/queries/reports";
@@ -11,6 +11,7 @@ import { SpendingBreakdownCard } from "@/components/events/SpendingBreakdownCard
 import { EventStatusBadge } from "@/components/ui/StatusBadge";
 import { ExpensesSection } from "@/components/entries/ExpensesSection";
 import { EventPageEntrance } from "@/components/events/EventPageEntrance";
+import { ViewReportPill } from "@/components/adviser/ViewReportPill";
 
 export const dynamic = "force-dynamic";
 
@@ -51,19 +52,9 @@ export default async function AdviserEventPage({ params }: Props) {
 
   const breakdown = computeSpendingBreakdown(event.entries);
 
-  // View Report pill — same style as the treasurer's "View Event" pill.
-  // Hidden while the event has no report yet (target page would 404).
-  const viewReportPill = (href: string) =>
-    latestReport ? (
-      <Link
-        href={href}
-        className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-[17px] border border-text-primary px-4 py-[10px] text-[12px] font-medium text-text-primary transition-[color,transform,shadow] hover:bg-surface-secondary hover:shadow-sm hover:scale-[1.02] active:scale-[0.98]"
-        title="View report"
-      >
-        <ArrowUpRight className="h-3 w-3" />
-        View Report
-      </Link>
-    ) : null;
+  // View Report pill — links when a report exists; otherwise a muted button
+  // that pops up a "No report yet" notice (the report page would 404 otherwise).
+  const hasReport = !!latestReport;
 
   return (
     <EventPageEntrance>
@@ -95,7 +86,7 @@ export default async function AdviserEventPage({ params }: Props) {
             </div>
           </div>
 
-          {viewReportPill(`/adviser/reports/${eventId}`)}
+          <ViewReportPill href={`/adviser/reports/${eventId}`} hasReport={hasReport} />
         </div>
 
         {/* Dark budget card — no creator info inside */}
@@ -181,7 +172,7 @@ export default async function AdviserEventPage({ params }: Props) {
             </p>
           </div>
 
-          {viewReportPill(`/adviser/reports/${eventId}`)}
+          <ViewReportPill href={`/adviser/reports/${eventId}`} hasReport={hasReport} />
         </div>
 
         {/* Locked / Archived banner */}
