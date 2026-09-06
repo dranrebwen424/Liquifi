@@ -132,7 +132,7 @@ export function AdviserNotificationCard({ notifications }: Props) {
 
       <LottiePlayer
         src="/adviser/Wumpus%20Hi.json"
-        className="pointer-events-none absolute bottom-8 right-0 h-32 w-32 sm:h-36 sm:w-36 md:bottom-0 md:h-40 md:w-40"
+        className="pointer-events-none absolute bottom-2 right-0 h-32 w-32 sm:h-36 sm:w-36 md:bottom-0 md:h-40 md:w-40"
       />
     </section>
   );

@@ -146,7 +146,7 @@ export function MobileTopBar({
       >
         <Bell className="h-6 w-6" />
         {unreadCount > 0 && (
-          <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 text-[10px] font-semibold leading-none text-error-foreground ring-2 ring-background">
+          <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 text-[10px] font-semibold leading-none text-text-inverse ring-2 ring-background">
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
