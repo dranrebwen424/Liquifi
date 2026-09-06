@@ -3,6 +3,9 @@
 Update this file after every completed feature. Any AI agent reading this should immediately know what is done, what is in progress, and what is next.
 
 ---
+- **2026-09-06 — Adviser View Report pill dead-ends into 404 when the event has no report (user: "View Report button should redirect to the report page of that event"):** the pill already linked to `/adviser/reports/{eventId}` (the correct event-scoped report page), but that page `notFound()`s when `getLatestReportByEvent` returns null — and the tested "Black Friday" event had zero report rows, so clicking the button landed on the Next.js 404 UI (streamed as HTTP 200). **Fix** (`app/adviser/events/[eventId]/page.tsx`): the page now fetches `getLatestReportByEvent(eventId)` and the `viewReportPill` renders `null` until a report actually exists — so the button only appears when its target renders, and it always redirects to that event's report page. Verified live on `liquifi-app.vercel.app`: event without report → pill absent; events with reports (Testing pending_adviser_approval, Testing cancelled) → pill present; `/adviser/reports/{eventId}` for a report-bearing event → HTTP 200. `tsc --noEmit` clean. Committed `fb68314`, deployed `liquifi-kwfgkbp5z`, re-aliased `liquifi-app.vercel.app`.
+
+---
 - **2026-09-06 — Adviser Home Figma refresh:** Rebuilt `/adviser/home` on the same read-only event-home surface as Treasurer Home: responsive active-event folder grid, archive list/search hierarchy, shared hamburger/search/bell mobile chrome, and no creation action/FAB. Added a top notification spotlight fed by the acting adviser&apos;s 12 most recent `notifications` rows; it maps canonical notification copy/deep links, animates every current item through a two-row list (reduced motion respected), and renders the supplied `public/adviser/Wumpus Hi.json` asset. Added `/adviser/events` for the View all link. `npx tsc --noEmit` and `npm run build` pass.
 
 ---
