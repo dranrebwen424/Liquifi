@@ -30,6 +30,7 @@ export default async function AdviserHomePage() {
     .from("notifications")
     .select("id, type, payload_json")
     .eq("user_id", user.id)
+    .eq("read", false)
     .order("created_at", { ascending: false })
     .limit(12);
   const notifications = ((data ?? []) as DbNotification[]).map((notification) => {

@@ -35,7 +35,7 @@ export function ActiveEventsClient({
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   return (
-    <div className="mt-6 flex flex-col gap-5 pb-16 md:gap-7 md:pb-24">
+    <div className="flex flex-col gap-5 pb-16 md:gap-7 md:pb-24">
       {/* ── Page header: back arrow (mobile) + title/subtitle + View Toggle ── */}
       <div className="flex items-center gap-3 md:gap-4">
         <button
