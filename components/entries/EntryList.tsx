@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
 import { EntryCard } from "@/components/entries/EntryCard";
 import { EntryRow } from "@/components/entries/EntryRow";
 import { EntryDetailModal } from "@/components/entries/EntryDetailModal";
@@ -9,8 +8,8 @@ import { VoidEntryModal } from "@/components/entries/VoidEntryModal";
 import { entryTitle } from "@/components/entries/entry-title";
 import { ViewToggle } from "@/components/events/ViewToggle";
 import { ExpenseFilterChips, ExpenseFilterIcon, type ExpenseFiltersState } from "@/components/entries/ExpenseFilters";
+import { FadeIn } from "@/components/ui/FadeIn";
 import type { EntryType, EntryStatus } from "@/types";
-import { staggerContainer, fadeUpItem } from "@/lib/motion-variants";
 
 export type EntryListItem = {
   id: string;
@@ -127,21 +126,18 @@ export function EntryList({ entries, isArchived, canMutate, mobileLayout, filter
         </div>
       ) : view === "grid" ? (
         /* Card grid */
-        <motion.div
-          variants={staggerContainer}
-          initial="hidden"
-          animate="show"
+        <div
           className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 md:gap-5 lg:grid-cols-4 lg:gap-6 xl:grid-cols-5"
         >
-          {entries.map((entry) => (
-            <motion.div key={entry.id} variants={fadeUpItem}>
+          {entries.map((entry, index) => (
+            <FadeIn key={entry.id} delay={30 + index * 80}>
               <EntryCard
                 {...entry}
                 onClick={() => setSelectedEntry(entry)}
               />
-            </motion.div>
+            </FadeIn>
           ))}
-        </motion.div>
+        </div>
       ) : (
         /* List view */
         <div>
@@ -155,21 +151,16 @@ export function EntryList({ entries, isArchived, canMutate, mobileLayout, filter
           </div>
 
           {/* Rows */}
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            animate="show"
-            className="divide-y divide-border"
-          >
-            {entries.map((entry) => (
-              <motion.div key={entry.id} variants={fadeUpItem}>
+          <div className="divide-y divide-border">
+            {entries.map((entry, index) => (
+              <FadeIn key={entry.id} delay={30 + index * 80}>
                 <EntryRow
                   {...entry}
                   onClick={() => setSelectedEntry(entry)}
                 />
-              </motion.div>
+              </FadeIn>
             ))}
-          </motion.div>
+          </div>
         </div>
       )}
 

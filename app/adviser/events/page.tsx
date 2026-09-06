@@ -1,5 +1,5 @@
 import { ActiveEventsClient } from "@/app/treasurer/events/client";
-import { EventPageEntrance } from "@/components/events/EventPageEntrance";
+import { FadeIn } from "@/components/ui/FadeIn";
 import { requireRole } from "@/lib/auth-guard";
 import { getDepartmentEvents } from "@/lib/queries/events";
 
@@ -14,8 +14,8 @@ export default async function AdviserEventsPage() {
   const events = await getDepartmentEvents(user.departmentId);
 
   return (
-    <EventPageEntrance>
+    <FadeIn>
       <ActiveEventsClient events={events} basePath="/adviser/events" homePath="/adviser/home" />
-    </EventPageEntrance>
+    </FadeIn>
   );
 }

@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { motion, useReducedMotion } from "framer-motion";
 import { Plus, Search, Archive, ArrowLeft, ChevronRight } from "lucide-react";
+import { FadeIn } from "@/components/ui/FadeIn";
 import { EventCard } from "@/components/events/EventCard";
 import { EventListItem } from "@/components/events/EventListItem";
 import { FolderCard } from "@/components/events/FolderCard";
@@ -13,7 +13,6 @@ import { ArchiveEventRow } from "@/components/events/ArchiveEventRow";
 import { NewEventModal } from "@/components/events/NewEventModal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FilterDropdown } from "@/components/treasurer/FilterDropdown";
-import { staggerContainer, fadeUpItem } from "@/lib/motion-variants";
 import type { EventWithMeta } from "@/lib/queries/events";
 
 type HomePaths = {
@@ -79,13 +78,7 @@ export function TreasurerHomeClient({
   paths = TREASURER_PATHS,
   topSlot,
 }: Props) {
-  const prefersReducedMotion = useReducedMotion();
-  /** Page-level entrance for the mobile home shell (welcome bar + notification card). */
-  const pageEntrance = prefersReducedMotion
-    ? { initial: false, animate: true } as const
-    : { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 } } as const;
-  const pageEntranceTransition = { duration: 0.28, ease: [0.16, 1, 0.3, 1] } as const;
-  const router = useRouter();
+const router = useRouter();
   const searchParams = useSearchParams();
   const [sortBy, setSortBy] = useState("newest");
   const [newEventOpen, setNewEventOpen] = useState(false);
@@ -203,15 +196,11 @@ export function TreasurerHomeClient({
   return (
     <div className="flex flex-col">
       {!isSearching && (
-        <motion.div
-          {...pageEntrance}
-          transition={pageEntranceTransition}
-          className="px-2 pt-4 pb-10 md:hidden"
-        >
+        <FadeIn className="px-2 pt-4 pb-10 md:hidden">
           <h1 className="text-center text-xl font-bold tracking-wide text-text-primary">
             WELCOME BACK!
           </h1>
-        </motion.div>
+        </FadeIn>
       )}
 
       <div className="hidden md:block">
@@ -233,14 +222,10 @@ export function TreasurerHomeClient({
         </div>
       </div>
 
-      {topSlot && (
-        <motion.div
-          {...pageEntrance}
-          transition={{ ...pageEntranceTransition, delay: 0.04 }}
-          className={isSearching ? "hidden md:block" : undefined}
-        >
+{topSlot && (
+        <FadeIn delay={40} className={isSearching ? "hidden md:block" : undefined}>
           {topSlot}
-        </motion.div>
+        </FadeIn>
       )}
       {/* ═══════════════════════════════════════════════════════════
           MOBILE LAYOUT — Figma "treasurer home page" design
@@ -340,19 +325,16 @@ export function TreasurerHomeClient({
                   </Link>
                 </div>
 
-                <motion.div
+                <div
                   key={`mobile-active-grid-${recentActive.length}`}
-                  variants={staggerContainer}
-                  initial="hidden"
-                  animate="show"
                   className="grid grid-cols-2 gap-x-4 gap-y-6 px-2"
                 >
-                  {recentActive.map((event) => (
-                    <motion.div key={event.id} variants={fadeUpItem}>
+                  {recentActive.map((event, index) => (
+                    <FadeIn key={event.id} delay={30 + index * 80}>
                       <FolderCard id={event.id} name={event.name} href={`${paths.event}/${event.id}`} />
-                    </motion.div>
+                    </FadeIn>
                   ))}
-                </motion.div>
+                </div>
               </section>
             )}
 
@@ -382,24 +364,21 @@ export function TreasurerHomeClient({
                 />
               ) : (
                 <>
-                  <motion.div
+                  <div
                     key={`mobile-archive-${visibleArchived.length}`}
-                    variants={staggerContainer}
-                    initial="hidden"
-                    animate="show"
                     className="flex flex-col gap-3"
                   >
-                    {visibleArchived.map((event) => (
-                      <motion.div key={event.id} variants={fadeUpItem}>
+                    {visibleArchived.map((event, index) => (
+                      <FadeIn key={event.id} delay={30 + index * 80}>
                         <ArchiveEventRow
                           id={event.id}
                           name={event.name}
                           createdAt={event.created_at}
                           href={`${paths.event}/${event.id}`}
                         />
-                      </motion.div>
+                      </FadeIn>
                     ))}
-                  </motion.div>
+                  </div>
 
                   {hasMoreArchived && (
                     <div className="mt-4 flex justify-center">
@@ -546,15 +525,12 @@ export function TreasurerHomeClient({
                     <ChevronRight className="h-4 w-4" />
                   </Link>
                 </div>
-                <motion.div
+                <div
                   key={`desktop-active-grid-${recentActive.length}`}
-                  variants={staggerContainer}
-                  initial="hidden"
-                  animate="show"
                   className="grid grid-cols-2 gap-x-5 gap-y-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
                 >
-                  {recentActive.map((event) => (
-                    <motion.div key={event.id} variants={fadeUpItem}>
+                  {recentActive.map((event, index) => (
+                    <FadeIn key={event.id} delay={30 + index * 80}>
                       <EventCard
                         id={event.id}
                         name={event.name}
@@ -565,9 +541,9 @@ export function TreasurerHomeClient({
                         createdByName={event.created_by_name}
                         href={`${paths.event}/${event.id}`}
                       />
-                    </motion.div>
+                    </FadeIn>
                   ))}
-                </motion.div>
+                </div>
               </section>
             )}
 
@@ -599,15 +575,12 @@ export function TreasurerHomeClient({
                       return (
                         <div key={year}>
                           <p className="mb-3 text-xs font-medium uppercase tracking-wide text-text-muted">{year}</p>
-                          <motion.div
+                          <div
                             key={`desktop-archive-${year}-${visibleYear.length}`}
-                            variants={staggerContainer}
-                            initial="hidden"
-                            animate="show"
                             className="flex flex-col gap-2"
                           >
-                            {visibleYear.map((event) => (
-                              <motion.div key={event.id} variants={fadeUpItem}>
+                            {visibleYear.map((event, index) => (
+                              <FadeIn key={event.id} delay={30 + index * 80}>
                                 <EventListItem
                                   id={event.id}
                                   name={event.name}
@@ -618,9 +591,9 @@ export function TreasurerHomeClient({
                                   createdAt={event.created_at}
                                   href={`${paths.event}/${event.id}`}
                                 />
-                              </motion.div>
+                              </FadeIn>
                             ))}
-                          </motion.div>
+                          </div>
                         </div>
                       );
                     })}

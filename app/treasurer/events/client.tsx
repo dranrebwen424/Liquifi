@@ -2,15 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { motion } from "framer-motion";
 import { ArrowLeft, Archive } from "lucide-react";
+import { FadeIn } from "@/components/ui/FadeIn";
 import { FolderCard } from "@/components/events/FolderCard";
 import { EventCard } from "@/components/events/EventCard";
 import { ArchiveEventRow } from "@/components/events/ArchiveEventRow";
 import { EventListItem } from "@/components/events/EventListItem";
 import { ViewToggle } from "@/components/events/ViewToggle";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { staggerContainer, fadeUpItem } from "@/lib/motion-variants";
 import type { EventWithMeta } from "@/lib/queries/events";
 
 type Props = {
@@ -67,15 +66,12 @@ export function ActiveEventsClient({
           description="Events you open will appear here."
         />
       ) : viewMode === "grid" ? (
-        <motion.div
+        <div
           key={`active-grid-${viewMode}`}
-          variants={staggerContainer}
-          initial="hidden"
-          animate="show"
           className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
         >
-          {activeEvents.map((event) => (
-            <motion.div key={event.id} variants={fadeUpItem}>
+          {activeEvents.map((event, index) => (
+            <FadeIn key={event.id} delay={30 + index * 80}>
               {/* Mobile uses the folder card; desktop uses the event card. */}
               <div className="md:hidden">
                 <FolderCard id={event.id} name={event.name} href={`${basePath}/${event.id}`} hasPending={event.has_pending} />
@@ -92,19 +88,16 @@ export function ActiveEventsClient({
                   href={`${basePath}/${event.id}`}
                 />
               </div>
-            </motion.div>
+            </FadeIn>
           ))}
-        </motion.div>
+        </div>
       ) : (
-        <motion.div
+        <div
           key={`active-list-${viewMode}`}
-          variants={staggerContainer}
-          initial="hidden"
-          animate="show"
           className="flex flex-col gap-3 md:gap-2"
         >
-          {activeEvents.map((event) => (
-            <motion.div key={event.id} variants={fadeUpItem}>
+          {activeEvents.map((event, index) => (
+            <FadeIn key={event.id} delay={30 + index * 80}>
               {/* Mobile matches the archive row look; desktop uses the full list item. */}
               <div className="md:hidden">
                 <ArchiveEventRow
@@ -126,9 +119,9 @@ export function ActiveEventsClient({
                   href={`${basePath}/${event.id}`}
                 />
               </div>
-            </motion.div>
+            </FadeIn>
           ))}
-        </motion.div>
+        </div>
       )}
     </div>
   );
