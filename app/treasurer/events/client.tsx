@@ -78,7 +78,7 @@ export function ActiveEventsClient({
             <motion.div key={event.id} variants={fadeUpItem}>
               {/* Mobile uses the folder card; desktop uses the event card. */}
               <div className="md:hidden">
-                <FolderCard id={event.id} name={event.name} href={`${basePath}/${event.id}`} />
+                <FolderCard id={event.id} name={event.name} href={`${basePath}/${event.id}`} hasPending={event.has_pending} />
               </div>
               <div className="hidden md:block">
                 <EventCard

@@ -9,6 +9,8 @@ type FolderCardProps = {
   name: string;
   /** Override the default treasurer link. */
   href?: string;
+  /** Show red notification dot on the folder corner. */
+  hasPending?: boolean;
 };
 
 const MotionLink = motion.create(Link);
@@ -35,7 +37,7 @@ const slideDownVariants: Variants = {
  * two light-gray front layers (#D9D9D9) that slide down on press.
  * Desktop uses the full EventCard instead.
  */
-export function FolderCard({ id, name, href }: FolderCardProps) {
+export function FolderCard({ id, name, href, hasPending }: FolderCardProps) {
   return (
     <MotionConfig reducedMotion="user">
       <MotionLink
@@ -86,6 +88,10 @@ export function FolderCard({ id, name, href }: FolderCardProps) {
               />
             </motion.g>
           </motion.svg>
+          {/* Red pending dot */}
+          {hasPending && (
+            <span className="absolute right-2 top-1.5 h-2.5 w-2.5 rounded-full bg-accent" />
+          )}
         </motion.div>
 
         {/* Event name */}
