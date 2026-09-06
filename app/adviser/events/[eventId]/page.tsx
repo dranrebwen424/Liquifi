@@ -57,11 +57,11 @@ export default async function AdviserEventPage({ params }: Props) {
   const hasReport = !!latestReport;
 
   return (
-    <EventPageEntrance>
     <div className="flex flex-col pb-16">
       {/* ── MOBILE LAYOUT (matches treasurer event page) ── */}
       <div className="lg:hidden px-3 pt-6">
         {/* Back arrow + Event name + View Report (all in one row) */}
+        <EventPageEntrance>
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-2.5 min-w-0">
             <Link
@@ -88,8 +88,10 @@ export default async function AdviserEventPage({ params }: Props) {
 
           <ViewReportPill href={`/adviser/reports/${eventId}`} hasReport={hasReport} />
         </div>
+        </EventPageEntrance>
 
         {/* Dark budget card — no creator info inside */}
+        <EventPageEntrance delay={0.06}>
         <BudgetSummary
           budgetTotal={event.budget_total}
           totalSpent={event.total_spent}
@@ -102,15 +104,19 @@ export default async function AdviserEventPage({ params }: Props) {
           className="mt-4"
           mobileOnly
         />
+        </EventPageEntrance>
 
         {/* Locked / Archived banner */}
         {(event.is_locked || isArchived) && (
+          <EventPageEntrance delay={0.12}>
           <div className="mt-4">
             <LockedBanner isLocked={event.is_locked} isArchived={isArchived} />
           </div>
+          </EventPageEntrance>
         )}
 
         {/* Expenses section — separated by white space only */}
+        <EventPageEntrance delay={event.is_locked || isArchived ? 0.18 : 0.12}>
         <div className="mt-8">
           <ExpensesSection
             entries={event.entries.map((e) => ({
@@ -142,20 +148,24 @@ export default async function AdviserEventPage({ params }: Props) {
             mobileLayout
           />
         </div>
+        </EventPageEntrance>
       </div>
 
       {/* ── DESKTOP LAYOUT (matches treasurer event page) ── */}
       <div className="hidden lg:block">
         {/* Back link */}
-        <Link
-          href="/adviser/home"
-          className="inline-flex items-center gap-1.5 text-sm text-text-secondary transition-colors hover:text-text-primary"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to events
-        </Link>
+        <EventPageEntrance>
+          <Link
+            href="/adviser/home"
+            className="inline-flex items-center gap-1.5 text-sm text-text-secondary transition-colors hover:text-text-primary"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to events
+          </Link>
+        </EventPageEntrance>
 
         {/* Header — title left, View Report far right */}
+        <EventPageEntrance delay={0.04}>
         <div className="mt-3 flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -174,15 +184,19 @@ export default async function AdviserEventPage({ params }: Props) {
 
           <ViewReportPill href={`/adviser/reports/${eventId}`} hasReport={hasReport} />
         </div>
+        </EventPageEntrance>
 
         {/* Locked / Archived banner */}
         {(event.is_locked || isArchived) && (
+          <EventPageEntrance delay={0.08}>
           <div className="mt-5">
             <LockedBanner isLocked={event.is_locked} isArchived={isArchived} />
           </div>
+          </EventPageEntrance>
         )}
 
         {/* Two-column: Dark hero + Spending breakdown */}
+        <EventPageEntrance delay={event.is_locked || isArchived ? 0.14 : 0.08}>
         <div className="mt-5 flex flex-col gap-4 lg:flex-row lg:gap-4">
           <BudgetSummary
             budgetTotal={event.budget_total}
@@ -203,8 +217,10 @@ export default async function AdviserEventPage({ params }: Props) {
             className="hidden lg:flex lg:w-2/5"
           />
         </div>
+        </EventPageEntrance>
 
         {/* Expenses section */}
+        <EventPageEntrance delay={event.is_locked || isArchived ? 0.2 : 0.14}>
         <div className="mt-8 border-t border-border-light pt-6">
           <ExpensesSection
             entries={event.entries.map((e) => ({
@@ -235,8 +251,8 @@ export default async function AdviserEventPage({ params }: Props) {
             canMutate={false}
           />
         </div>
+        </EventPageEntrance>
       </div>
     </div>
-    </EventPageEntrance>
   );
 }

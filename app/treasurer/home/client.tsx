@@ -83,8 +83,8 @@ export function TreasurerHomeClient({
   /** Page-level entrance for the mobile home shell (welcome bar + notification card). */
   const pageEntrance = prefersReducedMotion
     ? { initial: false, animate: true } as const
-    : { initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 } } as const;
-  const pageEntranceTransition = { duration: 0.24, ease: [0.16, 1, 0.3, 1] } as const;
+    : { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 } } as const;
+  const pageEntranceTransition = { duration: 0.28, ease: [0.16, 1, 0.3, 1] } as const;
   const router = useRouter();
   const searchParams = useSearchParams();
   const [sortBy, setSortBy] = useState("newest");
