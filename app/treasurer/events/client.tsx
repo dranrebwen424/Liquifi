@@ -13,9 +13,19 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { staggerContainer, fadeUpItem } from "@/lib/motion-variants";
 import type { EventWithMeta } from "@/lib/queries/events";
 
-type Props = { events: EventWithMeta[] };
+type Props = {
+  events: EventWithMeta[];
+  /** Link prefix for event cards/rows — e.g. "/adviser/events". */
+  basePath?: string;
+  /** Where the back arrow goes — e.g. "/adviser/home". */
+  homePath?: string;
+};
 
-export function ActiveEventsClient({ events }: Props) {
+export function ActiveEventsClient({
+  events,
+  basePath = "/treasurer/events",
+  homePath = "/treasurer/home",
+}: Props) {
   const router = useRouter();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
@@ -30,7 +40,7 @@ export function ActiveEventsClient({ events }: Props) {
       <div className="flex items-center gap-3 md:gap-4">
         <button
           type="button"
-          onClick={() => router.push("/treasurer/home")}
+          onClick={() => router.push(homePath)}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-surface text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary"
           aria-label="Back"
         >
@@ -68,7 +78,7 @@ export function ActiveEventsClient({ events }: Props) {
             <motion.div key={event.id} variants={fadeUpItem}>
               {/* Mobile uses the folder card; desktop uses the event card. */}
               <div className="md:hidden">
-                <FolderCard id={event.id} name={event.name} />
+                <FolderCard id={event.id} name={event.name} href={`${basePath}/${event.id}`} />
               </div>
               <div className="hidden md:block">
                 <EventCard
@@ -79,6 +89,7 @@ export function ActiveEventsClient({ events }: Props) {
                   totalSpent={event.total_spent}
                   numEntries={event.num_entries}
                   createdByName={event.created_by_name}
+                  href={`${basePath}/${event.id}`}
                 />
               </div>
             </motion.div>
@@ -96,7 +107,12 @@ export function ActiveEventsClient({ events }: Props) {
             <motion.div key={event.id} variants={fadeUpItem}>
               {/* Mobile matches the archive row look; desktop uses the full list item. */}
               <div className="md:hidden">
-                <ArchiveEventRow id={event.id} name={event.name} createdAt={event.created_at} />
+                <ArchiveEventRow
+                  id={event.id}
+                  name={event.name}
+                  createdAt={event.created_at}
+                  href={`${basePath}/${event.id}`}
+                />
               </div>
               <div className="hidden md:block">
                 <EventListItem
@@ -107,6 +123,7 @@ export function ActiveEventsClient({ events }: Props) {
                   totalSpent={event.total_spent}
                   numEntries={event.num_entries}
                   createdAt={event.created_at}
+                  href={`${basePath}/${event.id}`}
                 />
               </div>
             </motion.div>
