@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { requireRole } from "@/lib/auth-guard";
 import { getEventDashboard } from "@/lib/queries/events";
+import { getLatestReportByEvent } from "@/lib/queries/reports";
 import { computeSpendingBreakdown } from "@/lib/spending-breakdown";
 import { LockedBanner } from "@/components/events/LockedBanner";
 import { BudgetSummary } from "@/components/events/BudgetSummary";
@@ -34,6 +35,10 @@ export default async function AdviserEventPage({ params }: Props) {
 
   const isArchived = event.status === "archived";
 
+  // Only render "View Report" when the event actually has a report —
+  // otherwise it would land on the report page's 404 (no report yet).
+  const latestReport = await getLatestReportByEvent(eventId);
+
   const createdDate = new Date(event.created_at).toLocaleDateString("en-PH", {
     year: "numeric",
     month: "short",
@@ -47,16 +52,18 @@ export default async function AdviserEventPage({ params }: Props) {
   const breakdown = computeSpendingBreakdown(event.entries);
 
   // View Report pill — same style as the treasurer's "View Event" pill.
-  const viewReportPill = (href: string) => (
-    <Link
-      href={href}
-      className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-[17px] border border-text-primary px-4 py-[10px] text-[12px] font-medium text-text-primary transition-[color,transform,shadow] hover:bg-surface-secondary hover:shadow-sm hover:scale-[1.02] active:scale-[0.98]"
-      title="View report"
-    >
-      <ArrowUpRight className="h-3 w-3" />
-      View Report
-    </Link>
-  );
+  // Hidden while the event has no report yet (target page would 404).
+  const viewReportPill = (href: string) =>
+    latestReport ? (
+      <Link
+        href={href}
+        className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-[17px] border border-text-primary px-4 py-[10px] text-[12px] font-medium text-text-primary transition-[color,transform,shadow] hover:bg-surface-secondary hover:shadow-sm hover:scale-[1.02] active:scale-[0.98]"
+        title="View report"
+      >
+        <ArrowUpRight className="h-3 w-3" />
+        View Report
+      </Link>
+    ) : null;
 
   return (
     <EventPageEntrance>
