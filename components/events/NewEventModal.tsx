@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { dialogOverlay, dialogContent } from "@/lib/motion-variants";
-import { useDragToDismiss } from "@/lib/use-drag-to-dismiss";
 import { CssBottomSheet } from "@/components/ui/CssBottomSheet";
 import { EventForm } from "@/components/events/EventForm";
 import { createEvent } from "@/actions/events";
@@ -18,10 +17,7 @@ type NewEventModalProps = {
 export function NewEventModal({ open, onClose }: NewEventModalProps) {
   const router = useRouter();
 
-  // Close the sheet. Drag-to-dismiss + the sheet's slide-up/follow are handled
-  // by the pointer-based hook; the sheet never retracts under a held finger.
   const closeSheet = useCallback(() => onClose(), [onClose]);
-  const { wrapRef, style: sheetStyle, handlers: sheetDrag } = useDragToDismiss(closeSheet);
 
   // Close on Escape
   const handleKeyDown = useCallback(
@@ -109,12 +105,7 @@ export function NewEventModal({ open, onClose }: NewEventModalProps) {
       </AnimatePresence>
 
       <CssBottomSheet open={open}>
-        <div
-          ref={wrapRef}
-          {...sheetDrag}
-          style={sheetStyle}
-          className="flex max-h-[85dvh] touch-none flex-col rounded-t-2xl border-t border-border bg-surface shadow-card"
-        >
+        <div className="flex max-h-[85dvh] flex-col rounded-t-2xl border-t border-border bg-surface shadow-card">
           <div className="flex shrink-0 flex-col items-center py-3">
             <div className="h-1 w-10 rounded-full bg-border-strong" />
           </div>

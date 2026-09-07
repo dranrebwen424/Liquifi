@@ -15,7 +15,6 @@ import {
 import { cn } from "@/lib/utils";
 import { formatPHP } from "@/lib/format";
 import { dialogOverlay, dialogContent } from "@/lib/motion-variants";
-import { useDragToDismiss } from "@/lib/use-drag-to-dismiss";
 import { CssBottomSheet } from "@/components/ui/CssBottomSheet";
 import { ReceiptUpload, type ParsedUploadResult } from "@/components/entries/ReceiptUpload";
 import { ManualCategoryPicker } from "@/components/entries/ManualCategoryPicker";
@@ -89,12 +88,6 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
     }
     onClose();
   }, [entryId, discarding, eventId, onClose, router]);
-
-  // Drag-to-dismiss on the whole sheet column. The hook owns entrance + drag +
-  // dismiss on one `y`; the outer motion.div only animates exit. Never retracts
-  // under a held finger; plain taps still land (content stays clickable).
-  // onDismiss → closeModal so an abandoned ai_parsed row is discarded server-side.
-  const { wrapRef, style: sheetStyle, handlers: sheetDrag } = useDragToDismiss(closeModal);
 
   // Close on Escape (not during confirm or submit)
   const handleKeyDown = useCallback(
@@ -489,12 +482,7 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
       </AnimatePresence>
 
       <CssBottomSheet open={open}>
-        <div
-          ref={wrapRef}
-          {...sheetDrag}
-          style={sheetStyle}
-          className="flex max-h-[85dvh] touch-none flex-col rounded-t-2xl border-t border-border bg-surface shadow-card"
-        >
+        <div className="flex max-h-[85dvh] flex-col rounded-t-2xl border-t border-border bg-surface shadow-card">
           <div className="flex shrink-0 flex-col items-center py-3">
             <div className="h-1 w-10 rounded-full bg-border-strong" />
           </div>
