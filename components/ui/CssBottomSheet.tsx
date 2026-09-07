@@ -11,7 +11,9 @@ import {
 import { cn } from "@/lib/utils";
 import {
   TOP_INDEX,
+  bottomNudge,
   clampSheetTranslate,
+  elasticOffset,
   resolveReleaseTarget,
   snapTranslate,
 } from "@/lib/bottom-sheet-drag";
@@ -58,7 +60,11 @@ export function CssBottomSheet({
   const velocitySamples = useRef<Array<{ time: number; y: number }>>([]);
 
   const setSheetOffset = (nextOffset: number): void => {
-    offsetRef.current = clampSheetTranslate(nextOffset, sheetHeight.current);
+    // An up-drag past the top snap is rubber-banded (elastic) rather than
+    // hard-clamped. Settle only ever writes non-negative snap targets, so
+    // only live drags end up negative here.
+    const shaped = nextOffset < 0 ? elasticOffset(nextOffset) : nextOffset;
+    offsetRef.current = clampSheetTranslate(shaped, sheetHeight.current);
     if (frame.current !== null) return;
     frame.current = requestAnimationFrame(() => {
       frame.current = null;
@@ -257,6 +263,24 @@ export function CssBottomSheet({
 
     if (scrollable && offsetRef.current === 0) {
       const previousScrollTop = scrollable.scrollTop;
+
+      // Content is at its end and the finger keeps pulling down: this is
+      // neither a content scroll (a down-pull at the bottom should read as
+      // pull-to-close, not scroll-back) nor a free sheet drag yet — answer
+      // with a resisted nudge instead, and leave the content where it is.
+      const atEnd =
+        previousScrollTop + scrollable.clientHeight >=
+        scrollable.scrollHeight - 1;
+      if (step > 0 && atEnd) {
+        setSheetOffset(bottomNudge(step));
+        velocitySamples.current.push({ time: event.timeStamp, y: event.clientY });
+        if (velocitySamples.current.length > VELOCITY_SAMPLES) {
+          velocitySamples.current.shift();
+        }
+        lastY.current = event.clientY;
+        return;
+      }
+
       const nextScrollTop = Math.max(0, previousScrollTop - step);
       scrollable.scrollTop = nextScrollTop;
 

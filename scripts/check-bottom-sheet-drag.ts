@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
 import {
+  BOTTOM_NUDGE_MAX,
   SNAPS,
   TOP_INDEX,
+  bottomNudge,
   clampSheetTranslate,
+  elasticOffset,
   resolveReleaseTarget,
   snapTranslate,
 } from "../lib/bottom-sheet-drag";
@@ -41,5 +44,25 @@ assert.deepEqual(resolveReleaseTarget(200, 0.3, TOP_INDEX, 800), { action: "snap
 assert.deepEqual(resolveReleaseTarget(400, 0, TOP_INDEX, 800), { action: "dismiss" });
 assert.deepEqual(resolveReleaseTarget(401, 0, 1, 800), { action: "dismiss" });
 assert.deepEqual(resolveReleaseTarget(600, 0.1, TOP_INDEX, 800), { action: "dismiss" });
+
+// top-edge rubber-band: positive passes through 1:1, negative is resisted on
+// a diminishing curve toward the -24 asymptote (never overshoots it)
+assert.equal(elasticOffset(100), 100);
+assert.equal(elasticOffset(0), 0);
+assert.equal(elasticOffset(-24), -24 * (1 - Math.exp(-24 / 48)));
+assert.equal(elasticOffset(-240), -24 * (1 - Math.exp(-240 / 48)));
+assert(elasticOffset(-240) < elasticOffset(-24)); // deeper pull, more visible — but below the cap
+assert(elasticOffset(-240) > -24);
+assert(elasticOffset(-24) > -24); // already resisted, not at the cap
+assert(Math.abs(elasticOffset(-100000) - -24) < 0.001); // asymptote
+
+// end-of-content nudge: 0 or up-drag yields nothing, down-drag resists toward
+// BOTTOM_NUDGE_MAX, and a fling that exceeds the nudge still drains to the cap
+assert.equal(bottomNudge(-10), 0);
+assert.equal(bottomNudge(0), 0);
+assert.equal(bottomNudge(36), 36 * (1 - Math.exp(-1)));
+assert(bottomNudge(36) > 0 && bottomNudge(36) < 36);
+assert(bottomNudge(200) > bottomNudge(36)); // monotonic while below the asymptote
+assert(Math.abs(bottomNudge(100000) - BOTTOM_NUDGE_MAX) < 0.001); // asymptote
 
 console.log("bottom-sheet snap checks passed");

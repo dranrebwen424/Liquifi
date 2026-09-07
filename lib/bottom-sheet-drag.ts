@@ -15,6 +15,25 @@ export function clampSheetTranslate(value: number, sheetHeight: number): number 
   return Math.max(MAX_UPWARD_DRAG * -1, Math.min(value, max));
 }
 
+// Rubber-band the top edge: an up-drag that pushes the sheet above the top
+// snap is resisted by a diminishing curve (asymptote MAX_UPWARD_DRAG) instead
+// of the old hard -24 stop — the further you pull, the harder it resists.
+export function elasticOffset(delta: number): number {
+  if (delta >= 0) return delta;
+  return -MAX_UPWARD_DRAG * (1 - Math.exp(delta / (MAX_UPWARD_DRAG * 2)));
+}
+
+// End-of-content nudge: a down-drag past the bottom of the scrollable gives
+// the sheet a small resisted nudge (asymptote BOTTOM_NUDGE_MAX) instead of a
+// dead zone, so the gesture feels alive. Release still follows the normal
+// settle rules — a slow release springs back, a real fling drains to the
+// sheet (pull-to-close from the end of content).
+export const BOTTOM_NUDGE_MAX = 36;
+export function bottomNudge(delta: number): number {
+  if (delta <= 0) return 0;
+  return BOTTOM_NUDGE_MAX * (1 - Math.exp(-delta / BOTTOM_NUDGE_MAX));
+}
+
 export type ReleaseTarget =
   | { action: "dismiss" }
   | { action: "snap"; index: number; spring: boolean };
