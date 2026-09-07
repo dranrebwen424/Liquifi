@@ -3,7 +3,7 @@ import {
   SNAPS,
   TOP_INDEX,
   clampSheetTranslate,
-  resolveSnapIndex,
+  resolveReleaseTarget,
   snapTranslate,
 } from "../lib/bottom-sheet-drag";
 
@@ -21,18 +21,25 @@ assert.equal(clampSheetTranslate(180, 800), 180);
 assert.equal(clampSheetTranslate(999, 800), 800);
 assert.equal(clampSheetTranslate(999, 0), 320);
 
-// fling thresholds: > 0.8 px/ms down -> dismiss snap, < -0.8 -> full
-assert.equal(resolveSnapIndex(0, 2, 800), 0);
-assert.equal(resolveSnapIndex(0, -2, 800), TOP_INDEX);
+// release decision matrix (h = 800, dismiss line at 400)
+// fast flings always win regardless of translate or start snap
+assert.deepEqual(resolveReleaseTarget(0, 2, TOP_INDEX, 800), { action: "dismiss" });
+assert.deepEqual(resolveReleaseTarget(600, 2, 1, 800), { action: "dismiss" });
+assert.deepEqual(resolveReleaseTarget(0, -2, TOP_INDEX, 800), { action: "snap", index: TOP_INDEX, spring: false });
+assert.deepEqual(resolveReleaseTarget(600, -2, 1, 800), { action: "snap", index: TOP_INDEX, spring: false });
 
-// no velocity -> nearest snap (midpoints are exact ties -> lower index wins)
-assert.equal(resolveSnapIndex(0, 0, 800), TOP_INDEX);
-assert.equal(resolveSnapIndex(200, 0, 800), 1);
-assert.equal(resolveSnapIndex(400, 0, 800), 1);
-assert.equal(resolveSnapIndex(540, 0, 800), 0);
-assert.equal(resolveSnapIndex(680, 0, 800), 0);
+// slow release before the mid line -> spring back to the start snap
+assert.deepEqual(resolveReleaseTarget(0, 0, TOP_INDEX, 800), { action: "snap", index: TOP_INDEX, spring: true });
+assert.deepEqual(resolveReleaseTarget(200, 0, TOP_INDEX, 800), { action: "snap", index: TOP_INDEX, spring: true });
+assert.deepEqual(resolveReleaseTarget(200, 0, 1, 800), { action: "snap", index: 1, spring: true });
+assert.deepEqual(resolveReleaseTarget(399, 0.5, TOP_INDEX, 800), { action: "snap", index: TOP_INDEX, spring: true });
 
-// moderate velocity does not override nearest-snap (only the fling gates do)
-assert.equal(resolveSnapIndex(400, 0.3, 800), 1);
+// moderate downward velocity below the fling gate does not dismiss on its own
+assert.deepEqual(resolveReleaseTarget(200, 0.3, TOP_INDEX, 800), { action: "snap", index: TOP_INDEX, spring: true });
+
+// slow release at/after the mid line -> dismiss, from any start snap
+assert.deepEqual(resolveReleaseTarget(400, 0, TOP_INDEX, 800), { action: "dismiss" });
+assert.deepEqual(resolveReleaseTarget(401, 0, 1, 800), { action: "dismiss" });
+assert.deepEqual(resolveReleaseTarget(600, 0.1, TOP_INDEX, 800), { action: "dismiss" });
 
 console.log("bottom-sheet snap checks passed");

@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import {
   TOP_INDEX,
   clampSheetTranslate,
-  resolveSnapIndex,
+  resolveReleaseTarget,
   snapTranslate,
 } from "@/lib/bottom-sheet-drag";
 
@@ -40,12 +40,14 @@ export function CssBottomSheet({
   const [offset, setOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [snapIndex, setSnapIndex] = useState(TOP_INDEX);
+  const [springBack, setSpringBack] = useState(false);
   const sheetRef = useRef<HTMLDivElement | null>(null);
   const sheetHeight = useRef(0);
   const activePointer = useRef<number | null>(null);
   const startY = useRef(0);
   const lastY = useRef(0);
   const offsetRef = useRef(0);
+  const startSnapRef = useRef(TOP_INDEX);
   const draggingRef = useRef(false);
   const frame = useRef<number | null>(null);
   const scrollTarget = useRef<HTMLElement | null>(null);
@@ -110,6 +112,15 @@ export function CssBottomSheet({
   }, [clearDragState]);
 
   const settleDrag = useCallback((): void => {
+    // A gesture settles exactly once. `pointerup` settles, then
+    // `lostpointercapture` (or a re-entrant call from another pointer path)
+    // can re-enter here after `clearDragState` nulled `activePointer`.
+    // Settling twice re-resolves from the *resting* offset — for a spring
+    // back to the mid snap that offset equals the dismiss line, so a slow
+    // release from MID would wrongly slide the sheet away. (The old
+    // nearest-snap resolve was idempotent at a resting position; the
+    // dismiss-line resolve is not.)
+    if (activePointer.current === null) return;
     const samples = velocitySamples.current;
     const deltaTime = samples.length >= 2
       ? samples[samples.length - 1].time - samples[0].time
@@ -118,19 +129,23 @@ export function CssBottomSheet({
       deltaTime > 0
         ? (samples[samples.length - 1].y - samples[0].y) / deltaTime
         : 0;
-    const target = resolveSnapIndex(
+    const target = resolveReleaseTarget(
       offsetRef.current,
       velocity,
+      startSnapRef.current,
       sheetHeight.current,
     );
     clearDragState();
-    if (target === 0) {
-      // Lowest snap doubles as a dismiss gesture.
+    if (target.action === "dismiss") {
+      // Fast fling down or a slow drag past the mid line: slide away.
       onClose?.();
       return;
     }
-    setSnapIndex(target);
-    setSheetOffset(snapTranslate(target, sheetHeight.current));
+    // Slow release before the mid line: spring back to the snap the
+    // gesture started from (fling-up arrives here too, with `spring` false).
+    setSpringBack(target.spring);
+    setSnapIndex(target.index);
+    setSheetOffset(snapTranslate(target.index, sheetHeight.current));
   }, [clearDragState, onClose]);
 
   useEffect(() => {
@@ -139,6 +154,7 @@ export function CssBottomSheet({
       setMounted(true);
       setSnapIndex(TOP_INDEX);
       setSheetOffset(0);
+      setSpringBack(false);
       return;
     }
 
@@ -188,6 +204,11 @@ export function CssBottomSheet({
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>): void => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
+    // The snap the sheet rests at when the gesture begins — slow drags bounce
+    // back here. Current render's state is accurate: pointer events only fire
+    // after the latest commit, so `snapIndex` in this closure is the rest.
+    startSnapRef.current = snapIndex;
+    setSpringBack(false);
     activePointer.current = event.pointerId;
     startY.current = event.clientY;
     lastY.current = event.clientY;
@@ -255,6 +276,8 @@ export function CssBottomSheet({
       onClose?.();
       return;
     }
+    // Dots jumps use the standard ease, never the spring easing.
+    setSpringBack(false);
     setSnapIndex(index);
     setSheetOffset(snapTranslate(index, sheetHeight.current));
   };
@@ -267,7 +290,7 @@ export function CssBottomSheet({
       className={cn(
         "fixed inset-x-0 bottom-0 z-50 overscroll-y-contain touch-none select-none transform-gpu motion-reduce:transition-none",
         hideAt === "md" ? "md:hidden" : "sm:hidden",
-        dragging ? "cursor-grabbing transition-none" : "cursor-grab transition-transform duration-[450ms] ease-[cubic-bezier(0.22,1,0.36,1)]",
+        dragging ? "cursor-grabbing transition-none" : cn("cursor-grab transition-transform duration-[450ms]", springBack ? "ease-[cubic-bezier(0.34,1.56,0.64,1)]" : "ease-[cubic-bezier(0.22,1,0.36,1)]"),
         className,
       )}
       style={{

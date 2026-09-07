@@ -15,24 +15,25 @@ export function clampSheetTranslate(value: number, sheetHeight: number): number 
   return Math.max(MAX_UPWARD_DRAG * -1, Math.min(value, max));
 }
 
-export function resolveSnapIndex(
+export type ReleaseTarget =
+  | { action: "dismiss" }
+  | { action: "snap"; index: number; spring: boolean };
+
+export function resolveReleaseTarget(
   translate: number,
   velocity: number,
+  startSnapIndex: number,
   sheetHeight: number,
-): number {
-  if (velocity > FLING_VELOCITY) return 0; // fast downward flick -> dismiss snap
-  if (velocity < -FLING_VELOCITY) return TOP_INDEX; // fast upward flick -> full
-
-  // velocity only gates the two fling branches above; the settle is pure
-  // nearest-snap (a per-candidate bias term would cancel out).
-  let best = 0;
-  let bestDistance = Infinity;
-  for (let index = 0; index < SNAPS.length; index++) {
-    const distance = Math.abs(translate - snapTranslate(index, sheetHeight));
-    if (distance < bestDistance) {
-      bestDistance = distance;
-      best = index;
-    }
+): ReleaseTarget {
+  // Fast flings always win: down -> dismiss, up -> fully open (unchanged).
+  if (velocity > FLING_VELOCITY) return { action: "dismiss" };
+  if (velocity < -FLING_VELOCITY) {
+    return { action: "snap", index: TOP_INDEX, spring: false };
   }
-  return best;
+  // Slow release: past the mid line closes, otherwise spring back to the
+  // snap the gesture started from. `>=` so releasing exactly at the line
+  // counts as "reached a certain down".
+  if (translate >= sheetHeight * 0.5) return { action: "dismiss" };
+  const start = startSnapIndex > 0 ? startSnapIndex : TOP_INDEX;
+  return { action: "snap", index: start, spring: true };
 }
