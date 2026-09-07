@@ -18,6 +18,10 @@ import {
 
 const SHEET_MS = 450;
 const VELOCITY_SAMPLES = 5;
+// A sheet only dismisses once it has genuinely been dragged this far. A fast
+// down-gesture that just scrolls the content (ending while the sheet is still
+// at the top) must snap back, never swipe the sheet away.
+const MIN_SHEET_DRAG = 4;
 
 type CssBottomSheetProps = {
   open: boolean;
@@ -137,6 +141,17 @@ export function CssBottomSheet({
     );
     clearDragState();
     if (target.action === "dismiss") {
+      // A dismiss must be a real swipe of the sheet. A sudden down-gesture
+      // that was consumed by scrolling content (so the sheet never left the
+      // top) should never close it — that is a scroll, not a swipe-away.
+      // This stops a fling over scrolled content from dismissing the sheet
+      // while it sits fully open with no slide.
+      if (offsetRef.current <= MIN_SHEET_DRAG) {
+        setSpringBack(false);
+        setSnapIndex(TOP_INDEX);
+        setSheetOffset(0);
+        return;
+      }
       // Fast fling down or a slow drag past the mid line: slide away.
       onClose?.();
       return;
@@ -271,17 +286,6 @@ export function CssBottomSheet({
     settleDrag();
   };
 
-  const jumpToSnap = (index: number): void => {
-    if (index === 0) {
-      onClose?.();
-      return;
-    }
-    // Dots jumps use the standard ease, never the spring easing.
-    setSpringBack(false);
-    setSnapIndex(index);
-    setSheetOffset(snapTranslate(index, sheetHeight.current));
-  };
-
   if (!mounted) return null;
 
   return (
@@ -304,24 +308,6 @@ export function CssBottomSheet({
       onPointerCancel={finishDrag}
       onLostPointerCapture={() => finishDrag()}
     >
-      <div
-        className="absolute right-3 top-3 z-10 flex flex-col gap-1.5"
-        onPointerDown={(event) => event.stopPropagation()}
-      >
-        {[TOP_INDEX, 1, 0].map((index) => (
-          <button
-            key={index}
-            type="button"
-            aria-label={index === TOP_INDEX ? "Expand sheet" : index === 0 ? "Close sheet" : "Resize sheet"}
-            aria-pressed={snapIndex === index}
-            className={cn(
-              "h-1.5 w-1.5 rounded-full",
-              snapIndex === index ? "bg-text-secondary" : "bg-border-strong",
-            )}
-            onClick={() => jumpToSnap(index)}
-          />
-        ))}
-      </div>
       {children}
     </div>
   );
