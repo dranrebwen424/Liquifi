@@ -20,13 +20,15 @@ export default async function AdminReportPage({ params }: Props) {
   const { departmentId, eventId } = await params;
   await requireRole("admin");
 
-  const event = await getEventDashboard(eventId);
+  const [event, report] = await Promise.all([
+    getEventDashboard(eventId),
+    getLatestReportByEvent(eventId),
+  ]);
   if (!event) notFound();
 
   // URL consistency guard: the event must belong to the department in the path
   if (event.department_id !== departmentId) notFound();
 
-  const report = await getLatestReportByEvent(eventId);
   const isArchived = event.status === "archived";
 
   return (

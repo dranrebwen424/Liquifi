@@ -28,8 +28,13 @@ export function AdviserReportReview({ event, report }: Props) {
   const [rejectionReason, setRejectionReason] = useState("");
   const [comments, setComments] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
+  // Optimistic status while the approve/reject POST is in flight — badge +
+  // action section flip instantly; they revert on failure (server stays the
+  // source of truth, this is presentation only).
+  const [flash, setFlash] = useState<"approved" | "rejected" | null>(null);
 
-  const statusEntry = reportStatusMap[report.status] ?? null;
+  const displayStatus = flash ?? report.status;
+  const statusEntry = reportStatusMap[displayStatus] ?? null;
 
   const unresolved = useMemo(
     () =>
@@ -81,6 +86,7 @@ export function AdviserReportReview({ event, report }: Props) {
 
     setBusy("approve");
     setError(null);
+    setFlash("approved");
     try {
       const res = await fetch(`/api/reports/${report.id}/approve`, {
         method: "POST",
@@ -88,11 +94,13 @@ export function AdviserReportReview({ event, report }: Props) {
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json.success) {
         setError(json.error ?? "Failed to approve report.");
+        setFlash(null);
         return;
       }
       router.refresh();
     } catch {
       setError("Failed to approve report.");
+      setFlash(null);
     } finally {
       setBusy(null);
     }
@@ -104,6 +112,7 @@ export function AdviserReportReview({ event, report }: Props) {
 
     setBusy("reject");
     setError(null);
+    setFlash("rejected");
     try {
       const res = await fetch(`/api/reports/${report.id}/reject`, {
         method: "POST",
@@ -121,11 +130,13 @@ export function AdviserReportReview({ event, report }: Props) {
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json.success) {
         setError(json.error ?? "Failed to reject report.");
+        setFlash(null);
         return;
       }
       router.refresh();
     } catch {
       setError("Failed to reject report.");
+      setFlash(null);
     } finally {
       setBusy(null);
     }
@@ -228,7 +239,7 @@ export function AdviserReportReview({ event, report }: Props) {
       </section>
 
       {/* Review actions */}
-      {report.status === "pending_adviser_approval" && (
+      {displayStatus === "pending_adviser_approval" && (
         <section className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
           {error && (
             <p className="rounded-lg border border-error/30 bg-error-lightest px-3 py-2 text-xs text-error">

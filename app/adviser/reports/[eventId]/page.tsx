@@ -14,7 +14,10 @@ export default async function AdviserReportReviewPage({ params }: Props) {
   const { eventId } = await params;
   const user = await requireRole("adviser");
 
-  const event = await getEventDashboard(eventId);
+  const [event, report] = await Promise.all([
+    getEventDashboard(eventId),
+    getLatestReportByEvent(eventId),
+  ]);
   if (!event) notFound();
 
   // Cross-department guard (belt-and-suspenders on top of RLS)
@@ -22,7 +25,6 @@ export default async function AdviserReportReviewPage({ params }: Props) {
     notFound();
   }
 
-  const report = await getLatestReportByEvent(eventId);
   if (!report) notFound();
 
   return <AdviserReportReview event={event} report={report} />;

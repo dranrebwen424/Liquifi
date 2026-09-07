@@ -26,7 +26,11 @@ export default async function AdviserEventPage({ params }: Props) {
   const { eventId } = await params;
   const user = await requireRole("adviser");
 
-  const event = await getEventDashboard(eventId);
+  // Both reads are independent — fetch in parallel (same total queries).
+  const [event, latestReport] = await Promise.all([
+    getEventDashboard(eventId),
+    getLatestReportByEvent(eventId),
+  ]);
   if (!event) notFound();
 
   // Cross-department guard (belt-and-suspenders on top of RLS)
@@ -35,10 +39,6 @@ export default async function AdviserEventPage({ params }: Props) {
   }
 
   const isArchived = event.status === "archived";
-
-  // Only render "View Report" when the event actually has a report —
-  // otherwise it would land on the report page's 404 (no report yet).
-  const latestReport = await getLatestReportByEvent(eventId);
 
   const createdDate = new Date(event.created_at).toLocaleDateString("en-PH", {
     year: "numeric",

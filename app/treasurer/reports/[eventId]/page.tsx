@@ -22,7 +22,11 @@ export default async function ReportPage({ params }: Props) {
   const { eventId } = await params;
   const user = await requireRole("treasurer");
 
-  const event = await getEventDashboard(eventId);
+  // Both reads are independent — fetch in parallel (same total queries).
+  const [event, reports] = await Promise.all([
+    getEventDashboard(eventId),
+    getAllReportsByEvent(eventId),
+  ]);
   if (!event) notFound();
 
   // Cross-department guard (belt-and-suspenders on top of RLS)
@@ -30,11 +34,6 @@ export default async function ReportPage({ params }: Props) {
     notFound();
   }
 
-  // Every report on file for this event, newest first — the full history.
-  // Reports are never overwritten (regeneration = a new row), so rejected/
-  // cancelled/approved revisions all stay visible. The newest report drives
-  // the precondition gate (no pending/approved report → generation allowed).
-  const reports = await getAllReportsByEvent(eventId);
   const latestReport = reports[0] ?? null;
   const olderReports = reports.slice(1);
   const isLocked = LOCKED_STATUSES.includes(latestReport?.status ?? "");

@@ -13,6 +13,7 @@ import { EventDashboardActions } from "@/components/events/EventDashboardActions
 import { ArchiveEventButton } from "@/components/events/ArchiveEventModal";
 import { ExpensesSection } from "@/components/entries/ExpensesSection";
 import { FadeIn } from "@/components/ui/FadeIn";
+import { EventLiveRefresh } from "@/components/events/EventLiveRefresh";
 
 type Props = {
   params: Promise<{ eventId: string }>;
@@ -22,7 +23,11 @@ export default async function EventDashboardPage({ params }: Props) {
   const { eventId } = await params;
   const user = await requireRole("treasurer");
 
-  const event = await getEventDashboard(eventId);
+  // Both reads are independent — fetch in parallel (same total queries).
+  const [event, latestReport] = await Promise.all([
+    getEventDashboard(eventId),
+    getLatestReportByEvent(eventId),
+  ]);
 
   if (!event) {
     notFound();
@@ -38,7 +43,6 @@ export default async function EventDashboardPage({ params }: Props) {
 
   // Archive gate: only reachable once the latest report is approved, the
   // event is not yet archived, and no unresolved overspend remains.
-  const latestReport = await getLatestReportByEvent(eventId);
   const canArchive =
     latestReport?.status === "approved" &&
     !isArchived &&
@@ -60,6 +64,7 @@ export default async function EventDashboardPage({ params }: Props) {
   return (
     <FadeIn>
     <div className="flex flex-col pb-16">
+      <EventLiveRefresh eventId={eventId} />
       {/* ── MOBILE LAYOUT (matches Figma) ── */}
       <div className="lg:hidden px-3 pt-6">
         {/* Back arrow + Event name + Archive Report (all in one row) */}

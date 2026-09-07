@@ -190,73 +190,78 @@ export const getEventDashboard = cache(async function getEventDashboard(
 ) {
   const insforge = await createInsforgeServer();
 
-  const { data: event, error } = await insforge.database
-    .from("events")
-    .select("id, name, department_id, status, budget_total, created_at, created_by")
-    .eq("id", eventId)
-    .maybeSingle();
+  // All three reads are independent — fire them in parallel. Same total
+  // queries, wall time drops from 5 sequential round-trips to 2.
+  const [eventRes, entriesRes, reportRes] = await Promise.all([
+    insforge.database
+      .from("events")
+      .select("id, name, department_id, status, budget_total, created_at, created_by")
+      .eq("id", eventId)
+      .maybeSingle(),
+    insforge.database
+      .from("entries")
+      .select(
+        "id, type, status, amount, supplier_name, document_type_raw, document_number, issue_date, issue_time, category, image_url, item_breakdown, form_payload_json, rejection_reason, resubmission_explanation, created_at, void_reason, voided_by, voided_at, causes_overspend, overspend_explanation, overspend_resolved_at",
+      )
+      .eq("event_id", eventId)
+      .order("created_at", { ascending: false }),
+    // Check if locked by a report (independent of entries)
+    insforge.database
+      .from("reports")
+      .select("id")
+      .eq("event_id", eventId)
+      .in("status", ["pending_adviser_approval", "approved"])
+      .maybeSingle(),
+  ]);
 
-  if (error || !event) return null;
+  if (eventRes.error || !eventRes.data) return null;
 
+  const event = eventRes.data;
   const status = event.status as EventStatus;
-
-  // Entries for this event
-  const { data: entries } = await insforge.database
-    .from("entries")
-    .select(
-      "id, type, status, amount, supplier_name, document_type_raw, document_number, issue_date, issue_time, category, image_url, item_breakdown, form_payload_json, rejection_reason, resubmission_explanation, created_at, void_reason, voided_by, voided_at, causes_overspend, overspend_explanation, overspend_resolved_at",
-    )
-    .eq("event_id", eventId)
-    .order("created_at", { ascending: false });
+  const entries = entriesRes.data ?? [];
+  const report = reportRes.data;
 
   // Spent from deducted entries
   const totalSpent = (entries ?? [])
     .filter((r: { status: string }) => r.status === "deducted")
     .reduce((acc: number, r: { amount: number }) => acc + Number(r.amount), 0);
 
-  // Resolve voided_by names in one batch (entries may reference multiple users)
+  // Resolve voided_by names (entries may reference multiple users) and the
+  // event creator in parallel — both only depend on data from batch 1.
   const voidedByIds = [
-    ...new Set((entries ?? []).map((r: { voided_by?: string | null }) => r.voided_by).filter(Boolean)),
+    ...new Set(entries.map((r: { voided_by?: string | null }) => r.voided_by).filter(Boolean)),
   ];
+  const [voidersRes, creatorRes] = await Promise.all([
+    voidedByIds.length > 0
+      ? insforge.database
+          .from("users")
+          .select("id, first_name, last_name")
+          .in("id", voidedByIds)
+      : Promise.resolve({ data: [] }),
+    event.created_by
+      ? insforge.database
+          .from("users")
+          .select("first_name, last_name")
+          .eq("id", event.created_by)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+
   const voidedNameMap: Record<string, string> = {};
-  if (voidedByIds.length > 0) {
-    const { data: voiders } = await insforge.database
-      .from("users")
-      .select("id, first_name, last_name")
-      .in("id", voidedByIds);
-    if (voiders) {
-      for (const v of voiders) {
-        voidedNameMap[v.id] = [v.first_name, v.last_name].filter(Boolean).join(" ") || "Unknown";
-      }
-    }
+  for (const v of voidersRes.data ?? []) {
+    voidedNameMap[v.id] = [v.first_name, v.last_name].filter(Boolean).join(" ") || "Unknown";
   }
 
-  // Check if locked by a report
-  const { data: report } = await insforge.database
-    .from("reports")
-    .select("id")
-    .eq("event_id", eventId)
-    .in("status", ["pending_adviser_approval", "approved"])
-    .maybeSingle();
-
   const isLocked = !!report;
-  const budgetLocked = deriveBudgetLocked((entries ?? []).map((r: { status: string }) => r.status));
-  const hasUnresolvedOverspend = (entries ?? []).some(
+  const budgetLocked = deriveBudgetLocked(entries.map((r: { status: string }) => r.status));
+  const hasUnresolvedOverspend = entries.some(
     (r: { status: string; causes_overspend?: boolean | null; overspend_resolved_at?: string | null }) =>
       isUnresolvedOverspendEntry(r.status, r.causes_overspend, r.overspend_resolved_at),
   );
 
-  // Fetch creator name
   let createdByName = "Unknown";
-  if (event.created_by) {
-    const { data: creator } = await insforge.database
-      .from("users")
-      .select("first_name, last_name")
-      .eq("id", event.created_by)
-      .maybeSingle();
-    if (creator) {
-      createdByName = [creator.first_name, creator.last_name].filter(Boolean).join(" ") || "Unknown";
-    }
+  if (creatorRes.data) {
+    createdByName = [creatorRes.data.first_name, creatorRes.data.last_name].filter(Boolean).join(" ") || "Unknown";
   }
 
   return {
@@ -271,7 +276,7 @@ export const getEventDashboard = cache(async function getEventDashboard(
     has_unresolved_overspend: hasUnresolvedOverspend,
     created_at: event.created_at,
     created_by_name: createdByName,
-    entries: (entries ?? []).map((e) => ({
+    entries: entries.map((e) => ({
       ...e,
       voidedByName: e.voided_by ? (voidedNameMap[e.voided_by] ?? null) : null,
     })) as EntryForDashboard[],
