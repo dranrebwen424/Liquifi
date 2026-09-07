@@ -116,12 +116,11 @@ export function CssBottomSheet({
 
   useEffect(() => {
     if (open) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-then-animate: render off-screen for one frame, then flip `entered` in the next so the CSS transition runs; also reset to the top snap so reopen starts flush
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-then-animate: render off-screen first; the layout effect below flips `entered` deterministically so the CSS transition runs on every open
       setMounted(true);
       setSnapIndex(TOP_INDEX);
       setSheetOffset(0);
-      const frame = requestAnimationFrame(() => setEntered(true));
-      return () => cancelAnimationFrame(frame);
+      return;
     }
 
     resetSheet();
@@ -129,6 +128,20 @@ export function CssBottomSheet({
     const timeout = window.setTimeout(() => setMounted(false), SHEET_MS);
     return () => window.clearTimeout(timeout);
   }, [open, resetSheet]);
+
+  // Deterministic entrance: `mounted` commits the sheet at `translate3d(0,
+  // 100%, 0)`, and this post-paint effect runs only after that off-screen frame
+  // has been painted and laid out (React guarantees effects run post-paint).
+  // Flipping `entered` here makes the CSS transition start from a frame the
+  // browser has definitely seen. The previous single requestAnimationFrame in
+  // the open effect could be batched with `setMounted` into one commit, so the
+  // starting frame was never painted and the sheet popped in without sliding.
+  useEffect(() => {
+    if (!mounted) return;
+    void sheetRef.current?.offsetHeight;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-then-animate: the sheet is already painted off-screen; flipping `entered` is the animation trigger, not a cascading render
+    setEntered(true);
+  }, [mounted]);
 
   useEffect(() => () => {
     if (frame.current !== null) cancelAnimationFrame(frame.current);
@@ -224,7 +237,7 @@ export function CssBottomSheet({
     <div
       ref={sheetRef}
       className={cn(
-        "fixed inset-x-0 bottom-0 z-50 touch-none select-none transform-gpu motion-reduce:transition-none",
+        "fixed inset-x-0 bottom-0 z-50 overscroll-y-contain touch-none select-none transform-gpu motion-reduce:transition-none",
         hideAt === "md" ? "md:hidden" : "sm:hidden",
         dragging ? "cursor-grabbing transition-none" : "cursor-grab transition-transform duration-[450ms] ease-[cubic-bezier(0.22,1,0.36,1)]",
         className,

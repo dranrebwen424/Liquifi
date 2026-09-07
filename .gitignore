@@ -45,3 +45,6 @@ next-env.d.ts
 
 # local dev logs / tooling artifacts.dev-err.log.dev-out.log
 .playwright-mcp/
+
+# temp artifacts
+.tmp/
