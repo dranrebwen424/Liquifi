@@ -10,12 +10,15 @@ import {
 } from "react";
 import { cn } from "@/lib/utils";
 import {
+  MOMENTUM_MIN_VELOCITY,
   TOP_INDEX,
   bottomNudge,
   clampSheetTranslate,
   elasticOffset,
+  momentumDecay,
   resolveReleaseTarget,
   snapTranslate,
+  topPull,
 } from "@/lib/bottom-sheet-drag";
 
 const SHEET_MS = 450;
@@ -58,6 +61,12 @@ export function CssBottomSheet({
   const frame = useRef<number | null>(null);
   const scrollTarget = useRef<HTMLElement | null>(null);
   const velocitySamples = useRef<Array<{ time: number; y: number }>>([]);
+  // Gesture-scoped: how much of the current top-pull has been accumulated so
+  // the rubber band shapes the TOTAL pull, not each move.
+  const topPullAccum = useRef(0);
+  // Momentum: frame + target of the post-release glide (null while idle).
+  const momentumFrame = useRef<number | null>(null);
+  const momentumScrollable = useRef<HTMLElement | null>(null);
 
   const setSheetOffset = (nextOffset: number): void => {
     // An up-drag past the top snap is rubber-banded (elastic) rather than
@@ -65,11 +74,14 @@ export function CssBottomSheet({
     // only live drags end up negative here.
     const shaped = nextOffset < 0 ? elasticOffset(nextOffset) : nextOffset;
     offsetRef.current = clampSheetTranslate(shaped, sheetHeight.current);
-    if (frame.current !== null) return;
-    frame.current = requestAnimationFrame(() => {
-      frame.current = null;
-      setOffset(offsetRef.current);
-    });
+    // Write synchronously. A rAF-guarded version once coalesced rapid moves,
+    // but a frame scheduled here could be cancelled by React's effect
+    // teardown before it ran, leaving `frame.current` permanently non-null and
+    // wedging the live drag (the sheet stopped tracking the finger). React
+    // batches the setState fine on its own; the coalescing buy was not worth
+    // the wedge. ponytail: if a drag ever needs per-frame coalescing, guard
+    // with a timestamp-last-commit instead of a rAF id.
+    setOffset(offsetRef.current);
   };
 
   // Track content height (≤85dvh via consumer classes) so snap positions stay
@@ -114,6 +126,7 @@ export function CssBottomSheet({
     draggingRef.current = false;
     setDragging(false);
     velocitySamples.current = [];
+    topPullAccum.current = 0;
   }, []);
 
   const resetSheet = useCallback((): void => {
@@ -121,7 +134,60 @@ export function CssBottomSheet({
     setSheetOffset(0);
   }, [clearDragState]);
 
-  const settleDrag = useCallback((): void => {
+  // Post-release inertia for the JS-driven scroll (the whole sheet subtree is
+  // touch-action: none, so the browser never animates a glide itself). A
+  // release that ended as a pure content scroll decays the finger velocity
+  // into scrollTop — finger up moves content up — and stops at rest or an
+  // edge. A new pointerdown cancels it.
+  const startMomentum = useCallback(
+    (scrollable: HTMLElement | null, velocity: number): void => {
+      if (momentumFrame.current !== null) {
+        cancelAnimationFrame(momentumFrame.current);
+        momentumFrame.current = null;
+      }
+      momentumScrollable.current = null;
+      if (!scrollable || Math.abs(velocity) < MOMENTUM_MIN_VELOCITY) return;
+      momentumScrollable.current = scrollable;
+      let v = velocity;
+      let previousNow = performance.now();
+      const tick = (now: number): void => {
+        const element = momentumScrollable.current;
+        if (!element) {
+          momentumFrame.current = null;
+          return;
+        }
+        const dt = Math.min(32, now - previousNow);
+        previousNow = now;
+        v = momentumDecay(v, dt);
+        const stepPx = -v * dt;
+        if (stepPx === 0 || Math.abs(v) < 0.03) {
+          momentumFrame.current = null;
+          momentumScrollable.current = null;
+          return;
+        }
+        const nextScrollTop = element.scrollTop + stepPx;
+        const maxScrollTop = element.scrollHeight - element.clientHeight;
+        if (nextScrollTop <= 0) {
+          element.scrollTop = 0;
+          momentumFrame.current = null;
+          momentumScrollable.current = null;
+          return;
+        }
+        if (nextScrollTop >= maxScrollTop) {
+          element.scrollTop = maxScrollTop;
+          momentumFrame.current = null;
+          momentumScrollable.current = null;
+          return;
+        }
+        element.scrollTop = nextScrollTop;
+        momentumFrame.current = requestAnimationFrame(tick);
+      };
+      momentumFrame.current = requestAnimationFrame(tick);
+    },
+    [],
+  );
+
+  const settleDrag = useCallback((allowMomentum: boolean): void => {
     // A gesture settles exactly once. `pointerup` settles, then
     // `lostpointercapture` (or a re-entrant call from another pointer path)
     // can re-enter here after `clearDragState` nulled `activePointer`.
@@ -145,7 +211,16 @@ export function CssBottomSheet({
       startSnapRef.current,
       sheetHeight.current,
     );
+    const scrollable = scrollTarget.current;
+    const wasPureScroll =
+      scrollable !== null && offsetRef.current <= MIN_SHEET_DRAG;
     clearDragState();
+    // Release that ended as a real content scroll (the sheet never left the
+    // top): glide the content instead of dead-stopping. Works alongside the
+    // sheet resolve below — fling slows the list; the sheet springs to rest.
+    if (allowMomentum) {
+      startMomentum(wasPureScroll ? scrollable : null, velocity);
+    }
     if (target.action === "dismiss") {
       // A dismiss must be a real swipe of the sheet. A sudden down-gesture
       // that was consumed by scrolling content (so the sheet never left the
@@ -167,7 +242,7 @@ export function CssBottomSheet({
     setSpringBack(target.spring);
     setSnapIndex(target.index);
     setSheetOffset(snapTranslate(target.index, sheetHeight.current));
-  }, [clearDragState, onClose]);
+  }, [clearDragState, onClose, startMomentum]);
 
   useEffect(() => {
     if (open) {
@@ -201,6 +276,8 @@ export function CssBottomSheet({
 
   useEffect(() => () => {
     if (frame.current !== null) cancelAnimationFrame(frame.current);
+    if (momentumFrame.current !== null) cancelAnimationFrame(momentumFrame.current);
+    momentumScrollable.current = null;
   }, []);
 
   const findScrollableParent = (
@@ -235,6 +312,14 @@ export function CssBottomSheet({
     lastY.current = event.clientY;
     velocitySamples.current = [{ time: event.timeStamp, y: event.clientY }];
     scrollTarget.current = findScrollableParent(event.target, event.currentTarget);
+    // A new touch stops any glide in flight; the next gesture starts with a
+    // fresh rubber-band budget.
+    if (momentumFrame.current !== null) {
+      cancelAnimationFrame(momentumFrame.current);
+      momentumFrame.current = null;
+    }
+    momentumScrollable.current = null;
+    topPullAccum.current = 0;
   };
 
   const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>): void => {
@@ -285,6 +370,9 @@ export function CssBottomSheet({
       scrollable.scrollTop = nextScrollTop;
 
       if (nextScrollTop > 0 || step < 0) {
+        // Content absorbed the move again — any prior rubber-band pull is
+        // spent, so the next top-engagement re-bands from scratch.
+        topPullAccum.current = 0;
         velocitySamples.current.push({ time: event.timeStamp, y: event.clientY });
         if (velocitySamples.current.length > VELOCITY_SAMPLES) {
           velocitySamples.current.shift();
@@ -293,7 +381,30 @@ export function CssBottomSheet({
         return;
       }
 
-      setSheetOffset(step - previousScrollTop);
+      // Content hit the top: the leftover pull belongs to the sheet. The
+      // first TOP_PULL_BAND px are rubber-banded (the sheet lags the finger —
+      // the stretch), then it commits to 1:1.
+      const leftover = step - previousScrollTop;
+      topPullAccum.current += leftover;
+      setSheetOffset(topPull(topPullAccum.current));
+    } else if (scrollable) {
+      // Sheet off 0 with a scrollable engaged — content is pinned at an
+      // edge; continue the resistance curve that started the pull.
+      const sc = scrollable;
+      if (sc.scrollTop <= 0) {
+        // Content pinned at the TOP: keep the rubber band on total finger
+        // travel until TOP_PULL_BAND spends itself, then 1:1 — topPull is
+        // identity past the band, so the seam is continuous.
+        topPullAccum.current += step;
+        setSheetOffset(topPull(topPullAccum.current));
+      } else if (sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 1) {
+        // Content pinned at the END (pull-to-close gesture): continue the
+        // resisted nudge on the accumulating offset — monotone, bounded, no
+        // hand-off to the top band.
+        setSheetOffset(bottomNudge(offsetRef.current + step));
+      } else {
+        setSheetOffset(offsetRef.current + step);
+      }
     } else {
       setSheetOffset(offsetRef.current + step);
     }
@@ -307,7 +418,9 @@ export function CssBottomSheet({
 
   const finishDrag = (event?: ReactPointerEvent<HTMLDivElement>): void => {
     if (event && event.pointerId !== activePointer.current) return;
-    settleDrag();
+    // Momentum only from a clean pointer-up; cancel/lost-capture (gesture
+    // interrupted, or a second settle pass) stops dead instead of gliding.
+    settleDrag(event !== undefined && event.type === "pointerup");
   };
 
   if (!mounted) return null;

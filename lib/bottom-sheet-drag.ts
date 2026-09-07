@@ -34,6 +34,29 @@ export function bottomNudge(delta: number): number {
   return BOTTOM_NUDGE_MAX * (1 - Math.exp(-delta / BOTTOM_NUDGE_MAX));
 }
 
+// Top-edge rubber band: the first TOP_PULL_BAND px of a pull-down from the
+// top of the content is resisted (the sheet lags the finger on a sub-linear
+// curve — the "stretch"), then the sheet commits to 1:1. Offset is continuous
+// at the seam (topPull(48) === 48); the mild slope change reads as the band
+// releasing, the same way a native scroll bounce hands off to the sheet.
+export const TOP_PULL_BAND = 48;
+export function topPull(delta: number): number {
+  if (delta <= 0) return delta;
+  if (delta < TOP_PULL_BAND) {
+    return TOP_PULL_BAND * Math.pow(delta / TOP_PULL_BAND, 1.25);
+  }
+  return delta;
+}
+
+// Momentum glide: finger release velocity (px/ms, up = negative) decays
+// exponentially and drives scrollTop at the opposite rate. Pure math so the
+// frame loop stays a thin wrapper.
+export const MOMENTUM_TAU = 250; // ms — time constant of the glide
+export const MOMENTUM_MIN_VELOCITY = 0.35; // px/ms — slower releases stop dead
+export function momentumDecay(velocity: number, elapsedMs: number): number {
+  return velocity * Math.exp(-elapsedMs / MOMENTUM_TAU);
+}
+
 export type ReleaseTarget =
   | { action: "dismiss" }
   | { action: "snap"; index: number; spring: boolean };

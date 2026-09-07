@@ -1,13 +1,18 @@
 import assert from "node:assert/strict";
 import {
   BOTTOM_NUDGE_MAX,
+  MOMENTUM_MIN_VELOCITY,
+  MOMENTUM_TAU,
   SNAPS,
   TOP_INDEX,
+  TOP_PULL_BAND,
   bottomNudge,
   clampSheetTranslate,
   elasticOffset,
+  momentumDecay,
   resolveReleaseTarget,
   snapTranslate,
+  topPull,
 } from "../lib/bottom-sheet-drag";
 
 // snapTranslate math
@@ -64,5 +69,23 @@ assert.equal(bottomNudge(36), 36 * (1 - Math.exp(-1)));
 assert(bottomNudge(36) > 0 && bottomNudge(36) < 36);
 assert(bottomNudge(200) > bottomNudge(36)); // monotonic while below the asymptote
 assert(Math.abs(bottomNudge(100000) - BOTTOM_NUDGE_MAX) < 0.001); // asymptote
+
+// top-edge rubber band: negative passthrough, resisted (lags the finger)
+// inside the band, exactly continuous at the seam, 1:1 beyond it, monotonic
+assert.equal(topPull(-10), -10);
+assert.equal(topPull(0), 0);
+assert.equal(topPull(TOP_PULL_BAND), TOP_PULL_BAND); // seam: no offset jump
+assert(topPull(24) > 0 && topPull(24) < 24); // the band lags the finger
+assert.equal(topPull(100), 100); // past the band: 1:1
+assert(topPull(TOP_PULL_BAND + 1) > topPull(TOP_PULL_BAND)); // monotonic
+assert(topPull(24) < topPull(32)); // monotonic inside the band
+
+// momentum glide: velocity decays exponentially toward 0, never changes sign
+assert.equal(momentumDecay(1, 0), 1);
+assert.equal(momentumDecay(-1, 0), -1);
+assert(momentumDecay(1, 50) > 0 && momentumDecay(1, 50) < 1);
+assert(momentumDecay(-1, 50) < 0 && momentumDecay(-1, 50) > -1);
+assert(momentumDecay(1, 1000) > 0 && Math.abs(momentumDecay(1, 1000)) < 0.02);
+assert(MOMENTUM_TAU > 0 && MOMENTUM_MIN_VELOCITY > 0);
 
 console.log("bottom-sheet snap checks passed");
