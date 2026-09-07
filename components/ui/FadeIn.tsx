@@ -25,7 +25,10 @@ export function useFadeIn(delayMs = 0): CSSProperties {
 
   return {
     opacity: visible ? 1 : 0,
-    transform: visible ? "translateY(0)" : "translateY(16px)",
+    // `none` once visible: releases the fixed-position containing block so any
+    // <fixed> modal rendered inside keeps viewport positioning (a lingering
+    // `translateY(0)` traps fixed dialogs — e.g. View Report popup).
+    ...(visible ? { transform: "none" } : { transform: "translateY(16px)" }),
     transition:
       "opacity 0.7s cubic-bezier(0.22,1,0.36,1), transform 0.7s cubic-bezier(0.22,1,0.36,1)",
   };
