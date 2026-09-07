@@ -238,7 +238,7 @@ export function DepartmentsListClient({ initialDepartments }: Props) {
       {createView === "sheet" && (
         <div className="fixed inset-0 z-50 bg-overlay-alpha backdrop-blur-sm md:hidden" onClick={closeCreate} />
       )}
-      <CssBottomSheet open={createView === "sheet"} hideAt="md">
+      <CssBottomSheet open={createView === "sheet"} hideAt="md" onClose={closeCreate}>
         <div
           className="rounded-t-3xl border-t border-border bg-surface p-6 pb-8 shadow-card"
           role="dialog"

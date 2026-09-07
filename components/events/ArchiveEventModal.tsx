@@ -496,7 +496,7 @@ export function ArchiveEventModal({ open, onClose, eventId }: ArchiveEventModalP
         )}
       </AnimatePresence>
 
-      <CssBottomSheet open={open}>
+      <CssBottomSheet open={open} onClose={() => { if (!busy) onClose(); }}>
         <div className="flex max-h-[85dvh] flex-col rounded-t-2xl border-t border-border bg-surface shadow-card">
           <div className="mx-auto mt-3 h-1 w-10 shrink-0 rounded-full bg-border-strong" />
           <div className="min-h-0 overflow-y-auto p-6 pb-4">

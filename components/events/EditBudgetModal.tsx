@@ -170,7 +170,7 @@ export function EditBudgetModal({ open, onClose, eventId, currentBudget }: EditB
         )}
       </AnimatePresence>
 
-      <CssBottomSheet open={open}>
+      <CssBottomSheet open={open} onClose={onClose}>
         <div className="max-h-[85dvh] rounded-t-2xl border-t border-border bg-surface shadow-card">
           <div className="mx-auto mt-3 h-1 w-10 rounded-full bg-border-strong" />
           <div className="overflow-y-auto p-6 pb-4">{formContent}</div>

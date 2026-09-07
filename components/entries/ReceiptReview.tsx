@@ -245,7 +245,7 @@ export function ReceiptReview({
         )}
       </AnimatePresence>
 
-      <CssBottomSheet open={open}>
+      <CssBottomSheet open={open} onClose={() => { if (!confirming) onClose(); }}>
         <div className="max-h-[85dvh] overflow-y-auto rounded-t-2xl border-t border-border bg-surface p-6 pb-8 shadow-card">
           <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-border-strong" />
           {content}

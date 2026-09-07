@@ -481,7 +481,7 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
         )}
       </AnimatePresence>
 
-      <CssBottomSheet open={open}>
+      <CssBottomSheet open={open} onClose={() => { if (!confirming && !discarding) closeModal(); }}>
         <div className="flex max-h-[85dvh] flex-col rounded-t-2xl border-t border-border bg-surface shadow-card">
           <div className="flex shrink-0 flex-col items-center py-3">
             <div className="h-1 w-10 rounded-full bg-border-strong" />

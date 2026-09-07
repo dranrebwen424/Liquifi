@@ -9,22 +9,39 @@ import {
   type ReactNode,
 } from "react";
 import { cn } from "@/lib/utils";
-import { clampBottomSheetDrag } from "@/lib/bottom-sheet-drag";
+import {
+  TOP_INDEX,
+  clampSheetTranslate,
+  resolveSnapIndex,
+  snapTranslate,
+} from "@/lib/bottom-sheet-drag";
 
 const SHEET_MS = 450;
+const VELOCITY_SAMPLES = 5;
 
 type CssBottomSheetProps = {
   open: boolean;
   children: ReactNode;
   className?: string;
   hideAt?: "sm" | "md";
+  /** Called when the sheet is dismissed by flinging to the lowest snap. */
+  onClose?: () => void;
 };
 
-export function CssBottomSheet({ open, children, className, hideAt = "sm" }: CssBottomSheetProps) {
+export function CssBottomSheet({
+  open,
+  children,
+  className,
+  hideAt = "sm",
+  onClose,
+}: CssBottomSheetProps) {
   const [mounted, setMounted] = useState(open);
   const [entered, setEntered] = useState(false);
   const [offset, setOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
+  const [snapIndex, setSnapIndex] = useState(TOP_INDEX);
+  const sheetRef = useRef<HTMLDivElement | null>(null);
+  const sheetHeight = useRef(0);
   const activePointer = useRef<number | null>(null);
   const startY = useRef(0);
   const lastY = useRef(0);
@@ -32,9 +49,10 @@ export function CssBottomSheet({ open, children, className, hideAt = "sm" }: Css
   const draggingRef = useRef(false);
   const frame = useRef<number | null>(null);
   const scrollTarget = useRef<HTMLElement | null>(null);
+  const velocitySamples = useRef<Array<{ time: number; y: number }>>([]);
 
   const setSheetOffset = (nextOffset: number): void => {
-    offsetRef.current = clampBottomSheetDrag(nextOffset);
+    offsetRef.current = clampSheetTranslate(nextOffset, sheetHeight.current);
     if (frame.current !== null) return;
     frame.current = requestAnimationFrame(() => {
       frame.current = null;
@@ -42,18 +60,65 @@ export function CssBottomSheet({ open, children, className, hideAt = "sm" }: Css
     });
   };
 
-  const resetSheet = useCallback((): void => {
+  // Track content height (≤85dvh via consumer classes) so snap positions stay
+  // correct when forms grow or the mobile URL bar collapses.
+  useEffect(() => {
+    const sheet = sheetRef.current;
+    if (!sheet) return;
+    const measure = (): void => {
+      sheetHeight.current = sheet.offsetHeight;
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(sheet);
+    return () => observer.disconnect();
+    // `mounted` (not `[]` or `open`): the sheet isn't in the DOM until the
+    // open-effect flips `mounted`, so a mount-only effect would leave
+    // sheetHeight at 0 and every settle would resolve to the dismiss snap.
+  }, [mounted]);
+
+  const clearDragState = useCallback((): void => {
     activePointer.current = null;
     scrollTarget.current = null;
     draggingRef.current = false;
     setDragging(false);
-    setSheetOffset(0);
+    velocitySamples.current = [];
   }, []);
+
+  const resetSheet = useCallback((): void => {
+    clearDragState();
+    setSheetOffset(0);
+  }, [clearDragState]);
+
+  const settleDrag = useCallback((): void => {
+    const samples = velocitySamples.current;
+    const deltaTime = samples.length >= 2
+      ? samples[samples.length - 1].time - samples[0].time
+      : 0;
+    const velocity =
+      deltaTime > 0
+        ? (samples[samples.length - 1].y - samples[0].y) / deltaTime
+        : 0;
+    const target = resolveSnapIndex(
+      offsetRef.current,
+      velocity,
+      sheetHeight.current,
+    );
+    clearDragState();
+    if (target === 0) {
+      // Lowest snap doubles as a dismiss gesture.
+      onClose?.();
+      return;
+    }
+    setSnapIndex(target);
+    setSheetOffset(snapTranslate(target, sheetHeight.current));
+  }, [clearDragState, onClose]);
 
   useEffect(() => {
     if (open) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-then-animate: render off-screen for one frame, then flip `entered` in the next so the CSS transition runs
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-then-animate: render off-screen for one frame, then flip `entered` in the next so the CSS transition runs; also reset to the top snap so reopen starts flush
       setMounted(true);
+      setSnapIndex(TOP_INDEX);
       setSheetOffset(0);
       const frame = requestAnimationFrame(() => setEntered(true));
       return () => cancelAnimationFrame(frame);
@@ -94,6 +159,7 @@ export function CssBottomSheet({ open, children, className, hideAt = "sm" }: Css
     activePointer.current = event.pointerId;
     startY.current = event.clientY;
     lastY.current = event.clientY;
+    velocitySamples.current = [{ time: event.timeStamp, y: event.clientY }];
     scrollTarget.current = findScrollableParent(event.target, event.currentTarget);
   };
 
@@ -118,6 +184,10 @@ export function CssBottomSheet({ open, children, className, hideAt = "sm" }: Css
       scrollable.scrollTop = nextScrollTop;
 
       if (nextScrollTop > 0 || step < 0) {
+        velocitySamples.current.push({ time: event.timeStamp, y: event.clientY });
+        if (velocitySamples.current.length > VELOCITY_SAMPLES) {
+          velocitySamples.current.shift();
+        }
         lastY.current = event.clientY;
         return;
       }
@@ -127,18 +197,32 @@ export function CssBottomSheet({ open, children, className, hideAt = "sm" }: Css
       setSheetOffset(offsetRef.current + step);
     }
 
+    velocitySamples.current.push({ time: event.timeStamp, y: event.clientY });
+    if (velocitySamples.current.length > VELOCITY_SAMPLES) {
+      velocitySamples.current.shift();
+    }
     lastY.current = event.clientY;
   };
 
   const finishDrag = (event?: ReactPointerEvent<HTMLDivElement>): void => {
     if (event && event.pointerId !== activePointer.current) return;
-    resetSheet();
+    settleDrag();
+  };
+
+  const jumpToSnap = (index: number): void => {
+    if (index === 0) {
+      onClose?.();
+      return;
+    }
+    setSnapIndex(index);
+    setSheetOffset(snapTranslate(index, sheetHeight.current));
   };
 
   if (!mounted) return null;
 
   return (
     <div
+      ref={sheetRef}
       className={cn(
         "fixed inset-x-0 bottom-0 z-50 touch-none select-none transform-gpu motion-reduce:transition-none",
         hideAt === "md" ? "md:hidden" : "sm:hidden",
@@ -156,6 +240,24 @@ export function CssBottomSheet({ open, children, className, hideAt = "sm" }: Css
       onPointerCancel={finishDrag}
       onLostPointerCapture={() => finishDrag()}
     >
+      <div
+        className="absolute right-3 top-3 z-10 flex flex-col gap-1.5"
+        onPointerDown={(event) => event.stopPropagation()}
+      >
+        {[TOP_INDEX, 1, 0].map((index) => (
+          <button
+            key={index}
+            type="button"
+            aria-label={index === TOP_INDEX ? "Expand sheet" : index === 0 ? "Close sheet" : "Resize sheet"}
+            aria-pressed={snapIndex === index}
+            className={cn(
+              "h-1.5 w-1.5 rounded-full",
+              snapIndex === index ? "bg-text-secondary" : "bg-border-strong",
+            )}
+            onClick={() => jumpToSnap(index)}
+          />
+        ))}
+      </div>
       {children}
     </div>
   );
