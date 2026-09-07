@@ -12,7 +12,6 @@ import { cn } from "@/lib/utils";
 import {
   MOMENTUM_MIN_VELOCITY,
   TOP_INDEX,
-  bottomNudge,
   clampSheetTranslate,
   elasticOffset,
   momentumDecay,
@@ -349,23 +348,6 @@ export function CssBottomSheet({
     if (scrollable && offsetRef.current === 0) {
       const previousScrollTop = scrollable.scrollTop;
 
-      // Content is at its end and the finger keeps pulling down: this is
-      // neither a content scroll (a down-pull at the bottom should read as
-      // pull-to-close, not scroll-back) nor a free sheet drag yet — answer
-      // with a resisted nudge instead, and leave the content where it is.
-      const atEnd =
-        previousScrollTop + scrollable.clientHeight >=
-        scrollable.scrollHeight - 1;
-      if (step > 0 && atEnd) {
-        setSheetOffset(bottomNudge(step));
-        velocitySamples.current.push({ time: event.timeStamp, y: event.clientY });
-        if (velocitySamples.current.length > VELOCITY_SAMPLES) {
-          velocitySamples.current.shift();
-        }
-        lastY.current = event.clientY;
-        return;
-      }
-
       const nextScrollTop = Math.max(0, previousScrollTop - step);
       scrollable.scrollTop = nextScrollTop;
 
@@ -388,23 +370,11 @@ export function CssBottomSheet({
       topPullAccum.current += leftover;
       setSheetOffset(topPull(topPullAccum.current));
     } else if (scrollable) {
-      // Sheet off 0 with a scrollable engaged — content is pinned at an
-      // edge; continue the resistance curve that started the pull.
-      const sc = scrollable;
-      if (sc.scrollTop <= 0) {
-        // Content pinned at the TOP: keep the rubber band on total finger
-        // travel until TOP_PULL_BAND spends itself, then 1:1 — topPull is
-        // identity past the band, so the seam is continuous.
-        topPullAccum.current += step;
-        setSheetOffset(topPull(topPullAccum.current));
-      } else if (sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 1) {
-        // Content pinned at the END (pull-to-close gesture): continue the
-        // resisted nudge on the accumulating offset — monotone, bounded, no
-        // hand-off to the top band.
-        setSheetOffset(bottomNudge(offsetRef.current + step));
-      } else {
-        setSheetOffset(offsetRef.current + step);
-      }
+      // Sheet off 0 with a scrollable engaged — content is pinned at the top;
+      // continue the rubber band on total finger travel. topPull is identity
+      // past the band, so the seam is continuous.
+      topPullAccum.current += step;
+      setSheetOffset(topPull(topPullAccum.current));
     } else {
       setSheetOffset(offsetRef.current + step);
     }
