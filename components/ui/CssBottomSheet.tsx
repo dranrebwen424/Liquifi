@@ -77,6 +77,25 @@ export function CssBottomSheet({
     // sheetHeight at 0 and every settle would resolve to the dismiss snap.
   }, [mounted]);
 
+  // Give every element inside the sheet `touch-action: none` (the root
+  // already has `touch-none`, but touch-action is not inherited and Chrome
+  // hit-tests drag starts against the touched element). Consumer sheet bodies
+  // are `overflow-y-auto` divs with browser-default touch-action, so Chrome
+  // claims vertical pans over them and fires `pointercancel` mid-drag — the
+  // sheet "moves slightly then snaps back to top". With the browser out of
+  // the way, the pointer-move handoff branch below keeps content scrollable
+  // via JS. Synthetic `dispatchEvent` tests bypass Chrome's gesture
+  // recognizer, so they cannot reproduce this.
+  // ponytail: runs once per mount, not on children changes — current bodies
+  // are static scrollables; re-walk if a consumer ever swaps scrollables.
+  useEffect(() => {
+    const sheet = sheetRef.current;
+    if (!sheet) return;
+    for (const element of Array.from(sheet.querySelectorAll<HTMLElement>("*"))) {
+      element.style.touchAction = "none";
+    }
+  }, [mounted]);
+
   const clearDragState = useCallback((): void => {
     activePointer.current = null;
     scrollTarget.current = null;
@@ -185,7 +204,16 @@ export function CssBottomSheet({
     if (!draggingRef.current) {
       draggingRef.current = true;
       setDragging(true);
-      event.currentTarget.setPointerCapture(event.pointerId);
+      // Explicit capture only for mouse/pen: touch already implicitly captures
+      // to the pointerdown target for the whole gesture (moves bubble through
+      // the sheet root), and calling setPointerCapture on a touch pointer
+      // makes Chrome fire a spurious `lostpointercapture` mid-gesture, which
+      // snaps the sheet back to top — the real-device bug.
+      if (event.pointerType !== "touch") {
+        const target =
+          event.target instanceof Element ? event.target : event.currentTarget;
+        target.setPointerCapture(event.pointerId);
+      }
     }
 
     const step = event.clientY - lastY.current;
