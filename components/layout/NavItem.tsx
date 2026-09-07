@@ -88,6 +88,7 @@ export function NavItem({ label, href, icon: Icon, isActive, variant, badge = 0,
     return (
       <Link
         href={href}
+        prefetch
         title={collapsed ? label : undefined}
         className={cn(
           "group relative flex items-center rounded-xl text-sm font-medium transition-colors duration-200",
@@ -121,6 +122,7 @@ export function NavItem({ label, href, icon: Icon, isActive, variant, badge = 0,
   return (
     <Link
       href={href}
+      prefetch
       className={cn(
         "relative flex flex-1 flex-col items-center gap-1 py-2.5 transition-all duration-200 active:scale-95",
         isActive ? "text-accent" : "text-text-muted",

@@ -12,6 +12,7 @@ import { EventStatusBadge } from "@/components/ui/StatusBadge";
 import { ExpensesSection } from "@/components/entries/ExpensesSection";
 import { FadeIn } from "@/components/ui/FadeIn";
 import { ViewReportPill } from "@/components/adviser/ViewReportPill";
+import { EventLiveRefresh } from "@/components/events/EventLiveRefresh";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +59,7 @@ export default async function AdviserEventPage({ params }: Props) {
 
   return (
     <div className="flex flex-col pb-16">
+      <EventLiveRefresh eventId={eventId} />
       {/* ── MOBILE LAYOUT (matches treasurer event page) ── */}
       <div className="lg:hidden px-3 pt-6">
         {/* Back arrow + Event name + View Report (all in one row) */}

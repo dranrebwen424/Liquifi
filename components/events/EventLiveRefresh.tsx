@@ -23,6 +23,7 @@ export function EventLiveRefresh({ eventId }: { eventId: string }) {
 
   useEffect(() => {
     let subscribed = false;
+    let disposed = false;
 
     const refresh = () => {
       const now = Date.now();
@@ -36,13 +37,19 @@ export function EventLiveRefresh({ eventId }: { eventId: string }) {
     insforge.realtime
       .connect()
       .then(async () => {
+        if (disposed) return;
         const res = await insforge.realtime.subscribe(`event:${eventId}`);
+        if (disposed) {
+          if (res.ok) await insforge.realtime.unsubscribe(`event:${eventId}`);
+          return;
+        }
         subscribed = res.ok;
         if (!res.ok) console.error("[realtime] subscribe failed", res.error?.message);
       })
       .catch((err) => console.error("[realtime] connect failed", err));
 
     return () => {
+      disposed = true;
       insforge.realtime.off("changed", refresh);
       if (subscribed) insforge.realtime.unsubscribe(`event:${eventId}`);
       insforge.realtime.disconnect();

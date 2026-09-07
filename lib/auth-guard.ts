@@ -20,7 +20,7 @@ export class AuthError extends Error {
 // cache(): guarded routes resolve the current user once per render pass — guards
 // against nested Server Components re-authenticating in the same request tree.
 // Render-scoped, so a profile change in a mutation triggers its own fresh read.
-const getCurrentUser = cache(async function getCurrentUser(): Promise<AuthUser | null> {
+export const getCurrentUser = cache(async function getCurrentUser(): Promise<AuthUser | null> {
   const insforge = await createInsforgeServer();
   const { data, error } = await insforge.auth.getCurrentUser();
   if (error || !data.user) return null;

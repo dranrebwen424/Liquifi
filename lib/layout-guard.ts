@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createInsforgeServer } from "@/lib/insforge-server";
+import { getCurrentUser } from "@/lib/auth-guard";
 import type { Role } from "@/types";
 
 /**
@@ -8,24 +8,15 @@ import type { Role } from "@/types";
  * Returns the AuthUser on success so the layout can pass it to children.
  */
 export async function requireLayoutRole(requiredRole: Role) {
-  let insforge;
+  let user;
   try {
-    insforge = await createInsforgeServer();
+    user = await getCurrentUser();
   } catch {
     redirect("/login");
   }
 
-  const { data } = await insforge.auth.getCurrentUser();
-  if (!data?.user) redirect("/login");
+  if (!user || user.accountStatus !== "active") redirect("/login");
+  if (user.role !== requiredRole) redirect("/login");
 
-  const { data: profile } = await insforge.database
-    .from("users")
-    .select("role, account_status")
-    .eq("id", data.user.id)
-    .maybeSingle();
-
-  if (!profile || profile.account_status !== "active") redirect("/login");
-  if (profile.role !== requiredRole) redirect("/login");
-
-  return { id: data.user.id, email: data.user.email ?? "", role: profile.role as Role };
+  return { id: user.id, email: user.email ?? "", role: user.role };
 }

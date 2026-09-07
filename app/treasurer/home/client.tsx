@@ -3,17 +3,20 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { Plus, Search, Archive, ArrowLeft, ChevronRight } from "lucide-react";
-import { FadeIn } from "@/components/ui/FadeIn";
 import { EventCard } from "@/components/events/EventCard";
 import { EventListItem } from "@/components/events/EventListItem";
 import { FolderCard } from "@/components/events/FolderCard";
 import { ArchiveEventRow } from "@/components/events/ArchiveEventRow";
-import { NewEventModal } from "@/components/events/NewEventModal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FilterDropdown } from "@/components/treasurer/FilterDropdown";
 import type { EventWithMeta } from "@/lib/queries/events";
+
+type NewEventModalComponent = ComponentType<{
+  open: boolean;
+  onClose: () => void;
+}>;
 
 type HomePaths = {
   home: string;
@@ -82,6 +85,7 @@ const router = useRouter();
   const searchParams = useSearchParams();
   const [sortBy, setSortBy] = useState("newest");
   const [newEventOpen, setNewEventOpen] = useState(false);
+  const [NewEventModal, setNewEventModal] = useState<NewEventModalComponent | null>(null);
   // ponytail: archive "See more" pagination is per-page-state; clamping on
   // render keeps it safe if the underlying set shrinks.
   const [archiveShown, setArchiveShown] = useState(ARCHIVE_PAGE_SIZE);
@@ -193,14 +197,22 @@ const router = useRouter();
     setSearch(value);
   };
 
+  const openNewEvent = async () => {
+    setNewEventOpen(true);
+    if (!NewEventModal) {
+      const { NewEventModal: Modal } = await import("@/components/events/NewEventModal");
+      setNewEventModal(() => Modal);
+    }
+  };
+
   return (
     <div className="flex flex-col">
       {!isSearching && (
-        <FadeIn className="px-2 pt-4 pb-10 md:hidden">
+        <div className="px-2 pt-4 pb-10 md:hidden">
           <h1 className="text-center text-xl font-bold tracking-wide text-text-primary">
             WELCOME BACK!
           </h1>
-        </FadeIn>
+        </div>
       )}
 
       <div className="hidden md:block">
@@ -212,7 +224,7 @@ const router = useRouter();
           {!readOnly && (
             <button
               type="button"
-              onClick={() => setNewEventOpen(true)}
+              onClick={openNewEvent}
               className="inline-flex shrink-0 items-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground transition-[color,transform,shadow] hover:bg-accent-hover hover:shadow-lg hover:scale-[1.04] active:scale-[0.98]"
             >
               <Plus className="h-4 w-4" />
@@ -223,9 +235,9 @@ const router = useRouter();
       </div>
 
 {topSlot && (
-        <FadeIn delay={40} className={isSearching ? "hidden md:block" : undefined}>
+        <div className={isSearching ? "hidden md:block" : undefined}>
           {topSlot}
-        </FadeIn>
+        </div>
       )}
       {/* ═══════════════════════════════════════════════════════════
           MOBILE LAYOUT — Figma "treasurer home page" design
@@ -292,7 +304,7 @@ const router = useRouter();
               readOnly ? undefined : (
                 <button
                   type="button"
-                  onClick={() => setNewEventOpen(true)}
+                  onClick={openNewEvent}
                   className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-[color,transform,shadow] hover:bg-accent-hover hover:shadow-lg hover:scale-[1.04] active:scale-[0.98]"
                 >
                   <Plus className="h-4 w-4" />
@@ -329,10 +341,8 @@ const router = useRouter();
                   key={`mobile-active-grid-${recentActive.length}`}
                   className="grid grid-cols-2 gap-x-4 gap-y-6 px-2"
                 >
-                  {recentActive.map((event, index) => (
-                    <FadeIn key={event.id} delay={30 + index * 80}>
-                      <FolderCard id={event.id} name={event.name} href={`${paths.event}/${event.id}`} />
-                    </FadeIn>
+                  {recentActive.map((event) => (
+                    <FolderCard key={event.id} id={event.id} name={event.name} href={`${paths.event}/${event.id}`} />
                   ))}
                 </div>
               </section>
@@ -368,15 +378,14 @@ const router = useRouter();
                     key={`mobile-archive-${visibleArchived.length}`}
                     className="flex flex-col gap-3"
                   >
-                    {visibleArchived.map((event, index) => (
-                      <FadeIn key={event.id} delay={30 + index * 80}>
-                        <ArchiveEventRow
-                          id={event.id}
-                          name={event.name}
-                          createdAt={event.created_at}
-                          href={`${paths.event}/${event.id}`}
-                        />
-                      </FadeIn>
+                    {visibleArchived.map((event) => (
+                      <ArchiveEventRow
+                        key={event.id}
+                        id={event.id}
+                        name={event.name}
+                        createdAt={event.created_at}
+                        href={`${paths.event}/${event.id}`}
+                      />
                     ))}
                   </div>
 
@@ -402,7 +411,7 @@ const router = useRouter();
         {!isSearching && !readOnly && (
           <button
             type="button"
-            onClick={() => setNewEventOpen(true)}
+            onClick={openNewEvent}
             className="fixed bottom-6 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-[18px] bg-accent text-accent-foreground shadow-lg transition-[color,transform,shadow] hover:bg-accent-hover hover:shadow-xl hover:scale-110 active:scale-95"
             aria-label="New event"
           >
@@ -496,7 +505,7 @@ const router = useRouter();
               ) : readOnly ? undefined : (
                 <button
                   type="button"
-                  onClick={() => setNewEventOpen(true)}
+                  onClick={openNewEvent}
                   className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-[color,transform,shadow] hover:bg-accent-hover hover:shadow-lg hover:scale-[1.04] active:scale-[0.98]"
                 >
                   <Plus className="h-4 w-4" />
@@ -529,19 +538,18 @@ const router = useRouter();
                   key={`desktop-active-grid-${recentActive.length}`}
                   className="grid grid-cols-2 gap-x-5 gap-y-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
                 >
-                  {recentActive.map((event, index) => (
-                    <FadeIn key={event.id} delay={30 + index * 80}>
-                      <EventCard
-                        id={event.id}
-                        name={event.name}
-                        status={event.status}
-                        budgetTotal={event.budget_total}
-                        totalSpent={event.total_spent}
-                        numEntries={event.num_entries}
-                        createdByName={event.created_by_name}
-                        href={`${paths.event}/${event.id}`}
-                      />
-                    </FadeIn>
+                  {recentActive.map((event) => (
+                    <EventCard
+                      key={event.id}
+                      id={event.id}
+                      name={event.name}
+                      status={event.status}
+                      budgetTotal={event.budget_total}
+                      totalSpent={event.total_spent}
+                      numEntries={event.num_entries}
+                      createdByName={event.created_by_name}
+                      href={`${paths.event}/${event.id}`}
+                    />
                   ))}
                 </div>
               </section>
@@ -579,19 +587,18 @@ const router = useRouter();
                             key={`desktop-archive-${year}-${visibleYear.length}`}
                             className="flex flex-col gap-2"
                           >
-                            {visibleYear.map((event, index) => (
-                              <FadeIn key={event.id} delay={30 + index * 80}>
-                                <EventListItem
-                                  id={event.id}
-                                  name={event.name}
-                                  status={event.status}
-                                  budgetTotal={event.budget_total}
-                                  totalSpent={event.total_spent}
-                                  numEntries={event.num_entries}
-                                  createdAt={event.created_at}
-                                  href={`${paths.event}/${event.id}`}
-                                />
-                              </FadeIn>
+                            {visibleYear.map((event) => (
+                              <EventListItem
+                                key={event.id}
+                                id={event.id}
+                                name={event.name}
+                                status={event.status}
+                                budgetTotal={event.budget_total}
+                                totalSpent={event.total_spent}
+                                numEntries={event.num_entries}
+                                createdAt={event.created_at}
+                                href={`${paths.event}/${event.id}`}
+                              />
                             ))}
                           </div>
                         </div>
@@ -618,7 +625,9 @@ const router = useRouter();
         )}
       </div>
 
-      {!readOnly && <NewEventModal open={newEventOpen} onClose={() => setNewEventOpen(false)} />}
+      {!readOnly && NewEventModal && (
+        <NewEventModal open={newEventOpen} onClose={() => setNewEventOpen(false)} />
+      )}
     </div>
   );
 }

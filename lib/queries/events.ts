@@ -84,13 +84,30 @@ export const getDepartmentEvents = cache(async function getDepartmentEvents(
     return [];
   }
 
-  // Batch-fetch all entries for these events (one query instead of two)
+  // All remaining reads depend only on the event IDs, so run them together.
   const eventIds = events.map((e: { id: string }) => e.id);
+  if (eventIds.length === 0) return [];
 
-  const { data: entryRows } = await insforge.database
-    .from("entries")
-    .select("event_id, amount, status, causes_overspend, overspend_resolved_at, created_at")
-    .in("event_id", eventIds);
+  const creatorIds = [...new Set(events.map((e: { created_by: string }) => e.created_by).filter(Boolean))];
+  const [entriesRes, reportsRes, usersRes] = await Promise.all([
+    insforge.database
+      .from("entries")
+      .select("event_id, amount, status, causes_overspend, overspend_resolved_at, created_at")
+      .in("event_id", eventIds),
+    insforge.database
+      .from("reports")
+      .select("event_id, created_at")
+      .in("event_id", eventIds)
+      .in("status", ["pending_adviser_approval", "approved"]),
+    creatorIds.length > 0
+      ? insforge.database
+          .from("users")
+          .select("id, first_name, last_name")
+          .in("id", creatorIds)
+      : Promise.resolve({ data: [] }),
+  ]);
+
+  const entryRows = entriesRes.data;
 
   const spentMap: Record<string, number> = {};
   const entryCountMap: Record<string, number> = {};
@@ -124,15 +141,9 @@ export const getDepartmentEvents = cache(async function getDepartmentEvents(
     }
   }
 
-  // Check which events have pending/approved reports (is_locked)
-  const { data: reportRows } = await insforge.database
-    .from("reports")
-    .select("event_id, created_at")
-    .in("event_id", eventIds)
-    .in("status", ["pending_adviser_approval", "approved"]);
-
   // ponytail: using Set for O(1) lookup
   const lockedEventIds = new Set<string>();
+  const reportRows = reportsRes.data;
   if (reportRows) {
     for (const row of reportRows) {
       lockedEventIds.add(row.event_id);
@@ -146,19 +157,9 @@ export const getDepartmentEvents = cache(async function getDepartmentEvents(
   // Which events have at least one entry (budget_locked)
   const budgetLockedIds = anyEntryIds;
 
-  // Batch-fetch creator names
-  const creatorIds = [...new Set(events.map((e: { created_by: string }) => e.created_by).filter(Boolean))];
   const nameMap: Record<string, string> = {};
-  if (creatorIds.length > 0) {
-    const { data: users } = await insforge.database
-      .from("users")
-      .select("id, first_name, last_name")
-      .in("id", creatorIds);
-    if (users) {
-      for (const u of users) {
-        nameMap[u.id] = [u.first_name, u.last_name].filter(Boolean).join(" ") || "Unknown";
-      }
-    }
+  for (const u of usersRes.data ?? []) {
+    nameMap[u.id] = [u.first_name, u.last_name].filter(Boolean).join(" ") || "Unknown";
   }
 
   return events.map((e: { id: string; name: string; department_id: string; status: string; budget_total: number; created_at: string; created_by: string }) => ({
