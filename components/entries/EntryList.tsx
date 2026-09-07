@@ -164,16 +164,16 @@ export function EntryList({ entries, isArchived, canMutate, mobileLayout, filter
         </div>
       )}
 
-      {/* Entry detail modal */}
-      {selectedEntry && (
-        <EntryDetailModal
-          open={!!selectedEntry}
-          onClose={() => setSelectedEntry(null)}
-          entry={selectedEntry}
-          canMutate={canMutate}
-          onVoid={() => setVoidTarget(selectedEntry)}
-        />
-      )}
+      {/* Entry detail modal — always mounted (even when no entry is selected)
+          so the sheet's close animation (slide-down) can play after the parent
+          clears its selection; the modal latches the last entry for that exit. */}
+      <EntryDetailModal
+        open={!!selectedEntry}
+        onClose={() => setSelectedEntry(null)}
+        entry={selectedEntry}
+        canMutate={canMutate}
+        onVoid={() => setVoidTarget(selectedEntry)}
+      />
 
       {/* Void confirmation modal */}
       <VoidEntryModal

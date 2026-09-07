@@ -87,7 +87,9 @@ function manualSpecRows(
 type EntryDetailModalProps = {
   open: boolean;
   onClose: () => void;
-  entry: EntryDetail;
+  /** Null when the sheet is mounted but no entry is selected (during its
+   *  close animation the last non-null entry is latched internally). */
+  entry: EntryDetail | null;
   /** Treasurer with mutate rights on this event — enables the void action. */
   canMutate?: boolean;
   /** Opens the void confirmation modal for this entry. */
@@ -708,6 +710,18 @@ export function EntryDetailModal({ open, onClose, entry, canMutate, onVoid }: En
   const [imageOpen, setImageOpen] = useState(false);
   const [imageIndex, setImageIndex] = useState(0);
 
+  // This sheet is always mounted by its parent (EntryList). Latch the last
+  // non-null entry (React's "storing info from a previous render" pattern) so
+  // the sheet has valid content while it animates out after `open` flips false
+  // — otherwise it would hard-unmount and pop out with no slide-down. render
+  // nothing until an entry has ever been selected (avoids a null deref on the
+  // very first load when the sheet is simply mounted but closed).
+  const [lastEntry, setLastEntry] = useState<EntryDetail | null>(entry);
+  if (entry && entry !== lastEntry) {
+    setLastEntry(entry);
+  }
+  const contentEntry: EntryDetail | null = entry ?? lastEntry;
+
   // Lock body scroll when open
   useEffect(() => {
     if (open) {
@@ -720,14 +734,19 @@ export function EntryDetailModal({ open, onClose, entry, canMutate, onVoid }: En
     };
   }, [open]);
 
+  // render nothing until an entry has ever been selected (avoids a null deref
+  // on the very first load when the sheet is simply mounted but closed). This
+  // must run after every hook so hook order stays stable.
+  if (!contentEntry) return null;
+
   return (
     <>
       {/* Image viewer */}
       <ImageViewer
         open={imageOpen}
-        src={entry.imageUrl ? `/api/entries/${entry.id}/image?i=${imageIndex}` : undefined}
+        src={contentEntry.imageUrl ? `/api/entries/${contentEntry.id}/image?i=${imageIndex}` : undefined}
         index={imageIndex}
-        count={parseEntryImageKeys(entry.imageUrl).length}
+        count={parseEntryImageKeys(contentEntry.imageUrl).length}
         onNavigate={setImageIndex}
         onClose={() => setImageOpen(false)}
       />
@@ -764,7 +783,7 @@ export function EntryDetailModal({ open, onClose, entry, canMutate, onVoid }: En
 
                 <div className="max-h-[85dvh] scrollbar-hide overflow-y-auto rounded-xl p-6 pt-12">
                   <EntryDetailContent
-                    entry={entry}
+                    entry={contentEntry}
                     canMutate={canMutate}
                     onVoid={onVoid}
                     onViewImage={(index) => {
@@ -787,7 +806,7 @@ export function EntryDetailModal({ open, onClose, entry, canMutate, onVoid }: En
 
           <div className="p-6 pb-8 pt-0">
             <EntryDetailContent
-              entry={entry}
+              entry={contentEntry}
               canMutate={canMutate}
               onVoid={onVoid}
               onViewImage={(index) => {
