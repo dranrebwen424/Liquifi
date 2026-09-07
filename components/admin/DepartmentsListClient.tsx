@@ -7,6 +7,7 @@ import { Search, Plus, Folder, Loader2, FolderPlus, Check } from "lucide-react";
 import { motion } from "framer-motion";
 import { createDepartment } from "@/actions/departments";
 import { AdminMobileBottomNav } from "@/components/admin/MobileBottomNav";
+import { CssBottomSheet } from "@/components/ui/CssBottomSheet";
 
 // ─── Animation variants ───────────────────────────────────────────────
 const staggerContainer = {
@@ -235,35 +236,39 @@ export function DepartmentsListClient({ initialDepartments }: Props) {
 
       {/* ── New Department — Mobile Bottom Sheet ──────────────────── */}
       {createView === "sheet" && (
-        <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true">
-          <div className="absolute inset-0 bg-overlay-alpha backdrop-blur-sm" onClick={closeCreate} />
-          <div className="absolute inset-x-0 bottom-0 rounded-t-3xl border-t border-border bg-surface p-6 pb-8 shadow-card">
-            <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-border-strong" />
-            <h2 className="mb-5 text-base font-semibold text-text-primary">New Department</h2>
-            {newDepartmentForm}
-            {createError && (
-              <p className="mt-3 text-sm text-error">{createError}</p>
-            )}
-            <div className="mt-6 flex gap-2">
-              <button
-                onClick={handleCreate}
-                disabled={!newName.trim() || !newCode.trim() || creating}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-accent px-5 py-3 text-sm font-medium text-accent-foreground transition-all duration-200 hover:bg-accent-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {creating && <Loader2 className="h-4 w-4 animate-spin" />}
-                {creating ? "Creating…" : "Create"}
-              </button>
-              <button
-                onClick={closeCreate}
-                disabled={creating}
-                className="flex-1 rounded-full border border-border bg-surface px-5 py-3 text-sm font-medium text-text-primary transition-colors hover:bg-surface-secondary"
-              >
-                Cancel
-              </button>
-            </div>
+        <div className="fixed inset-0 z-50 bg-overlay-alpha backdrop-blur-sm md:hidden" onClick={closeCreate} />
+      )}
+      <CssBottomSheet open={createView === "sheet"} hideAt="md">
+        <div
+          className="rounded-t-3xl border-t border-border bg-surface p-6 pb-8 shadow-card"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-border-strong" />
+          <h2 className="mb-5 text-base font-semibold text-text-primary">New Department</h2>
+          {newDepartmentForm}
+          {createError && (
+            <p className="mt-3 text-sm text-error">{createError}</p>
+          )}
+          <div className="mt-6 flex gap-2">
+            <button
+              onClick={handleCreate}
+              disabled={!newName.trim() || !newCode.trim() || creating}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-accent px-5 py-3 text-sm font-medium text-accent-foreground transition-all duration-200 hover:bg-accent-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {creating && <Loader2 className="h-4 w-4 animate-spin" />}
+              {creating ? "Creating…" : "Create"}
+            </button>
+            <button
+              onClick={closeCreate}
+              disabled={creating}
+              className="flex-1 rounded-full border border-border bg-surface px-5 py-3 text-sm font-medium text-text-primary transition-colors hover:bg-surface-secondary"
+            >
+              Cancel
+            </button>
           </div>
         </div>
-      )}
+      </CssBottomSheet>
 
       {/* ── Mobile FAB ───────────────────────────────────────────── */}
       {!createView && (

@@ -15,8 +15,9 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { dialogOverlay, dialogContent, sheetSlideUp } from "@/lib/motion-variants";
+import { dialogOverlay, dialogContent } from "@/lib/motion-variants";
 import { CameraViewfinder } from "@/components/entries/CameraViewfinder";
+import { CssBottomSheet } from "@/components/ui/CssBottomSheet";
 
 // Step 24/25 — Archive Event. The treasurer uploads every page of the fully
 // signed report; the server verifies completeness and terminal-archives the
@@ -462,8 +463,8 @@ export function ArchiveEventModal({ open, onClose, eventId }: ArchiveEventModalP
   return (
     <>
       <AnimatePresence>
-      {open && (
-        <>
+        {open && (
+          <>
           {/* Overlay */}
           <motion.div
             key="archive-overlay"
@@ -491,38 +492,31 @@ export function ArchiveEventModal({ open, onClose, eventId }: ArchiveEventModalP
             </div>
           </motion.div>
 
-          {/* Mobile: bottom sheet */}
-          <motion.div
-            key="archive-sheet"
-            variants={sheetSlideUp}
-            initial="hidden"
-            animate="show"
-            exit="exit"
-            className="fixed inset-x-0 bottom-0 z-50 sm:hidden"
-          >
-            <div className="flex max-h-[85dvh] flex-col rounded-t-2xl border-t border-border bg-surface shadow-card">
-              <div className="mx-auto mt-3 h-1 w-10 shrink-0 rounded-full bg-border-strong" />
-              <div className="min-h-0 overflow-y-auto p-6 pb-4">
-                {phase === "upload" && uploadContent()}
-                {phase === "uploading" && uploadingContent()}
-                {phase === "result" && resultContent()}
-              </div>
-              {phase === "upload" && !busy && (
-                <div className="shrink-0 border-t border-border px-6 py-3">
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="w-full rounded-full border border-border px-4 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              )}
+          </>
+        )}
+      </AnimatePresence>
+
+      <CssBottomSheet open={open}>
+        <div className="flex max-h-[85dvh] flex-col rounded-t-2xl border-t border-border bg-surface shadow-card">
+          <div className="mx-auto mt-3 h-1 w-10 shrink-0 rounded-full bg-border-strong" />
+          <div className="min-h-0 overflow-y-auto p-6 pb-4">
+            {phase === "upload" && uploadContent()}
+            {phase === "uploading" && uploadingContent()}
+            {phase === "result" && resultContent()}
+          </div>
+          {phase === "upload" && !busy && (
+            <div className="shrink-0 border-t border-border px-6 py-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full rounded-full border border-border px-4 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary"
+              >
+                Cancel
+              </button>
             </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+          )}
+        </div>
+      </CssBottomSheet>
 
     {/* Full-screen camera — portaled to document.body so it sits above the sheet shell */}
     {showCamera && (

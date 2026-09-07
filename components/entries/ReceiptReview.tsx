@@ -4,7 +4,8 @@ import { useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, X, FileText, AlertTriangle } from "lucide-react";
 import { formatPHP } from "@/lib/format";
-import { dialogOverlay, dialogContent, sheetSlideUp } from "@/lib/motion-variants";
+import { dialogOverlay, dialogContent } from "@/lib/motion-variants";
+import { CssBottomSheet } from "@/components/ui/CssBottomSheet";
 import { CATEGORIES } from "@/components/entries/manual-categories";
 import type { ParsedReceipt } from "@/agent/types";
 
@@ -211,9 +212,10 @@ export function ReceiptReview({
   );
 
   return (
-    <AnimatePresence>
-      {open && (
-        <>
+    <>
+      <AnimatePresence>
+        {open && (
+          <>
           {/* Overlay */}
           <motion.div
             key="review-overlay"
@@ -239,29 +241,17 @@ export function ReceiptReview({
             </div>
           </motion.div>
 
-          {/* Mobile: bottom sheet */}
-          <motion.div
-            key="review-sheet"
-            variants={sheetSlideUp}
-            initial="hidden"
-            animate="show"
-            exit="exit"
-            drag="y"
-            dragConstraints={{ top: 0 }}
-            dragElastic={0.2}
-            onDragEnd={(_, info) => {
-              if (info.offset.y > 100) onClose();
-            }}
-            className="fixed inset-x-0 bottom-0 z-50 sm:hidden"
-          >
-            <div className="max-h-[85dvh] overflow-y-auto rounded-t-2xl border-t border-border bg-surface p-6 pb-8 shadow-card">
-              <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-border-strong" />
-              {content}
-            </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+          </>
+        )}
+      </AnimatePresence>
+
+      <CssBottomSheet open={open}>
+        <div className="max-h-[85dvh] overflow-y-auto rounded-t-2xl border-t border-border bg-surface p-6 pb-8 shadow-card">
+          <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-border-strong" />
+          {content}
+        </div>
+      </CssBottomSheet>
+    </>
   );
 }
 

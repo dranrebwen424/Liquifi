@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { dialogOverlay, dialogContent, sheetSlideUp } from "@/lib/motion-variants";
+import { dialogOverlay, dialogContent } from "@/lib/motion-variants";
+import { CssBottomSheet } from "@/components/ui/CssBottomSheet";
 import { formatNumberInput } from "@/lib/format";
 import { updateEventBudget } from "@/actions/events";
 
@@ -128,9 +129,10 @@ export function EditBudgetModal({ open, onClose, eventId, currentBudget }: EditB
   );
 
   return (
-    <AnimatePresence>
-      {open && (
-        <>
+    <>
+      <AnimatePresence>
+        {open && (
+          <>
           {/* Overlay */}
           <motion.div
             key="editbudget-overlay"
@@ -164,37 +166,25 @@ export function EditBudgetModal({ open, onClose, eventId, currentBudget }: EditB
             </div>
           </motion.div>
 
-          {/* Mobile: bottom sheet */}
-          <motion.div
-            key="editbudget-sheet"
-            variants={sheetSlideUp}
-            initial="hidden"
-            animate="show"
-            exit="exit"
-            drag="y"
-            dragConstraints={{ top: 0 }}
-            dragElastic={0.2}
-            onDragEnd={(_, info) => {
-              if (info.offset.y > 100) onClose();
-            }}
-            className="fixed inset-x-0 bottom-0 z-50 sm:hidden"
-          >
-            <div className="max-h-[85dvh] rounded-t-2xl border-t border-border bg-surface shadow-card">
-              <div className="mx-auto mt-3 h-1 w-10 rounded-full bg-border-strong" />
-              <div className="overflow-y-auto p-6 pb-4">{formContent}</div>
-              <div className="border-t border-border px-6 py-3">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="w-full rounded-full border border-border px-4 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+          </>
+        )}
+      </AnimatePresence>
+
+      <CssBottomSheet open={open}>
+        <div className="max-h-[85dvh] rounded-t-2xl border-t border-border bg-surface shadow-card">
+          <div className="mx-auto mt-3 h-1 w-10 rounded-full bg-border-strong" />
+          <div className="overflow-y-auto p-6 pb-4">{formContent}</div>
+          <div className="border-t border-border px-6 py-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full rounded-full border border-border px-4 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </CssBottomSheet>
+    </>
   );
 }

@@ -4,8 +4,9 @@ import { useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { dialogOverlay, dialogContent, sheetSlideUp } from "@/lib/motion-variants";
+import { dialogOverlay, dialogContent } from "@/lib/motion-variants";
 import { useDragToDismiss } from "@/lib/use-drag-to-dismiss";
+import { CssBottomSheet } from "@/components/ui/CssBottomSheet";
 import { EventForm } from "@/components/events/EventForm";
 import { createEvent } from "@/actions/events";
 
@@ -20,7 +21,7 @@ export function NewEventModal({ open, onClose }: NewEventModalProps) {
   // Close the sheet. Drag-to-dismiss + the sheet's slide-up/follow are handled
   // by the pointer-based hook; the sheet never retracts under a held finger.
   const closeSheet = useCallback(() => onClose(), [onClose]);
-  const { wrapRef, y, handlers: sheetDrag } = useDragToDismiss(closeSheet);
+  const { wrapRef, style: sheetStyle, handlers: sheetDrag } = useDragToDismiss(closeSheet);
 
   // Close on Escape
   const handleKeyDown = useCallback(
@@ -65,13 +66,11 @@ export function NewEventModal({ open, onClose }: NewEventModalProps) {
     </div>
   );
 
-  // The whole sheet column is the drag surface (`touch-none`, no background
-  // scroll). The hook owns entrance + drag + dismiss on one `y`, so the outer
-  // motion.div only animates exit — nothing competes, nothing freezes.
   return (
-    <AnimatePresence>
-      {open && (
-        <>
+    <>
+      <AnimatePresence>
+        {open && (
+          <>
           {/* Overlay */}
           <motion.div
             key="newevent-overlay"
@@ -105,41 +104,32 @@ export function NewEventModal({ open, onClose }: NewEventModalProps) {
             </div>
           </motion.div>
 
-          {/* Mobile: bottom sheet */}
-          <motion.div
-            key="newevent-sheet"
-            variants={sheetSlideUp}
-            initial="hidden"
-            animate="show"
-            exit="exit"
-            className="fixed inset-x-0 bottom-0 z-50 sm:hidden"
-          >
-            <div
-              ref={wrapRef}
-              {...sheetDrag}
-              style={{ transform: `translateY(${y}px)` }}
-              className="flex max-h-[85dvh] touch-none flex-col rounded-t-2xl border-t border-border bg-surface shadow-card"
+          </>
+        )}
+      </AnimatePresence>
+
+      <CssBottomSheet open={open}>
+        <div
+          ref={wrapRef}
+          {...sheetDrag}
+          style={sheetStyle}
+          className="flex max-h-[85dvh] touch-none flex-col rounded-t-2xl border-t border-border bg-surface shadow-card"
+        >
+          <div className="flex shrink-0 flex-col items-center py-3">
+            <div className="h-1 w-10 rounded-full bg-border-strong" />
+          </div>
+          <div className="min-h-0 overflow-y-auto p-6 pb-4">{formContent}</div>
+          <div className="border-t border-border px-6 py-3">
+            <button
+              type="button"
+              onClick={closeSheet}
+              className="w-full rounded-full border border-border px-4 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary"
             >
-              {/* Grip / drag handle visual — the whole column is draggable */}
-              <div className="flex shrink-0 flex-col items-center py-3">
-                <div className="h-1 w-10 rounded-full bg-border-strong" />
-              </div>
-              <div className="min-h-0 overflow-y-auto p-6 pb-4">
-                {formContent}
-              </div>
-              <div className="border-t border-border px-6 py-3">
-                <button
-                  type="button"
-                  onClick={closeSheet}
-                  className="w-full rounded-full border border-border px-4 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+              Cancel
+            </button>
+          </div>
+        </div>
+      </CssBottomSheet>
+    </>
   );
 }

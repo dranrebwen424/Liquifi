@@ -1,8 +1,8 @@
 "use client";
 
-// Native bottom-sheet drag-to-dismiss — owns the sheet's vertical position
-// entirely (entrance slide-up + drag + bounce-back + dismiss) so framer
-// never runs a competing transform animation that can freeze mid-slide.
+// Native bottom-sheet drag-to-dismiss. Entrance/exit live in CssBottomSheet;
+// this hook only owns finger-follow and snap-back, so no Framer transform can
+// compete with the sheet animation.
 //
 // The sheet follows your finger while you hold it and never retracts under it;
 // on release it snaps back (y=0) or dismisses if pulled far enough. Because we
@@ -11,9 +11,9 @@
 import {
   useRef,
   useState,
+  type CSSProperties,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { animate, type AnimationPlaybackControls } from "framer-motion";
 
 const DISMISS_DISTANCE = 120; // px pulled down before release dismisses
 const DRAG_START = 8; // px of travel before a touch becomes a drag (not a tap)
@@ -21,26 +21,17 @@ const DRAG_START = 8; // px of travel before a touch becomes a drag (not a tap)
 export function useDragToDismiss(onDismiss: () => void) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [y, setY] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
   const startY = useRef(0);
   const dragY = useRef(0);
   const activePointer = useRef<number | null>(null);
   const dragging = useRef(false);
-  const anim = useRef<AnimationPlaybackControls | null>(null);
-
-  const stopAnim = () => {
-    anim.current?.stop();
-    anim.current = null;
-  };
-
-  // Entrance is handled by framer on the OUTER motion.div (slide up), so the
-  // hook owns drag + bounce + dismiss only. `y` stays 0 until a real drag, which
-  // never happens during the entrance — nothing competes, nothing freezes.
 
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (e.pointerType === "mouse" && e.button !== 0) return;
-    stopAnim(); // a new grab cancels any in-flight bounce/entrance
     activePointer.current = e.pointerId;
     dragging.current = false;
+    setIsDragging(false);
     startY.current = dragY.current = e.clientY;
     // No setPointerCapture here: we don't want a plain tap captured (it would
     // swallow the button's click). Only after travel past DRAG_START do we grab.
@@ -52,6 +43,7 @@ export function useDragToDismiss(onDismiss: () => void) {
     if (!dragging.current && delta < DRAG_START) return; // still a potential tap
     if (!dragging.current) {
       dragging.current = true;
+      setIsDragging(true);
       // Now it's a real drag — capture so movement stays tracked even if the
       // finger leaves the sheet. Taps already cleared DRAG_START untouched.
       try {
@@ -65,8 +57,12 @@ export function useDragToDismiss(onDismiss: () => void) {
   };
 
   const endDrag = () => {
-    if (!dragging.current) return;
+    if (!dragging.current) {
+      activePointer.current = null;
+      return;
+    }
     dragging.current = false;
+    setIsDragging(false);
     activePointer.current = null;
     const delta = Math.max(0, dragY.current - startY.current);
     if (delta > DISMISS_DISTANCE) {
@@ -78,18 +74,20 @@ export function useDragToDismiss(onDismiss: () => void) {
       setY(0);
       startY.current = dragY.current = 0;
     } else {
-      // Snap back to origin — one-shot, content clickable immediately after.
-      anim.current = animate(delta, 0, {
-        onUpdate: (v) => setY(v),
-        duration: 0.25,
-        ease: "easeOut",
-      });
+      setY(0);
     }
+  };
+
+  const style: CSSProperties = {
+    transform: `translateY(${y}px)`,
+    transition: isDragging
+      ? "none"
+      : "transform 0.25s cubic-bezier(0.22,1,0.36,1)",
   };
 
   return {
     wrapRef,
-    y,
+    style,
     handlers: {
       onPointerDown,
       onPointerMove,

@@ -6,7 +6,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatPHP } from "@/lib/format";
-import { dialogOverlay, dialogContent, sheetSlideUp } from "@/lib/motion-variants";
+import { dialogOverlay, dialogContent } from "@/lib/motion-variants";
+import { CssBottomSheet } from "@/components/ui/CssBottomSheet";
 import { voidEntry } from "@/actions/entries";
 import { VOID_REASON_MAX } from "@/lib/limits";
 
@@ -129,9 +130,10 @@ export function VoidEntryModal({ open, entry, onClose, onSuccess }: VoidEntryMod
   );
 
   return (
-    <AnimatePresence>
-      {open && entry && (
-        <>
+    <>
+      <AnimatePresence>
+        {open && entry && (
+          <>
           {/* Overlay */}
           <motion.div
             key="void-overlay"
@@ -157,36 +159,32 @@ export function VoidEntryModal({ open, entry, onClose, onSuccess }: VoidEntryMod
             </div>
           </motion.div>
 
-          {/* Mobile: bottom sheet */}
-          <motion.div
-            key="void-sheet"
-            variants={sheetSlideUp}
-            initial="hidden"
-            animate="show"
-            exit="exit"
-            className="fixed inset-x-0 bottom-0 z-50 sm:hidden"
-          >
-            <div className="flex max-h-[85dvh] flex-col rounded-t-2xl border-t border-border bg-surface shadow-card">
-              <div className="mx-auto mt-3 h-1 w-10 shrink-0 rounded-full bg-border-strong" />
-              <div className="min-h-0 overflow-y-auto p-6 pb-4">
-                {done ? successContent() : formContent(entry)}
-              </div>
-              {!done && (
-                <div className="shrink-0 border-t border-border px-6 py-3">
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={onClose}
-                    className="w-full rounded-full border border-border px-4 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              )}
+          </>
+        )}
+      </AnimatePresence>
+
+      {entry && (
+        <CssBottomSheet open={open}>
+          <div className="flex max-h-[85dvh] flex-col rounded-t-2xl border-t border-border bg-surface shadow-card">
+            <div className="mx-auto mt-3 h-1 w-10 shrink-0 rounded-full bg-border-strong" />
+            <div className="min-h-0 overflow-y-auto p-6 pb-4">
+              {done ? successContent() : formContent(entry)}
             </div>
-          </motion.div>
-        </>
+            {!done && (
+              <div className="shrink-0 border-t border-border px-6 py-3">
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={onClose}
+                  className="w-full rounded-full border border-border px-4 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
+        </CssBottomSheet>
       )}
-    </AnimatePresence>
+    </>
   );
 }

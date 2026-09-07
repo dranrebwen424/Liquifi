@@ -11,8 +11,9 @@ import { entryTitle } from "@/components/entries/entry-title";
 import { Button } from "@/components/ui/button";
 import { resubmitEntry, withdrawPendingEntry } from "@/actions/entries";
 import { cn } from "@/lib/utils";
-import { dialogOverlay, dialogContent, sheetSlideUp } from "@/lib/motion-variants";
+import { dialogOverlay, dialogContent } from "@/lib/motion-variants";
 import { parseEntryImageKeys } from "@/lib/image-keys";
+import { CssBottomSheet } from "@/components/ui/CssBottomSheet";
 import type { EntryType, EntryStatus } from "@/types";
 
 type EntryDetail = {
@@ -776,33 +777,28 @@ export function EntryDetailModal({ open, onClose, entry, canMutate, onVoid }: En
               </div>
             </motion.div>
 
-            {/* Mobile bottom sheet */}
-            <motion.div
-              variants={sheetSlideUp}
-              initial="hidden"
-              animate="show"
-              exit="exit"
-              className="fixed inset-x-0 bottom-0 z-50 max-h-[85dvh] scrollbar-hide overflow-y-auto rounded-t-2xl border-t border-border bg-surface shadow-card sm:hidden"
-            >
-              {/* Drag handle */}
-              <div className="mx-auto mb-5 mt-3 h-1 w-10 rounded-full bg-border-strong" />
-
-              <div className="p-6 pb-8 pt-0">
-                <EntryDetailContent
-                  entry={entry}
-                  canMutate={canMutate}
-                  onVoid={onVoid}
-                  onViewImage={(index) => {
-  setImageIndex(index ?? 0);
-  setImageOpen(true);
-}}
-                  onWithdrawn={onClose}
-                />
-              </div>
-            </motion.div>
           </>
         )}
       </AnimatePresence>
+
+      <CssBottomSheet open={open}>
+        <div className="max-h-[85dvh] scrollbar-hide overflow-y-auto rounded-t-2xl border-t border-border bg-surface shadow-card">
+          <div className="mx-auto mb-5 mt-3 h-1 w-10 rounded-full bg-border-strong" />
+
+          <div className="p-6 pb-8 pt-0">
+            <EntryDetailContent
+              entry={entry}
+              canMutate={canMutate}
+              onVoid={onVoid}
+              onViewImage={(index) => {
+                setImageIndex(index ?? 0);
+                setImageOpen(true);
+              }}
+              onWithdrawn={onClose}
+            />
+          </div>
+        </div>
+      </CssBottomSheet>
     </>
   );
 }

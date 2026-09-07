@@ -14,8 +14,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatPHP } from "@/lib/format";
-import { dialogOverlay, dialogContent, sheetSlideUp } from "@/lib/motion-variants";
+import { dialogOverlay, dialogContent } from "@/lib/motion-variants";
 import { useDragToDismiss } from "@/lib/use-drag-to-dismiss";
+import { CssBottomSheet } from "@/components/ui/CssBottomSheet";
 import { ReceiptUpload, type ParsedUploadResult } from "@/components/entries/ReceiptUpload";
 import { ManualCategoryPicker } from "@/components/entries/ManualCategoryPicker";
 import { ManualQuickForm, type ManualSubmitPayload } from "@/components/entries/ManualQuickForm";
@@ -93,7 +94,7 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
   // dismiss on one `y`; the outer motion.div only animates exit. Never retracts
   // under a held finger; plain taps still land (content stays clickable).
   // onDismiss → closeModal so an abandoned ai_parsed row is discarded server-side.
-  const { wrapRef, y, handlers: sheetDrag } = useDragToDismiss(closeModal);
+  const { wrapRef, style: sheetStyle, handlers: sheetDrag } = useDragToDismiss(closeModal);
 
   // Close on Escape (not during confirm or submit)
   const handleKeyDown = useCallback(
@@ -454,9 +455,10 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
   // ─── Modal / Sheet shell ───────────────────────────────────────
 
   return (
-    <AnimatePresence>
-      {open && (
-        <>
+    <>
+      <AnimatePresence>
+        {open && (
+          <>
           {/* Overlay */}
           <motion.div
             key="logentry-overlay"
@@ -482,45 +484,37 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
             </div>
           </motion.div>
 
-          {/* Mobile: bottom sheet */}
-          <motion.div
-            key="logentry-sheet"
-            variants={sheetSlideUp}
-            initial="hidden"
-            animate="show"
-            exit="exit"
-            className="fixed inset-x-0 bottom-0 z-50 sm:hidden"
-          >
-            <div
-              ref={wrapRef}
-              {...sheetDrag}
-              style={{ transform: `translateY(${y}px)` }}
-              className="flex max-h-[85dvh] touch-none flex-col rounded-t-2xl border-t border-border bg-surface shadow-card"
-            >
-              {/* Grip / drag handle visual — the whole column is draggable */}
-              <div className="flex shrink-0 flex-col items-center py-3">
-                <div className="h-1 w-10 rounded-full bg-border-strong" />
-              </div>
-              <div className="min-h-0 overflow-y-auto p-6 pb-4">
-                {reviewOpen ? reviewContent : screenContent}
-              </div>
-              {/* Persistent Cancel for mobile sheet — only when not in receipt review */}
-              {!reviewOpen && method === "receipt" && (
-                <div className="shrink-0 border-t border-border px-6 py-3">
-                  <button
-                    type="button"
-                    onClick={closeModal}
-                    className="w-full rounded-full border border-border px-4 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              )}
+          </>
+        )}
+      </AnimatePresence>
+
+      <CssBottomSheet open={open}>
+        <div
+          ref={wrapRef}
+          {...sheetDrag}
+          style={sheetStyle}
+          className="flex max-h-[85dvh] touch-none flex-col rounded-t-2xl border-t border-border bg-surface shadow-card"
+        >
+          <div className="flex shrink-0 flex-col items-center py-3">
+            <div className="h-1 w-10 rounded-full bg-border-strong" />
+          </div>
+          <div className="min-h-0 overflow-y-auto p-6 pb-4">
+            {reviewOpen ? reviewContent : screenContent}
+          </div>
+          {!reviewOpen && method === "receipt" && (
+            <div className="shrink-0 border-t border-border px-6 py-3">
+              <button
+                type="button"
+                onClick={closeModal}
+                className="w-full rounded-full border border-border px-4 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary"
+              >
+                Cancel
+              </button>
             </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+          )}
+        </div>
+      </CssBottomSheet>
+    </>
   );
 }
 
