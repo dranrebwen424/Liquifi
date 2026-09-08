@@ -4,7 +4,6 @@ import Link from "next/link";
 import type { SVGProps } from "react";
 import { Bell, CircleCheckBig, FileText, Home, LayoutGrid, User, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useFullPrefetch } from "@/lib/use-full-prefetch";
 
 export type NavItemConfig = {
   label: string;
@@ -76,7 +75,6 @@ const FILLED = new Map<LucideIcon, FilledSvg>([
 ]);
 
 export function NavItem({ label, href, icon: Icon, isActive, variant, badge = 0, collapsed = false }: NavItemProps) {
-  const { ref, prefetch } = useFullPrefetch<HTMLAnchorElement>();
   const ActiveIcon = FILLED.get(Icon);
 
   const renderIcon = () =>
@@ -89,9 +87,7 @@ export function NavItem({ label, href, icon: Icon, isActive, variant, badge = 0,
   if (variant === "sidebar") {
     return (
       <Link
-        ref={ref}
         href={href}
-        prefetch={prefetch}
         title={collapsed ? label : undefined}
         className={cn(
           "group relative flex items-center rounded-xl text-sm font-medium transition-colors duration-200",
@@ -124,9 +120,7 @@ export function NavItem({ label, href, icon: Icon, isActive, variant, badge = 0,
   // bottom nav variant — X-style: filled icon + accent when active, no pill
   return (
     <Link
-      ref={ref}
       href={href}
-      prefetch={prefetch}
       className={cn(
         "relative flex flex-1 flex-col items-center gap-1 py-2.5 transition-all duration-200 active:scale-95",
         isActive ? "text-accent" : "text-text-muted",
