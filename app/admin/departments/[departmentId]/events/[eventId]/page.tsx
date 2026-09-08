@@ -9,6 +9,7 @@ import { BudgetSummary } from "@/components/events/BudgetSummary";
 import { SpendingBreakdownCard } from "@/components/events/SpendingBreakdownCard";
 import { EventStatusBadge } from "@/components/ui/StatusBadge";
 import { ExpensesSection } from "@/components/entries/ExpensesSection";
+import { FadeIn } from "@/components/ui/FadeIn";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +43,7 @@ export default async function AdminEventPage({ params }: Props) {
   const breakdown = computeSpendingBreakdown(event.entries);
 
   return (
+    <FadeIn>
     <div className="flex flex-col pb-16">
       {/* Back link */}
       <Link
@@ -128,5 +130,6 @@ export default async function AdminEventPage({ params }: Props) {
         />
       </div>
     </div>
+    </FadeIn>
   );
 }

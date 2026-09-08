@@ -10,6 +10,7 @@ import { BudgetSummary } from "@/components/events/BudgetSummary";
 import { SpendingBreakdownCard } from "@/components/events/SpendingBreakdownCard";
 import { EventStatusBadge } from "@/components/ui/StatusBadge";
 import { ExpensesSection } from "@/components/entries/ExpensesSection";
+import { FadeIn } from "@/components/ui/FadeIn";
 import { ViewReportPill } from "@/components/adviser/ViewReportPill";
 import { EventLiveRefresh } from "@/components/events/EventLiveRefresh";
 
@@ -62,6 +63,7 @@ export default async function AdviserEventPage({ params }: Props) {
       {/* ── MOBILE LAYOUT (matches treasurer event page) ── */}
       <div className="lg:hidden px-3 pt-6">
         {/* Back arrow + Event name + View Report (all in one row) */}
+        <FadeIn>
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-2.5 min-w-0">
             <Link
@@ -88,8 +90,10 @@ export default async function AdviserEventPage({ params }: Props) {
 
           <ViewReportPill href={`/adviser/reports/${eventId}`} hasReport={hasReport} />
         </div>
+        </FadeIn>
 
         {/* Dark budget card — no creator info inside */}
+        <FadeIn delay={150}>
         <BudgetSummary
           budgetTotal={event.budget_total}
           totalSpent={event.total_spent}
@@ -102,15 +106,19 @@ export default async function AdviserEventPage({ params }: Props) {
           className="mt-4"
           mobileOnly
         />
+        </FadeIn>
 
         {/* Locked / Archived banner */}
         {(event.is_locked || isArchived) && (
+          <FadeIn delay={300}>
           <div className="mt-4">
             <LockedBanner isLocked={event.is_locked} isArchived={isArchived} />
           </div>
+          </FadeIn>
         )}
 
         {/* Expenses section — separated by white space only */}
+        <FadeIn delay={event.is_locked || isArchived ? 510 : 450}>
         <div className="mt-8">
           <ExpensesSection
             entries={event.entries.map((e) => ({
@@ -142,20 +150,24 @@ export default async function AdviserEventPage({ params }: Props) {
             mobileLayout
           />
         </div>
+        </FadeIn>
       </div>
 
       {/* ── DESKTOP LAYOUT (matches treasurer event page) ── */}
       <div className="hidden lg:block">
         {/* Back link */}
-        <Link
-          href="/adviser/home"
-          className="inline-flex items-center gap-1.5 text-sm text-text-secondary transition-colors hover:text-text-primary"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to events
-        </Link>
+        <FadeIn>
+          <Link
+            href="/adviser/home"
+            className="inline-flex items-center gap-1.5 text-sm text-text-secondary transition-colors hover:text-text-primary"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to events
+          </Link>
+        </FadeIn>
 
         {/* Header — title left, View Report far right */}
+        <FadeIn delay={100}>
         <div className="mt-3 flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -174,15 +186,19 @@ export default async function AdviserEventPage({ params }: Props) {
 
           <ViewReportPill href={`/adviser/reports/${eventId}`} hasReport={hasReport} />
         </div>
+        </FadeIn>
 
         {/* Locked / Archived banner */}
         {(event.is_locked || isArchived) && (
+          <FadeIn delay={200}>
           <div className="mt-5">
             <LockedBanner isLocked={event.is_locked} isArchived={isArchived} />
           </div>
+          </FadeIn>
         )}
 
         {/* Two-column: Dark hero + Spending breakdown */}
+        <FadeIn delay={event.is_locked || isArchived ? 360 : 300}>
         <div className="mt-5 flex flex-col gap-4 lg:flex-row lg:gap-4">
           <BudgetSummary
             budgetTotal={event.budget_total}
@@ -203,8 +219,10 @@ export default async function AdviserEventPage({ params }: Props) {
             className="hidden lg:flex lg:w-2/5"
           />
         </div>
+        </FadeIn>
 
         {/* Expenses section */}
+        <FadeIn delay={event.is_locked || isArchived ? 460 : 400}>
         <div className="mt-8 border-t border-border-light pt-6">
           <ExpensesSection
             entries={event.entries.map((e) => ({
@@ -235,6 +253,7 @@ export default async function AdviserEventPage({ params }: Props) {
             canMutate={false}
           />
         </div>
+        </FadeIn>
       </div>
     </div>
   );

@@ -12,6 +12,7 @@ import { EventStatusBadge } from "@/components/ui/StatusBadge";
 import { EventDashboardActions } from "@/components/events/EventDashboardActions";
 import { ArchiveEventButton } from "@/components/events/ArchiveEventModal";
 import { ExpensesSection } from "@/components/entries/ExpensesSection";
+import { FadeIn } from "@/components/ui/FadeIn";
 import { EventLiveRefresh } from "@/components/events/EventLiveRefresh";
 
 type Props = {
@@ -61,6 +62,7 @@ export default async function EventDashboardPage({ params }: Props) {
   const breakdown = computeSpendingBreakdown(event.entries);
 
   return (
+    <FadeIn>
     <div className="flex flex-col pb-16">
       <EventLiveRefresh eventId={eventId} />
       {/* ── MOBILE LAYOUT (matches Figma) ── */}
@@ -267,5 +269,6 @@ export default async function EventDashboardPage({ params }: Props) {
         </div>
       </div>
     </div>
+    </FadeIn>
   );
 }
