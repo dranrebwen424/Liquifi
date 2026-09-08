@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { motion, MotionConfig } from "framer-motion";
 import type { Transition, Variants } from "framer-motion";
 import { FileText } from "lucide-react";
 import { formatPHP } from "@/lib/format";
+import { useFullPrefetch } from "@/lib/use-full-prefetch";
 
 type EventCardProps = {
   id: string;
@@ -49,18 +49,16 @@ function pctTextColor(pct: number) {
 }
 
 export function EventCard({ id, name, status, budgetTotal, totalSpent, numEntries, createdByName, href }: EventCardProps) {
-  const [prefetch, setPrefetch] = useState(false);
+  const { ref, prefetch } = useFullPrefetch<HTMLAnchorElement>();
   const pct = budgetTotal > 0 ? Math.min((totalSpent / budgetTotal) * 100, 100) : 0;
   const budgetLabel = `${formatPHP(totalSpent)} of ${formatPHP(budgetTotal)}`;
 
   return (
     <MotionConfig reducedMotion="user">
       <MotionLink
+        ref={ref}
         href={href ?? `/treasurer/events/${id}`}
         prefetch={prefetch}
-        onPointerEnter={() => setPrefetch(true)}
-        onFocus={() => setPrefetch(true)}
-        onTouchStart={() => setPrefetch(true)}
         initial="rest"
         whileHover="hover"
         className="flex w-full flex-col gap-3"

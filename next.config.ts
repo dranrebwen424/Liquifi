@@ -10,9 +10,11 @@ const nextConfig: NextConfig = {
       // (default dynamic: 0 — every click re-fetches the server; this was the
       // "loads first every time I open a page" problem.)
       dynamic: 30,
-      // Explicitly prefetched links otherwise use Next's 5-minute static
-      // default. Financial pages need the same short freshness window.
-      static: 30,
+      // Fully prefetched routes (EventCard/FolderCard/NavItem warm on
+      // viewport entry) are then cache-served for 5 min — one DB read per
+      // page per window instead of one per open. router.refresh() after
+      // every mutation and EventLiveRefresh keep this fresh.
+      static: 300,
     },
   },
 };
