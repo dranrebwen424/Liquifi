@@ -27,8 +27,10 @@ export function EventListItem({ id, name, status, budgetTotal, totalSpent, numEn
   const pct = budgetTotal > 0 ? Math.min((totalSpent / budgetTotal) * 100, 100) : 0;
 
   return (
+    // prefetch: full event route warmed by Next's viewport-first scheduler.
     <Link
       href={href ?? `/treasurer/events/${id}`}
+      prefetch
       className="group relative flex items-center gap-4 overflow-hidden rounded-xl border border-border bg-surface px-4 py-3 transition-all duration-150 hover:border-border-strong hover:bg-surface-secondary hover:shadow-md active:scale-[0.98] md:px-5"
     >
       {/* Folder icon — standalone, fills solid ink on hover */}

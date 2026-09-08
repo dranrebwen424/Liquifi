@@ -21,8 +21,10 @@ export function ArchiveEventRow({ id, name, createdAt, href }: Props) {
   });
 
   return (
+    // prefetch: full event route warmed by Next's viewport-first scheduler.
     <Link
       href={href ?? `/treasurer/events/${id}`}
+      prefetch
       className="group flex items-center gap-3 border-b border-border py-3 transition-all duration-150 hover:bg-surface-secondary active:scale-[0.98]"
     >
       <Folder className="h-5 w-5 shrink-0 text-text-muted transition-colors group-hover:text-text-primary" />

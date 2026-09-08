@@ -9,10 +9,12 @@ const nextConfig: NextConfig = {
       // freshness is unchanged. (default dynamic: 0 — every click re-fetches
       // the server; this was the "loads first every time I open a page" problem.)
       dynamic: 30,
-      // Fully statically prefetched routes are cache-served for the same short
-      // window. Dynamic routes only prefetch the loading shell, so there is no
-      // DB fan-out at mount — data is fetched fresh on navigation.
-      static: 30,
+      // Fully prefetched routes (event detail links use prefetch — viewport
+      // scheduler warms full RSC) are cache-served for the 5-minute default
+      // snapshot. EventLiveRefresh runs one silent refresh after a cached
+      // open, and realtime + router.refresh() stay authoritative, so stale
+      // exposure is bounded. (Next default static: 300s.)
+      static: 300,
     },
   },
 };

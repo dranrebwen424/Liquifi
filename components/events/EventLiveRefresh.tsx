@@ -20,6 +20,8 @@ import { insforge } from "@/lib/insforge-client";
 export function EventLiveRefresh({ eventId }: { eventId: string }) {
   const router = useRouter();
   const lastRefresh = useRef(0);
+  const silentTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const silentFired = useRef(false);
 
   useEffect(() => {
     let subscribed = false;
@@ -31,6 +33,17 @@ export function EventLiveRefresh({ eventId }: { eventId: string }) {
       lastRefresh.current = now;
       router.refresh();
     };
+
+    // One silent refresh shortly after mount: if this page was served from
+    // the ~5min prefetch snapshot it may be stale, so re-fetch the RSC once
+    // in place (no skeleton, client state + scroll preserved) and let
+    // realtime stay authoritative afterwards. Fires once — the ref guard plus
+    // router.refresh() not remounting this component prevents a loop. The 2s
+    // throttle merges it with any near-simultaneous realtime refresh.
+    if (!silentFired.current) {
+      silentFired.current = true;
+      silentTimer.current = setTimeout(refresh, 500);
+    }
 
     insforge.realtime.on("changed", refresh);
 
@@ -52,6 +65,7 @@ export function EventLiveRefresh({ eventId }: { eventId: string }) {
 
     return () => {
       disposed = true;
+      if (silentTimer.current) clearTimeout(silentTimer.current);
       insforge.realtime.off("changed", refresh);
       if (subscribed) insforge.realtime.unsubscribe(`event:${eventId}`);
       insforge.realtime.disconnect();

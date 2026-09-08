@@ -39,9 +39,11 @@ const slideDownVariants: Variants = {
  */
 export function FolderCard({ id, name, href, hasPending }: FolderCardProps) {
   return (
+    // prefetch: full event route warmed by Next's viewport-first scheduler.
     <MotionConfig reducedMotion="user">
       <MotionLink
         href={href ?? `/treasurer/events/${id}`}
+        prefetch
         initial="rest"
         whileTap="pressed"
         className="flex w-full flex-col items-stretch gap-1"

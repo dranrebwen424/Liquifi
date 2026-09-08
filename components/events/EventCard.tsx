@@ -52,9 +52,13 @@ export function EventCard({ id, name, status, budgetTotal, totalSpent, numEntrie
   const budgetLabel = `${formatPHP(totalSpent)} of ${formatPHP(budgetTotal)}`;
 
   return (
+    // prefetch: full event route warmed when the card is in/near viewport
+    // (Next's viewport-first scheduler) so the dashboard opens instantly, no
+    // skeleton. Cached ~5 min; one silent refresh reconciles.
     <MotionConfig reducedMotion="user">
       <MotionLink
         href={href ?? `/treasurer/events/${id}`}
+        prefetch
         initial="rest"
         whileHover="hover"
         className="flex w-full flex-col gap-3"
