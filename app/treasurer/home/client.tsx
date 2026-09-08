@@ -330,6 +330,7 @@ const router = useRouter();
                   </div>
                   <Link
                     href={paths.events}
+                    prefetch={false}
                     className="inline-flex items-center gap-0.5 text-sm font-semibold text-accent transition-colors hover:text-accent-hover"
                   >
                     View all
@@ -528,6 +529,7 @@ const router = useRouter();
                   </div>
                   <Link
                     href={paths.events}
+                    prefetch={false}
                     className="inline-flex items-center gap-0.5 text-sm font-semibold text-accent transition-colors hover:text-accent-hover"
                   >
                     View all

@@ -75,6 +75,8 @@ function EntryImage({ id, onError }: { id: string; onError: () => void }) {
       src={`/api/entries/${id}/image`}
       alt="Receipt"
       loading="lazy"
+      fetchPriority="low"
+      decoding="async"
       onError={onError}
       className="h-full w-full object-cover"
     />

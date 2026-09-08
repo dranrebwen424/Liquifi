@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { motion, MotionConfig } from "framer-motion";
 import type { Transition, Variants } from "framer-motion";
 
@@ -38,10 +39,16 @@ const slideDownVariants: Variants = {
  * Desktop uses the full EventCard instead.
  */
 export function FolderCard({ id, name, href, hasPending }: FolderCardProps) {
+  const [prefetch, setPrefetch] = useState(false);
+
   return (
     <MotionConfig reducedMotion="user">
       <MotionLink
         href={href ?? `/treasurer/events/${id}`}
+        prefetch={prefetch}
+        onPointerEnter={() => setPrefetch(true)}
+        onFocus={() => setPrefetch(true)}
+        onTouchStart={() => setPrefetch(true)}
         initial="rest"
         whileTap="pressed"
         className="flex w-full flex-col items-stretch gap-1"

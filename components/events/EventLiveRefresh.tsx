@@ -46,7 +46,9 @@ export function EventLiveRefresh({ eventId }: { eventId: string }) {
         subscribed = res.ok;
         if (!res.ok) console.error("[realtime] subscribe failed", res.error?.message);
       })
-      .catch((err) => console.error("[realtime] connect failed", err));
+      .catch((err) => {
+        if (!disposed) console.error("[realtime] connect failed", err);
+      });
 
     return () => {
       disposed = true;
