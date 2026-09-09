@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ChevronRight, CircleMinus, FileText, FolderArchive, Search } from "lucide-react";
+import { Archive, ChevronRight, CircleMinus, FileSignature, FileText, FolderArchive, Inbox, Search, SearchX } from "lucide-react";
 import LottiePlayer from "@/components/LottiePlayer";
 import { FolderCard } from "@/components/events/FolderCard";
 import { FadeIn } from "@/components/ui/FadeIn";
@@ -118,6 +118,7 @@ export function ReportsOverview({ role, items }: Props) {
               ) : (
                 <div className="mt-4">
                   <EmptyState
+                    icon={<SearchX aria-hidden="true" />}
                     title="No matching reports"
                     description={`No results for "${query}". Try an event name or control number.`}
                   />
@@ -207,9 +208,16 @@ export function ReportsOverview({ role, items }: Props) {
               ))}
             </div>
           ) : (
-            <div className="mt-4 rounded-xl border border-dashed border-border bg-surface px-4 py-6 text-center text-sm text-text-secondary">
-              {role === "adviser" ? "No reports are waiting for review." : "No approved reports are waiting to be signed."}
-            </div>
+            <EmptyState
+              icon={role === "adviser" ? <Inbox aria-hidden="true" /> : <FileSignature aria-hidden="true" />}
+              title={role === "adviser" ? "No reports waiting for review" : "Nothing waiting to be signed"}
+              description={
+                role === "adviser"
+                  ? "Reports your treasurer generates will land here for review."
+                  : "Once your adviser approves a report, it will appear here for signing."
+              }
+              className="py-10"
+            />
           )}
         </section>
       </FadeIn>
@@ -254,8 +262,15 @@ export function ReportsOverview({ role, items }: Props) {
             </div>
           ) : (
             <EmptyState
+              icon={<SearchX aria-hidden="true" />}
               title="No matching reports"
-              description={query ? `No results for "${query}". Try a different search.` : "Try another status filter."}
+              description={
+                query
+                  ? `No results for "${query}". Try a different search.`
+                  : filter !== "all"
+                    ? "Try another status filter."
+                    : "Reports generated for your events will appear here."
+              }
             />
           )}
         </section>
@@ -292,9 +307,12 @@ export function ReportsOverview({ role, items }: Props) {
               ))}
             </div>
           ) : (
-            <p className="mt-4 rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-text-secondary">
-              No archived reports yet.
-            </p>
+            <EmptyState
+              icon={<Archive aria-hidden="true" />}
+              title="No archived reports yet"
+              description="Events archived with reports will show up here."
+              className="py-8"
+            />
           )}
         </section>
       </div>
