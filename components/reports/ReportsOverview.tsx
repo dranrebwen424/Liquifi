@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ChevronRight, CircleMinus, FileText, FolderArchive } from "lucide-react";
+import { ChevronRight, CircleMinus, FileText, FolderArchive, Search } from "lucide-react";
 import LottiePlayer from "@/components/LottiePlayer";
 import { FolderCard } from "@/components/events/FolderCard";
 import { FadeIn } from "@/components/ui/FadeIn";
@@ -38,13 +38,50 @@ const statusTextClass = {
   cancelled: "text-error-foreground [&_svg]:text-error-foreground",
 } as const;
 
+function ReportRow({ item, href }: { item: ReportOverviewItem; href: string }) {
+  const status = item.report ? reportStatusMap[item.report.status] : null;
+  return (
+    <Link
+      href={href}
+      className="group flex min-h-16 items-center gap-3 rounded-xl bg-surface-secondary px-4 py-3 transition-[background-color,transform] hover:bg-surface-tertiary active:scale-[0.99]"
+    >
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface text-text-primary shadow-sm">
+        <FileText className="h-4.5 w-4.5" aria-hidden="true" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-2">
+          <span className="truncate text-sm font-semibold text-text-primary">{item.eventName}</span>
+          {status ? (
+            <span className={cn("flex shrink-0 items-center gap-1 text-[10px] font-medium", statusTextClass[item.report!.status])}>
+              <StatusBadge icon={status.icon} variant={status.variant} label={status.label} aria-hidden="true" />
+              {status.label}
+            </span>
+          ) : (
+            <span className="flex shrink-0 items-center gap-1 text-[10px] font-medium text-neutral-foreground [&_svg]:text-neutral-foreground">
+              <StatusBadge icon={CircleMinus} variant="neutral" label="No report yet" aria-hidden="true" />
+              No report yet
+            </span>
+          )}
+        </span>
+        <span className="mt-0.5 block truncate text-xs text-text-secondary">
+          {item.report?.fsDocumentNumber ?? "Generate a financial report"}
+        </span>
+      </span>
+      <ChevronRight className="h-4 w-4 shrink-0 text-text-muted transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+    </Link>
+  );
+}
+
 export function ReportsOverview({ role, items }: Props) {
   const [filter, setFilter] = useState<ReportOverviewFilter>("all");
   // ponytail: query comes from the mobile top bar via ?q= (debounced URL sync)
-  const query = useSearchParams().get("q") ?? "";
+  const searchParams = useSearchParams();
+  const isSearching = searchParams.get("search") === "1";
+  const query = searchParams.get("q") ?? "";
   const featured = useMemo(() => getFeaturedReportItems(items, role), [items, role]);
   const actionRequired = useMemo(() => getActionRequiredReport(items, role), [items, role]);
   const filtered = useMemo(() => filterReportItems(items, filter, query), [items, filter, query]);
+  const searchResults = useMemo(() => filterReportItems(items, "all", query), [items, query]);
   const archived = useMemo(
     () =>
       items
@@ -58,6 +95,46 @@ export function ReportsOverview({ role, items }: Props) {
   );
   const detailHref = (eventId: string) => `/${role}/reports/${eventId}`;
   const featuredTitle = role === "adviser" ? "Pending Reports" : "Ready for Signing";
+
+  // Search mode (mobile top bar): replace the page with prompt/results so other events stay hidden
+  if (isSearching) {
+    return (
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-7 pb-10">
+        <FadeIn delay={0}>
+          {query ? (
+            <section aria-labelledby="search-results-title">
+              <h1 id="search-results-title" className="sr-only">
+                Search results
+              </h1>
+              <p className="text-xs text-text-secondary">
+                {searchResults.length} {searchResults.length === 1 ? "event" : "events"} matching "{query}"
+              </p>
+              {searchResults.length > 0 ? (
+                <div className="mt-4 flex flex-col gap-2">
+                  {searchResults.map((item) => (
+                    <ReportRow key={item.eventId} item={item} href={detailHref(item.eventId)} />
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-4">
+                  <EmptyState
+                    title="No matching reports"
+                    description={`No results for "${query}". Try an event name or control number.`}
+                  />
+                </div>
+              )}
+            </section>
+          ) : (
+            <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+              <Search className="h-10 w-10 text-text-muted" aria-hidden="true" />
+              <p className="text-sm font-medium text-text-primary">Search reports</p>
+              <p className="text-xs text-text-muted">Type an event name or control number to find reports.</p>
+            </div>
+          )}
+        </FadeIn>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-7 pb-10">
@@ -171,40 +248,9 @@ export function ReportsOverview({ role, items }: Props) {
 
           {filtered.length > 0 ? (
             <div className="mt-4 flex flex-col gap-2">
-              {filtered.map((item) => {
-                const status = item.report ? reportStatusMap[item.report.status] : null;
-                return (
-                  <Link
-                    key={item.eventId}
-                    href={detailHref(item.eventId)}
-                    className="group flex min-h-16 items-center gap-3 rounded-xl bg-surface-secondary px-4 py-3 transition-[background-color,transform] hover:bg-surface-tertiary active:scale-[0.99]"
-                  >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface text-text-primary shadow-sm">
-                      <FileText className="h-4.5 w-4.5" aria-hidden="true" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-center gap-2">
-                        <span className="truncate text-sm font-semibold text-text-primary">{item.eventName}</span>
-                        {status ? (
-                          <span className={cn("flex shrink-0 items-center gap-1 text-[10px] font-medium", statusTextClass[item.report!.status])}>
-                            <StatusBadge icon={status.icon} variant={status.variant} label={status.label} aria-hidden="true" />
-                            {status.label}
-                          </span>
-                        ) : (
-                          <span className="flex shrink-0 items-center gap-1 text-[10px] font-medium text-neutral-foreground [&_svg]:text-neutral-foreground">
-                            <StatusBadge icon={CircleMinus} variant="neutral" label="No report yet" aria-hidden="true" />
-                            No report yet
-                          </span>
-                        )}
-                      </span>
-                      <span className="mt-0.5 block truncate text-xs text-text-secondary">
-                        {item.report?.fsDocumentNumber ?? "Generate a financial report"}
-                      </span>
-                    </span>
-                    <ChevronRight className="h-4 w-4 shrink-0 text-text-muted transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
-                  </Link>
-                );
-              })}
+              {filtered.map((item) => (
+                <ReportRow key={item.eventId} item={item} href={detailHref(item.eventId)} />
+              ))}
             </div>
           ) : (
             <EmptyState
