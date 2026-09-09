@@ -10,6 +10,7 @@ import { EventListItem } from "@/components/events/EventListItem";
 import { FolderCard } from "@/components/events/FolderCard";
 import { ArchiveEventRow } from "@/components/events/ArchiveEventRow";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { FadeIn } from "@/components/ui/FadeIn";
 import { FilterDropdown } from "@/components/treasurer/FilterDropdown";
 import type { EventWithMeta } from "@/lib/queries/events";
 
@@ -268,14 +269,15 @@ const router = useRouter();
                   />
                 ) : (
                   <div className="flex flex-col gap-3">
-                    {filtered.map((event) => (
-                      <ArchiveEventRow
-                        key={event.id}
-                        id={event.id}
-                        name={event.name}
-                        createdAt={event.created_at}
-                        href={`${paths.event}/${event.id}`}
-                      />
+                    {filtered.map((event, index) => (
+                      <FadeIn key={event.id} delay={30 + index * 80}>
+                        <ArchiveEventRow
+                          id={event.id}
+                          name={event.name}
+                          createdAt={event.created_at}
+                          href={`${paths.event}/${event.id}`}
+                        />
+                      </FadeIn>
                     ))}
                   </div>
                 )}
@@ -342,8 +344,10 @@ const router = useRouter();
                   key={`mobile-active-grid-${recentActive.length}`}
                   className="grid grid-cols-2 gap-x-4 gap-y-6 px-2"
                 >
-                  {recentActive.map((event) => (
-                    <FolderCard key={event.id} id={event.id} name={event.name} href={`${paths.event}/${event.id}`} />
+                  {recentActive.map((event, index) => (
+                    <FadeIn key={event.id} delay={30 + index * 80}>
+                      <FolderCard id={event.id} name={event.name} href={`${paths.event}/${event.id}`} />
+                    </FadeIn>
                   ))}
                 </div>
               </section>
@@ -379,14 +383,15 @@ const router = useRouter();
                     key={`mobile-archive-${visibleArchived.length}`}
                     className="flex flex-col gap-3"
                   >
-                    {visibleArchived.map((event) => (
-                      <ArchiveEventRow
-                        key={event.id}
-                        id={event.id}
-                        name={event.name}
-                        createdAt={event.created_at}
-                        href={`${paths.event}/${event.id}`}
-                      />
+{visibleArchived.map((event, index) => (
+                      <FadeIn key={event.id} delay={30 + index * 80}>
+                        <ArchiveEventRow
+                          id={event.id}
+                          name={event.name}
+                          createdAt={event.created_at}
+                          href={`${paths.event}/${event.id}`}
+                        />
+                      </FadeIn>
                     ))}
                   </div>
 
@@ -540,18 +545,19 @@ const router = useRouter();
                   key={`desktop-active-grid-${recentActive.length}`}
                   className="grid grid-cols-2 gap-x-5 gap-y-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
                 >
-                  {recentActive.map((event) => (
-                    <EventCard
-                      key={event.id}
-                      id={event.id}
-                      name={event.name}
-                      status={event.status}
-                      budgetTotal={event.budget_total}
-                      totalSpent={event.total_spent}
-                      numEntries={event.num_entries}
-                      createdByName={event.created_by_name}
-                      href={`${paths.event}/${event.id}`}
-                    />
+                  {recentActive.map((event, index) => (
+                    <FadeIn key={event.id} delay={30 + index * 80}>
+                      <EventCard
+                        id={event.id}
+                        name={event.name}
+                        status={event.status}
+                        budgetTotal={event.budget_total}
+                        totalSpent={event.total_spent}
+                        numEntries={event.num_entries}
+                        createdByName={event.created_by_name}
+                        href={`${paths.event}/${event.id}`}
+                      />
+                    </FadeIn>
                   ))}
                 </div>
               </section>
@@ -589,18 +595,19 @@ const router = useRouter();
                             key={`desktop-archive-${year}-${visibleYear.length}`}
                             className="flex flex-col gap-2"
                           >
-                            {visibleYear.map((event) => (
-                              <EventListItem
-                                key={event.id}
-                                id={event.id}
-                                name={event.name}
-                                status={event.status}
-                                budgetTotal={event.budget_total}
-                                totalSpent={event.total_spent}
-                                numEntries={event.num_entries}
-                                createdAt={event.created_at}
-                                href={`${paths.event}/${event.id}`}
-                              />
+                            {visibleYear.map((event, index) => (
+                              <FadeIn key={event.id} delay={30 + index * 80}>
+                                <EventListItem
+                                  id={event.id}
+                                  name={event.name}
+                                  status={event.status}
+                                  budgetTotal={event.budget_total}
+                                  totalSpent={event.total_spent}
+                                  numEntries={event.num_entries}
+                                  createdAt={event.created_at}
+                                  href={`${paths.event}/${event.id}`}
+                                />
+                              </FadeIn>
                             ))}
                           </div>
                         </div>
