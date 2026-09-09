@@ -78,6 +78,11 @@ Update this file after every completed feature. Any AI agent reading this should
 
 *Condensed 2026-09-07 on request — full verbatim history preserved in git. Newest first. Superseded entries are marked [SUPERSEDED] with the replacement named.*
 
+### 2026-09-09 - folder pending dot removed
+
+- **`FolderCard` red pending dot deleted** (user request): removed the `hasPending` prop + `bg-accent` dot span from `components/events/FolderCard.tsx`, its sole caller in `app/treasurer/events/client.tsx`, and the now-dead `has_pending` field in `lib/queries/events.ts` (return type + map + the `pendingEntryIds` Set / "awaiting adviser action" status check — the only consumer). Desktop `EventCard` never had a dot. `tsc --noEmit` green; git history has the code if the indicator ever returns.
+- **`FolderCard` top-right dark slab removed** (follow-up): the light tab path ran its top edge at y=44.44 across the right half, exposing ~44px of the dark `#706D6D` body at the top-right corner ("black dot"). Reshaped the tab's right segment (`H338C346.284 44.4444 …V85Z` → `V12H333C341.284 12 348 18.7157 348 27H353V85Z`) so the top edge sits at y=12 across the full width, giving a uniform 12px rim symmetric with the left corner. Label slot preserved. Pixel-verified via canvas sampling; `tsc --noEmit` green.
+
 ### 2026-09-08 - instant event navigation (native full prefetch)
 
 - **Full prefetch on all event-detail links:** `EventCard`, `FolderCard`, `EventListItem`, `ArchiveEventRow` now render `prefetch` on their `Link`/`MotionLink` — the full dynamic event route is warmed by Next's built-in viewport-first scheduler (visible links first, hover/touch intent next, newer replaces older, off-screen discarded). No custom IntersectionObserver. Receipt images are still NOT prefetched (RSC prefetch transfers no `<img>` bytes; they load progressively after render). `NavItem` + Home View-all links keep the 09-07 intent-only behavior. Supersedes the 09-07 "event/folder links never passively prefetch" stance for these four primitives — that fix targeted loading-shell-only prefetch + doubled CSS-hidden-trees requests; full-RSC prefetch + viewport batching + the 5-min snapshot below is the approved replacement.

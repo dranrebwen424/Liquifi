@@ -74,7 +74,7 @@ export function ActiveEventsClient({
             <FadeIn key={event.id} delay={30 + index * 80}>
               {/* Mobile uses the folder card; desktop uses the event card. */}
               <div className="md:hidden">
-                <FolderCard id={event.id} name={event.name} href={`${basePath}/${event.id}`} hasPending={event.has_pending} />
+                <FolderCard id={event.id} name={event.name} href={`${basePath}/${event.id}`} />
               </div>
               <div className="hidden md:block">
                 <EventCard

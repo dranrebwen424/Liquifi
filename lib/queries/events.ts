@@ -22,8 +22,6 @@ export type EventWithMeta = {
   created_by_name: string;
   /** Most recent activity (last entry/report) timestamp, else event creation. */
   latest_activity_at: string;
-  /** True when the event has entries awaiting adviser action or a pending report. */
-  has_pending: boolean;
 };
 
 export type EntryForDashboard = {
@@ -113,7 +111,6 @@ export const getDepartmentEvents = cache(async function getDepartmentEvents(
   const entryCountMap: Record<string, number> = {};
   const anyEntryIds = new Set<string>();
   const overspendEventIds = new Set<string>();
-  const pendingEntryIds = new Set<string>();
   // Most recent activity per event (entry or report timestamp); falls back to
   // event creation. Used to surface "recently active" events first on home.
   const latestActivity: Record<string, number> = {};
@@ -133,10 +130,6 @@ export const getDepartmentEvents = cache(async function getDepartmentEvents(
       }
       if (isUnresolvedOverspendEntry(row.status, row.causes_overspend, row.overspend_resolved_at)) {
         overspendEventIds.add(row.event_id);
-      }
-      // Entries needing adviser attention: draft, ai_parsed, pending_approval, resubmitted
-      if (["draft", "ai_parsed", "pending_approval", "resubmitted"].includes(row.status)) {
-        pendingEntryIds.add(row.event_id);
       }
     }
   }
@@ -173,7 +166,6 @@ export const getDepartmentEvents = cache(async function getDepartmentEvents(
     is_locked: lockedEventIds.has(e.id),
     budget_locked: budgetLockedIds.has(e.id),
     has_unresolved_overspend: overspendEventIds.has(e.id),
-    has_pending: pendingEntryIds.has(e.id) || lockedEventIds.has(e.id),
     num_locked: 0,
     created_at: e.created_at,
     created_by: e.created_by,

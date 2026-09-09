@@ -9,8 +9,6 @@ type FolderCardProps = {
   name: string;
   /** Override the default treasurer link. */
   href?: string;
-  /** Show red notification dot on the folder corner. */
-  hasPending?: boolean;
 };
 
 const MotionLink = motion.create(Link);
@@ -37,7 +35,7 @@ const slideDownVariants: Variants = {
  * two light-gray front layers (#D9D9D9) that slide down on press.
  * Desktop uses the full EventCard instead.
  */
-export function FolderCard({ id, name, href, hasPending }: FolderCardProps) {
+export function FolderCard({ id, name, href }: FolderCardProps) {
   return (
     // prefetch: full event route warmed by Next's viewport-first scheduler.
     <MotionConfig reducedMotion="user">
@@ -85,15 +83,11 @@ export function FolderCard({ id, name, href, hasPending }: FolderCardProps) {
               transition={pressTransition}
             >
               <path
-                d="M353 85H0V27C0 18.7157 6.71573 12 15 12H120.454C123.784 12 126.896 13.6576 128.754 16.4213L144.619 40.0232C146.476 42.7868 149.588 44.4444 152.918 44.4444H338C346.284 44.4444 353 51.1602 353 59.4444V85Z"
+                d="M353 85H0V27C0 18.7157 6.71573 12 15 12H120.454C123.784 12 126.896 13.6576 128.754 16.4213L144.619 40.0232C146.476 42.7868 149.588 44.4444 152.918 44.4444V12H333C341.284 12 348 18.7157 348 27H353V85Z"
                 fill="#D9D9D9"
               />
             </motion.g>
           </motion.svg>
-          {/* Red pending dot */}
-          {hasPending && (
-            <span className="absolute right-2 top-1.5 h-2.5 w-2.5 rounded-full bg-accent" />
-          )}
         </motion.div>
 
         {/* Event name */}
