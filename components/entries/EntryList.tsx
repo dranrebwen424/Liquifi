@@ -194,7 +194,10 @@ export function EntryList({ entries, isArchived, canMutate, mobileLayout, filter
             : null
         }
         onClose={() => setVoidTarget(null)}
-        onSuccess={() => setSelectedEntry(null)}
+        onSuccess={() => {
+          setSelectedEntry(null);
+          setVoidTarget(null);
+        }}
       />
     </div>
   );

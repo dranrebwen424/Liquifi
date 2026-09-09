@@ -34,19 +34,18 @@ export function VoidEntryModal({ open, entry, onClose, onSuccess }: VoidEntryMod
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
 
   useEffect(() => {
     if (open) {
       setReason("");
       setBusy(false);
       setError(null);
-      setDone(false);
     }
     // ponytail: key off the stable entry id, not the entry object — the parent
     // passes an inline literal rebuilt every render, so `[open, entry]` re-ran
-    // after the post-void router.refresh() and reset `done`, showing the form
-    // again (user could re-submit a now-voided entry).
+    // after the post-void router.refresh() and re-rendered the form (letting a
+    // re-submit of a now-voided entry). Modal now auto-closes on success
+    // (option B), so resetting on a new target id is the only reset needed.
   }, [open, entry?.id]);
 
   const submit = async () => {
@@ -59,7 +58,6 @@ export function VoidEntryModal({ open, entry, onClose, onSuccess }: VoidEntryMod
       setError(result.error ?? "Something went wrong.");
       return;
     }
-    setDone(true);
     router.refresh();
     onSuccess?.();
   };
@@ -124,15 +122,6 @@ export function VoidEntryModal({ open, entry, onClose, onSuccess }: VoidEntryMod
     </div>
   );
 
-  const successContent = () => (
-    <div className="space-y-3 py-2 text-center">
-      <p className="text-sm font-medium text-text-primary">Entry voided</p>
-      <Button variant="outline" className="w-full" onClick={onClose}>
-        Done
-      </Button>
-    </div>
-  );
-
   return (
     <>
       <AnimatePresence>
@@ -159,7 +148,7 @@ export function VoidEntryModal({ open, entry, onClose, onSuccess }: VoidEntryMod
             className="fixed inset-0 z-50 hidden overflow-y-auto p-4 sm:flex sm:items-center sm:justify-center"
           >
             <div className="w-full max-w-md rounded-xl border border-border bg-surface p-6 shadow-card">
-              {done ? successContent() : formContent(entry)}
+              {formContent(entry)}
             </div>
           </motion.div>
 
@@ -172,20 +161,18 @@ export function VoidEntryModal({ open, entry, onClose, onSuccess }: VoidEntryMod
           <div className="flex max-h-[85dvh] flex-col rounded-t-2xl border-t border-border bg-surface shadow-card">
             <div className="mx-auto mt-3 h-1 w-10 shrink-0 rounded-full bg-border-strong" />
             <div className="min-h-0 overflow-y-auto p-6 pb-4">
-              {done ? successContent() : formContent(entry)}
+              {formContent(entry)}
             </div>
-            {!done && (
-              <div className="shrink-0 border-t border-border px-6 py-3">
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={onClose}
-                  className="w-full rounded-full border border-border px-4 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-              </div>
-            )}
+<div className="shrink-0 border-t border-border px-6 py-3">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={onClose}
+                className="w-full rounded-full border border-border px-4 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </CssBottomSheet>
       )}
