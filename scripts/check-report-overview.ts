@@ -23,4 +23,14 @@ assert.deepEqual(filterReportItems(items, "pending").map((item) => item.eventId)
 assert.deepEqual(filterReportItems(items, "approved").map((item) => item.eventId), ["approved"]);
 assert.deepEqual(filterReportItems(items, "rejected").map((item) => item.eventId), ["rejected"]);
 
+// query search: event name match
+assert.deepEqual(filterReportItems(items, "all", "Approved").map((item) => item.eventId), ["approved"]);
+// query search: fsDocumentNumber match
+assert.deepEqual(filterReportItems(items, "all", "FS-2").map((item) => item.eventId), ["pending"]);
+// query search: no match
+assert.deepEqual(filterReportItems(items, "all", "nonexistent").map((item) => item.eventId), []);
+// query + filter combined
+assert.deepEqual(filterReportItems(items, "pending", "FS-2").map((item) => item.eventId), ["pending"]);
+assert.deepEqual(filterReportItems(items, "approved", "FS-2").map((item) => item.eventId), []);
+
 console.log("report overview check: all assertions passed");

@@ -51,7 +51,9 @@ export function getActionRequiredReport(
 export function filterReportItems(
   items: ReportOverviewItem[],
   filter: ReportOverviewFilter,
+  query?: string,
 ): ReportOverviewItem[] {
+  const q = query?.trim().toLowerCase() ?? "";
   return items
     .filter((item) => {
       if (item.eventStatus === "archived") return false;
@@ -60,6 +62,13 @@ export function filterReportItems(
         return item.report?.status === "pending_adviser_approval";
       }
       return item.report?.status === filter;
+    })
+    .filter((item) => {
+      if (!q) return true;
+      return (
+        item.eventName.toLowerCase().includes(q) ||
+        item.report?.fsDocumentNumber.toLowerCase().includes(q)
+      );
     })
     .sort(newestFirst);
 }
