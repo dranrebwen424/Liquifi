@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, CircleMinus, FileText, FolderArchive, Search } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { ChevronRight, CircleMinus, FileText, FolderArchive } from "lucide-react";
 import LottiePlayer from "@/components/LottiePlayer";
 import { FolderCard } from "@/components/events/FolderCard";
 import { FadeIn } from "@/components/ui/FadeIn";
@@ -39,7 +40,8 @@ const statusTextClass = {
 
 export function ReportsOverview({ role, items }: Props) {
   const [filter, setFilter] = useState<ReportOverviewFilter>("all");
-  const [query, setQuery] = useState("");
+  // ponytail: query comes from the mobile top bar via ?q= (debounced URL sync)
+  const query = useSearchParams().get("q") ?? "";
   const featured = useMemo(() => getFeaturedReportItems(items, role), [items, role]);
   const actionRequired = useMemo(() => getActionRequiredReport(items, role), [items, role]);
   const filtered = useMemo(() => filterReportItems(items, filter, query), [items, filter, query]);
@@ -161,16 +163,6 @@ export function ReportsOverview({ role, items }: Props) {
         <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.5fr)_minmax(280px,0.8fr)]">
         <section aria-labelledby="reports-list-title">
           <h2 id="reports-list-title" className="text-lg font-semibold text-text-primary md:text-xl">Reports</h2>
-          <div className="relative mt-3">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" aria-hidden="true" />
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search by event name or control number…"
-                className="w-full rounded-xl border border-border bg-surface py-2.5 pl-9 pr-3 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-              />
-            </div>
 
           <p className="mt-2 text-xs text-text-secondary">
             {filtered.length} {filtered.length === 1 ? "event" : "events"}

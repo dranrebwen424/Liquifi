@@ -28,6 +28,7 @@ export function MobileTopBar({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hidden = isImmersivePage(pathname);
   const keepVisible = pathname === "/treasurer/reports" || pathname === "/adviser/reports";
+  const isReportsPage = keepVisible;
 
   // Hide on scroll down, reappear on scroll up. Translate-only (no height
   // collapse) so it tracks the flow and never causes layout/scroll feedback.
@@ -72,8 +73,10 @@ export function MobileTopBar({
     };
   }, [query, isSearching]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const exitSearch = () => {
-    router.replace(homeHref);
+const exitSearch = () => {
+    // stay on the current page (clear search params) if it hosts search;
+    // ponytail: reports pages must not be kicked back to home
+    router.replace(isReportsPage ? pathname : homeHref);
   };
 
   const enterSearch = () => {
