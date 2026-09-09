@@ -78,6 +78,10 @@ Update this file after every completed feature. Any AI agent reading this should
 
 *Condensed 2026-09-07 on request — full verbatim history preserved in git. Newest first. Superseded entries are marked [SUPERSEDED] with the replacement named.*
 
+### 2026-09-09 - void modal re-submission bug (unstable entry ref)
+
+- **`VoidEntryModal` could be re-submitted after a successful void** (`components/entries/VoidEntryModal.tsx`): the reset effect keyed on `[open, entry]`, but the parent (`EntryList.tsx`) passes `entry` as an inline object literal rebuilt every render (`{ id, amount, label }`). The post-void `router.refresh()` re-render gave `entry` a new reference → the effect re-ran → `setDone(false)` flipped the terminal "Entry voided / Done" screen back to the form (reason still populated, submit re-enabled). A second submit then hit the server guard "Only deducted entries can be voided". Fix: key the reset effect on the stable `entry?.id` instead of the object ref (same class as the `EntryDetailModal` latch pattern). Success screen now persists; description gone, no re-submit. `onSuccess` still only clears `selectedEntry` (deliberate — the success screen is the terminal state under option A). `tsc --noEmit` green.
+
 ### 2026-09-09 - treasure events page spacing + home entrance animation
 
 - **24px top margin on All Events page** (`app/treasurer/events/client.tsx`): root container gained `pt-6` (24px) alongside the existing `pb-16`/`gap-5` — scoped to the page's own wrapper, NOT the shared `TreasurerLayoutShell`, so other treasurer pages keep their current top padding. Requested by user to visually separate the page top from the shell.

@@ -43,7 +43,11 @@ export function VoidEntryModal({ open, entry, onClose, onSuccess }: VoidEntryMod
       setError(null);
       setDone(false);
     }
-  }, [open, entry]);
+    // ponytail: key off the stable entry id, not the entry object — the parent
+    // passes an inline literal rebuilt every render, so `[open, entry]` re-ran
+    // after the post-void router.refresh() and reset `done`, showing the form
+    // again (user could re-submit a now-voided entry).
+  }, [open, entry?.id]);
 
   const submit = async () => {
     if (!entry) return;
