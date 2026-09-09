@@ -80,7 +80,7 @@ export function ReportsOverview({ role, items }: Props) {
             </h2>
             <p className="mt-1.5 text-xs leading-5 text-text-inverse/70 sm:text-sm">
               Your report was <span className="font-semibold text-error">rejected</span> by the Adviser.
-              Review the comments and regenerate the report.
+              <span className="hidden sm:inline"> Review the comments and regenerate the report.</span>
             </p>
             <Link
               href={detailHref(actionRequired.eventId)}
@@ -157,7 +157,7 @@ export function ReportsOverview({ role, items }: Props) {
                 Total of {filtered.length} {filtered.length === 1 ? "event" : "events"}
               </p>
             </div>
-            <SlidersHorizontal className="h-5 w-5 text-text-secondary" aria-hidden="true" />
+            <SlidersHorizontal className="hidden h-5 w-5 text-text-secondary sm:block" aria-hidden="true" />
           </div>
 
           {filtered.length > 0 ? (
