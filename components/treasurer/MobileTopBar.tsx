@@ -27,6 +27,7 @@ export function MobileTopBar({
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hidden = isImmersivePage(pathname);
+  const keepVisible = pathname === "/treasurer/reports" || pathname === "/adviser/reports";
 
   // Hide on scroll down, reappear on scroll up. Translate-only (no height
   // collapse) so it tracks the flow and never causes layout/scroll feedback.
@@ -54,7 +55,7 @@ export function MobileTopBar({
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const collapsed = hidden || scrolledDown;
+  const collapsed = hidden || (!keepVisible && scrolledDown);
 
   // ponytail: debounce URL sync so router.replace doesn't fire on every keystroke
   useEffect(() => {
