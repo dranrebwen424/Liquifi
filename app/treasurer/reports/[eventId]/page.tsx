@@ -1,240 +1,248 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowUpRight, Lock } from "lucide-react";
-import { requireRole } from "@/lib/auth-guard";
-import { getEventDashboard } from "@/lib/queries/events";
-import { getAllReportsByEvent } from "@/lib/queries/reports";
-import { computeSpendingBreakdown } from "@/lib/spending-breakdown";
-import { formatPHP } from "@/lib/format";
+import {
+  ArrowLeft,
+  ArrowUpRight,
+  Check,
+  ChevronDown,
+  Download,
+  Eye,
+} from "lucide-react";
+import { ReportFileCard } from "@/components/reports/ReportFileCard";
 import { ReportGenerationFlow } from "@/components/reports/ReportGenerationFlow";
 import { ReportViewer } from "@/components/reports/ReportViewer";
-import { ReportFileCard } from "@/components/reports/ReportFileCard";
-import { EventStatusBadge } from "@/components/ui/StatusBadge";
-import { LockedBanner } from "@/components/events/LockedBanner";
+import { formatPHP } from "@/lib/format";
+import { getEventDashboard } from "@/lib/queries/events";
+import { getAllReportsByEvent } from "@/lib/queries/reports";
+import {
+  getReportWorkspaceState,
+  type ReportWorkspaceState,
+} from "@/lib/report-workspace";
+import { computeSpendingBreakdown } from "@/lib/spending-breakdown";
+import { requireRole } from "@/lib/auth-guard";
 
 type Props = {
   params: Promise<{ eventId: string }>;
 };
 
-const LOCKED_STATUSES = ["pending_adviser_approval", "approved"];
+const STEPS = ["Create report", "Adviser review", "Sign & archive"];
+
+const WORKSPACE_COPY: Record<
+  ReportWorkspaceState,
+  { eyebrow: string; title: string; description: string }
+> = {
+  empty: {
+    eyebrow: "Next step · Create report",
+    title: "Create your event report",
+    description: "Add the people who will sign, then generate the document for adviser review.",
+  },
+  rejected: {
+    eyebrow: "Action required · Adviser returned report",
+    title: "Update and regenerate",
+    description: "Create a new revision after addressing the adviser’s feedback. Your FS number stays the same.",
+  },
+  cancelled: {
+    eyebrow: "Next step · Create new revision",
+    title: "Generate the report again",
+    description: "Your saved signatories are ready to reuse, and the existing FS number will be preserved.",
+  },
+  pending: {
+    eyebrow: "Current step · Adviser review",
+    title: "Your report is awaiting approval",
+    description: "No action is needed right now. We’ll notify you when it is approved or returned.",
+  },
+  approved: {
+    eyebrow: "Next step · Physical signing",
+    title: "Your report is ready for signing",
+    description: "Download or print the approved report, collect every signature, then return to the event to archive it.",
+  },
+  archived: {
+    eyebrow: "Complete · Archived",
+    title: "This report is complete",
+    description: "The signed event record is permanently read-only. The approved report remains available anytime.",
+  },
+};
 
 export default async function ReportPage({ params }: Props) {
   const { eventId } = await params;
   const user = await requireRole("treasurer");
-
-  // Both reads are independent — fetch in parallel (same total queries).
   const [event, reports] = await Promise.all([
     getEventDashboard(eventId),
     getAllReportsByEvent(eventId),
   ]);
-  if (!event) notFound();
 
-  // Cross-department guard (belt-and-suspenders on top of RLS)
-  if (user.departmentId && event.department_id !== user.departmentId) {
-    notFound();
-  }
+  if (!event) notFound();
+  if (user.departmentId && event.department_id !== user.departmentId) notFound();
 
   const latestReport = reports[0] ?? null;
   const olderReports = reports.slice(1);
-  const isLocked = LOCKED_STATUSES.includes(latestReport?.status ?? "");
-
-  const isArchived = event.status === "archived";
   const breakdown = computeSpendingBreakdown(event.entries);
+  const workspace = getReportWorkspaceState(event.status, latestReport?.status ?? null);
+  const copy = WORKSPACE_COPY[workspace.state];
   const createdDate = new Date(event.created_at).toLocaleDateString("en-PH", {
     year: "numeric",
     month: "short",
     day: "numeric",
   });
+  const remaining = event.budget_total - event.total_spent;
+  const canGenerate = ["empty", "rejected", "cancelled"].includes(workspace.state);
+  const pdfUrl = latestReport ? `/api/reports/${latestReport.id}/pdf` : null;
 
   return (
-    <div className="flex flex-col gap-5 pb-16">
-      {/* ── MOBILE HEADER — immersive, mirrors the event page style ── */}
-      <div className="lg:hidden px-3 pt-6">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-2.5 min-w-0">
-            <Link
-              href="/treasurer/reports"
-              className="mt-0.5 inline-flex shrink-0 items-center justify-center"
-              aria-label="Back to reports"
-            >
-              <ArrowLeft className="h-5 w-5 text-text-primary" />
-            </Link>
-            <div className="min-w-0">
-              <h1 className="min-w-0 truncate text-[20px] font-semibold leading-tight text-text-primary">
-                {event.name}
-              </h1>
-              <p className="mt-0.5 text-[10px] leading-snug text-text-muted">
-                Created {createdDate}
-                {event.created_by_name && event.created_by_name !== "Unknown" && (
-                  <> · by {event.created_by_name}</>
-                )}
-              </p>
-            </div>
-          </div>
-
-          {/* View Event — far right, styled like the "View Report" pill */}
+    <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-3 pb-16 pt-6 sm:px-4 lg:px-0 lg:pt-0">
+      <header className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-2.5">
           <Link
-            href={`/treasurer/events/${eventId}`}
-            className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-[17px] border border-text-primary px-4 py-[10px] text-[12px] font-medium text-text-primary transition-[color,transform,shadow] hover:bg-surface-secondary hover:shadow-sm hover:scale-[1.02] active:scale-[0.98]"
-            title="View event"
+            href="/treasurer/reports"
+            className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-text-primary transition-colors hover:bg-surface-secondary"
+            aria-label="Back to reports"
           >
-            <ArrowUpRight className="h-3 w-3" />
-            View Event
+            <ArrowLeft className="h-5 w-5" />
           </Link>
-        </div>
-      </div>
-
-      {/* ── DESKTOP HEADER (unchanged) ── */}
-      <div className="hidden lg:block">
-        {/* Back link */}
-        <Link
-          href="/treasurer/reports"
-          className="inline-flex items-center gap-1.5 text-sm text-text-secondary transition-colors hover:text-text-primary"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to reports
-        </Link>
-
-        {/* Header — title left */}
-        <div className="mt-3 flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="min-w-0 truncate text-lg font-semibold text-text-primary sm:text-2xl md:text-[28px]">
-                {event.name}
-              </h1>
-              <EventStatusBadge status={event.status} />
-            </div>
-            <p className="mt-0.5 text-[11px] text-text-muted sm:text-xs">
+            <h1 className="truncate text-xl font-semibold leading-tight text-text-primary sm:text-[28px]">
+              {event.name}
+            </h1>
+            <p className="mt-1 text-[11px] text-text-muted sm:text-xs">
               Created {createdDate}
-              {event.created_by_name && event.created_by_name !== "Unknown" && (
-                <> · by {event.created_by_name}</>
-              )}
+              {event.created_by_name !== "Unknown" && <> · by {event.created_by_name}</>}
             </p>
           </div>
         </div>
-      </div>
+        <Link
+          href={`/treasurer/events/${eventId}`}
+          className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full border border-border-strong bg-surface px-3 py-2 text-xs font-medium text-text-primary transition-[color,transform] hover:bg-surface-secondary active:scale-[0.98] sm:px-4 sm:py-2.5"
+        >
+          <ArrowUpRight className="h-3.5 w-3.5" />
+          View Event
+        </Link>
+      </header>
 
-      {/* Locked / Archived banner */}
-      <LockedBanner isLocked={isLocked} isArchived={isArchived} />
+      <ol className="grid grid-cols-3 gap-2" aria-label="Report progress">
+        {STEPS.map((label, index) => {
+          const number = (index + 1) as 1 | 2 | 3;
+          const complete = workspace.state === "archived" || number < workspace.step;
+          const current = workspace.state !== "archived" && number === workspace.step;
+          return (
+            <li key={label} aria-current={current ? "step" : undefined}>
+              <div
+                className={`h-1 rounded-full ${complete ? "bg-success" : current ? "bg-accent" : "bg-border"}`}
+              />
+              <div className="mt-2 flex items-center gap-1.5">
+                {complete && <Check className="h-3 w-3 shrink-0 text-success" />}
+                <span className={`truncate text-[10px] sm:text-xs ${current ? "font-medium text-text-primary" : "text-text-muted"}`}>
+                  {label}
+                </span>
+              </div>
+            </li>
+          );
+        })}
+      </ol>
 
-      {/* Two-column: Report flow + full Spending Breakdown */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:gap-4">
-        {/* Left: generation flow (or locked state) — 3/5 on desktop */}
-        <div className="lg:w-3/5">
-          <div className="rounded-xl border border-border bg-surface p-5 shadow-card sm:p-6">
-            {isArchived && !latestReport ? (
-              <div className="flex flex-col items-center gap-3 py-10 text-center">
-                <Lock className="h-8 w-8 text-text-muted" />
-                <p className="text-sm font-medium text-text-primary">
-                  Event archived
-                </p>
-                <p className="max-w-sm text-xs text-text-muted">
-                  This event is read-only.
-                </p>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-5">
-                {/* Regeneration after cancel/reject is the primary action, so
-                    the flow goes on top with the superseded PDF below it.
-                    Otherwise: viewer first, flow below. */}
-                {!isArchived && !isLocked && latestReport ? (
-                  <>
-                    <ReportGenerationFlow
-                      eventId={eventId}
-                      previousReport={latestReport}
-                    />
-                    <ReportViewer report={latestReport} isArchived={isArchived} />
-                  </>
-                ) : (
-                  <>
-                    {/* Persistent viewer — latest report on file (if any). The
-                        PDF survives navigation and logout/login: it streams
-                        from the proxy route; the page re-fetches it on load. */}
-                    {latestReport && (
-                      <ReportViewer report={latestReport} isArchived={isArchived} />
-                    )}
-                    {/* Generation flow — hidden while locked (pending/approved)
-                        or archived; shown when no report is on file yet. */}
-                    {!isArchived && !isLocked && (
-                      <ReportGenerationFlow
-                        eventId={eventId}
-                        previousReport={latestReport}
-                      />
-                    )}
-                  </>
-                )}
-              </div>
+      <section className="overflow-hidden rounded-2xl bg-surface-inverse p-5 text-text-inverse shadow-card sm:p-8">
+        <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-text-inverse/55">
+          {copy.eyebrow}
+        </p>
+        <h2 className="mt-3 max-w-2xl text-2xl font-semibold leading-tight sm:text-[32px]">
+          {copy.title}
+        </h2>
+        <p className="mt-2 max-w-xl text-xs leading-5 text-text-inverse/65 sm:text-sm sm:leading-6">
+          {copy.description}
+        </p>
+
+        {canGenerate ? (
+          <div className="mt-7 border-t border-text-inverse/15 pt-6">
+            <ReportGenerationFlow eventId={eventId} previousReport={latestReport} />
+          </div>
+        ) : (
+          <div className="mt-6 flex flex-col gap-2 sm:flex-row">
+            {pdfUrl && (
+              <a
+                href={pdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-surface px-5 py-3 text-xs font-semibold text-text-primary transition-[color,transform] hover:bg-surface-secondary active:scale-[0.98]"
+              >
+                <Eye className="h-4 w-4" />
+                {workspace.state === "archived" ? "View archived report" : "View report"}
+              </a>
+            )}
+            {pdfUrl && workspace.state === "approved" && (
+              <a
+                href={`${pdfUrl}?dl=1`}
+                download
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-text-inverse/25 px-5 py-3 text-xs font-semibold text-text-inverse transition-colors hover:bg-text-inverse/10"
+              >
+                <Download className="h-4 w-4" />
+                Download for signing
+              </a>
             )}
           </div>
-        </div>
+        )}
+      </section>
 
-        {/* Right: full Spending Breakdown — target of "See more" on the dashboard.
-            Ponytail: hidden on mobile per product decision — the per-category
-            breakdown lives on the event dashboard; desktop keeps it for context. */}
-        <div
-          id="spending-breakdown"
-          className="hidden scroll-mt-6 lg:block lg:w-2/5"
-        >
-          <div className="rounded-xl border border-border bg-surface p-5 shadow-card sm:p-6">
-            <h2 className="text-base font-semibold text-text-primary">
-              Spending Breakdown
-            </h2>
-            <p className="mt-0.5 text-xs text-text-muted">
-              Per-category spend from deducted entries
-            </p>
+      {latestReport && (
+        <section className="rounded-2xl border border-border bg-surface px-4 py-2 shadow-card sm:px-5">
+          <div className="border-b border-border-light py-3">
+            <h2 className="text-sm font-semibold text-text-primary">Latest report</h2>
+            <p className="mt-0.5 text-xs text-text-muted">Your current report file and available actions</p>
+          </div>
+          <ReportViewer report={latestReport} isArchived={event.status === "archived"} />
+        </section>
+      )}
 
-            {breakdown.length === 0 ? (
-              <p className="mt-6 rounded-lg border border-dashed border-border-strong px-4 py-8 text-center text-xs text-text-muted">
-                No deducted expenses yet — breakdown appears once entries are
-                deducted.
+      <div className="flex flex-col gap-3">
+        <details className="group overflow-hidden rounded-2xl border border-border bg-surface shadow-card">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 [&::-webkit-details-marker]:hidden">
+            <div>
+              <h2 className="text-sm font-semibold text-text-primary">Spending summary</h2>
+              <p className="mt-0.5 text-xs text-text-muted">
+                {breakdown.length} {breakdown.length === 1 ? "category" : "categories"} · {formatPHP(event.total_spent)} spent
               </p>
+            </div>
+            <ChevronDown className="h-4 w-4 shrink-0 text-text-muted transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="border-t border-border px-5 py-5">
+            <div className="grid grid-cols-3 gap-3 rounded-xl bg-surface-secondary p-4">
+              <div><p className="text-[10px] uppercase tracking-wide text-text-muted">Budget</p><p className="mt-1 truncate text-xs font-semibold tabular-nums text-text-primary sm:text-sm">{formatPHP(event.budget_total)}</p></div>
+              <div><p className="text-[10px] uppercase tracking-wide text-text-muted">Spent</p><p className="mt-1 truncate text-xs font-semibold tabular-nums text-text-primary sm:text-sm">{formatPHP(event.total_spent)}</p></div>
+              <div><p className="text-[10px] uppercase tracking-wide text-text-muted">Remaining</p><p className={`mt-1 truncate text-xs font-semibold tabular-nums sm:text-sm ${remaining < 0 ? "text-error" : "text-text-primary"}`}>{remaining < 0 ? `-${formatPHP(Math.abs(remaining))}` : formatPHP(remaining)}</p></div>
+            </div>
+            {breakdown.length === 0 ? (
+              <p className="py-8 text-center text-xs text-text-muted">No deducted expenses yet.</p>
             ) : (
               <div className="mt-5 flex flex-col gap-4">
                 {breakdown.map((item) => (
                   <div key={item.name}>
-                    <div className="flex items-baseline justify-between gap-2">
-                      <p className="truncate text-sm font-medium text-text-primary">
-                        {item.name}
-                      </p>
-                      <p className="shrink-0 text-sm tabular-nums text-text-primary">
-                        {formatPHP(item.amount)}
-                      </p>
+                    <div className="flex items-baseline justify-between gap-3">
+                      <p className="truncate text-sm font-medium text-text-primary">{item.name}</p>
+                      <p className="shrink-0 text-sm tabular-nums text-text-primary">{formatPHP(item.amount)}</p>
                     </div>
-                    <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-border-light">
-                      <div
-                        className="h-full rounded-full bg-accent"
-                        style={{ width: `${Math.max(item.percentage, 1)}%` }}
-                      />
+                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-border-light">
+                      <div className="h-full rounded-full bg-accent" style={{ width: `${Math.max(item.percentage, 1)}%` }} />
                     </div>
-                    <p className="mt-1 text-right text-[11px] text-text-muted">
-                      {item.percentage}%
-                    </p>
                   </div>
                 ))}
               </div>
             )}
           </div>
-        </div>
-      </div>
+        </details>
 
-      {/* Earlier revisions — the newest report stays at the top (cancel if
-          pending); every superseded report (rejected/cancelled) remains here
-          as a list item labeled by its status, like the archive pattern. */}
-      {olderReports.length > 0 && (
-        <div className="rounded-xl border border-border bg-surface p-5 shadow-card sm:p-6">
-          <h2 className="text-base font-semibold text-text-primary">
-            Previous revisions
-          </h2>
-          <p className="mt-0.5 text-xs text-text-muted">
-            Superseded reports stay on record — the current report is above.
-          </p>
-          <div className="mt-3">
-            {olderReports.map((report) => (
-              <ReportFileCard key={report.id} report={report} />
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
+        {olderReports.length > 0 && (
+          <details className="group overflow-hidden rounded-2xl border border-border bg-surface shadow-card">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 [&::-webkit-details-marker]:hidden">
+              <div>
+                <h2 className="text-sm font-semibold text-text-primary">Previous revisions</h2>
+                <p className="mt-0.5 text-xs text-text-muted">{olderReports.length} superseded {olderReports.length === 1 ? "report" : "reports"} kept for your records</p>
+              </div>
+              <ChevronDown className="h-4 w-4 shrink-0 text-text-muted transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="border-t border-border px-5 py-1">
+              {olderReports.map((report) => <ReportFileCard key={report.id} report={report} />)}
+            </div>
+          </details>
+        )}
+      </div>
+    </main>
   );
 }

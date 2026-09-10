@@ -45,6 +45,8 @@ export function SignatorySetup({ eventId, generating, onGenerate }: SignatorySet
 
   useEffect(() => {
     const saved = readSavedList(eventId);
+    // localStorage is client-only, so saved values can only be applied after hydration.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (saved) setSignatories(saved);
   }, [eventId]);
 
@@ -83,10 +85,10 @@ export function SignatorySetup({ eventId, generating, onGenerate }: SignatorySet
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h2 className="text-lg font-semibold text-text-primary">
-          Report Signatories
+        <h2 className="text-base font-semibold text-text-inverse">
+          Add signatories
         </h2>
-        <p className="mt-0.5 text-sm text-text-secondary">
+        <p className="mt-1 text-xs leading-5 text-text-inverse/60">
           Who will sign this report? Their names appear on the generated
           document.
         </p>
@@ -101,14 +103,14 @@ export function SignatorySetup({ eventId, generating, onGenerate }: SignatorySet
                 onChange={(e) => updateRow(index, "position", e.target.value)}
                 placeholder="Position (e.g. Adviser)"
                 disabled={generating}
-                className="rounded-md border border-border bg-surface px-2.5 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:ring-1 focus:ring-accent focus:outline-none disabled:opacity-50"
+                className="rounded-lg border border-text-inverse/20 bg-text-inverse/10 px-3 py-2.5 text-sm text-text-inverse placeholder:text-text-inverse/40 focus:border-text-inverse focus:ring-1 focus:ring-text-inverse focus:outline-none disabled:opacity-50"
               />
               <input
                 value={row.full_name}
                 onChange={(e) => updateRow(index, "full_name", e.target.value)}
                 placeholder="Full name"
                 disabled={generating}
-                className="rounded-md border border-border bg-surface px-2.5 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:ring-1 focus:ring-accent focus:outline-none disabled:opacity-50"
+                className="rounded-lg border border-text-inverse/20 bg-text-inverse/10 px-3 py-2.5 text-sm text-text-inverse placeholder:text-text-inverse/40 focus:border-text-inverse focus:ring-1 focus:ring-text-inverse focus:outline-none disabled:opacity-50"
               />
             </div>
             <button
@@ -116,7 +118,7 @@ export function SignatorySetup({ eventId, generating, onGenerate }: SignatorySet
               onClick={() => removeRow(index)}
               disabled={signatories.length <= 1 || generating}
               aria-label={`Remove ${row.position || "signatory"}`}
-              className="mt-0.5 rounded-full p-2 text-text-muted transition-colors hover:bg-surface-secondary hover:text-error disabled:cursor-not-allowed disabled:opacity-40"
+              className="mt-0.5 rounded-full p-2 text-text-inverse/45 transition-colors hover:bg-text-inverse/10 hover:text-error disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Trash2 className="h-4 w-4" />
             </button>
@@ -128,7 +130,7 @@ export function SignatorySetup({ eventId, generating, onGenerate }: SignatorySet
         type="button"
         onClick={addRow}
         disabled={generating}
-        className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-border-strong px-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:border-accent hover:text-accent disabled:opacity-50"
+        className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-text-inverse/25 px-3 py-2.5 text-xs font-medium text-text-inverse/70 transition-colors hover:border-text-inverse/50 hover:bg-text-inverse/10 hover:text-text-inverse disabled:opacity-50"
       >
         <Plus className="h-3.5 w-3.5" />
         Add signatory
@@ -138,7 +140,7 @@ export function SignatorySetup({ eventId, generating, onGenerate }: SignatorySet
         type="button"
         onClick={handleGenerate}
         disabled={generating || validRows.length === 0}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-6 py-3.5 text-sm font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-surface px-6 py-3.5 text-sm font-semibold text-text-primary transition-[color,transform] hover:bg-surface-secondary active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
       >
         {generating ? (
           <>

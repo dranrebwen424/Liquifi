@@ -23,13 +23,11 @@ type ReportGenerationFlowProps = {
 export function ReportGenerationFlow({ eventId, previousReport }: ReportGenerationFlowProps) {
   const router = useRouter();
   const [screen, setScreen] = useState<Screen>("setup");
-  const [signatories, setSignatories] = useState<ReportSignatoryRow[]>([]);
   const [fsNumber, setFsNumber] = useState<string | null>(null);
   const [reportId, setReportId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleGenerate = async (rows: ReportSignatoryRow[]) => {
-    setSignatories(rows);
     setError(null);
     setScreen("generating");
 
@@ -73,7 +71,7 @@ export function ReportGenerationFlow({ eventId, previousReport }: ReportGenerati
     <div className="flex flex-col gap-4">
       {/* Step 19 flavor: banner for regeneration after rejection/cancellation */}
       {previousReport && screen === "setup" && (
-        <div className="rounded-xl border border-border bg-surface-secondary px-4 py-3 text-xs text-text-secondary">
+        <div className="rounded-xl border border-text-inverse/15 bg-text-inverse/10 px-4 py-3 text-xs leading-5 text-text-inverse/70">
           Previous report {previousReport.fs_document_number} was{" "}
           {previousReport.status.replace(/_/g, " ")}. Regenerating creates a new
           revision of the same FS number.
@@ -81,7 +79,7 @@ export function ReportGenerationFlow({ eventId, previousReport }: ReportGenerati
       )}
 
       {error && screen === "setup" && (
-        <div className="rounded-xl border border-error/30 bg-error-lightest px-4 py-3 text-xs text-text-secondary">
+        <div className="rounded-xl border border-error/30 bg-error-lightest px-4 py-3 text-xs text-error-foreground">
           {error}
         </div>
       )}
@@ -91,16 +89,18 @@ export function ReportGenerationFlow({ eventId, previousReport }: ReportGenerati
       )}
 
       {screen === "generating" && (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-border bg-surface py-16">
-          <Loader2 className="h-8 w-8 animate-spin text-accent" />
-          <p className="text-sm font-medium text-text-primary">Generating report…</p>
-          <p className="text-xs text-text-muted">Assigning FS number and building the document</p>
+        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-text-inverse/15 bg-text-inverse/10 py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-text-inverse" />
+          <p className="text-sm font-medium text-text-inverse">Generating report…</p>
+          <p className="text-xs text-text-inverse/55">Assigning FS number and building the document</p>
         </div>
       )}
 
       {screen === "preview" && reportId && (
         <div className="flex flex-col gap-4">
-          <ReportFileCard report={{ id: reportId, fs_document_number: fsNumber ?? "", status: "pending_adviser_approval" }} />
+          <div className="rounded-xl bg-surface px-4">
+            <ReportFileCard report={{ id: reportId, fs_document_number: fsNumber ?? "", status: "pending_adviser_approval" }} />
+          </div>
 
           {/* Cancel Report — treasurer-only, before the adviser acts */}
           <CancelReportButton reportId={reportId} onCancelled={handleCancelled} />
