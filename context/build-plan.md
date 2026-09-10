@@ -212,7 +212,7 @@ Build the complete event dashboard UI with mock data.
 
 - `/treasurer/events/[eventId]` — Total / Spent / Remaining summary bar (Remaining shown in red/negative styling when overspent)
 - Entry list — receipt/manual type indicator, status, amount, voided entries shown struck-through/tagged
-- "Log Entry" button → `/treasurer/events/[eventId]/entries/new`
+- "Log Entry" button → `/treasurer/events/[eventId]/entries/new` *(superseded: the page was replaced by the dashboard's `LogEntryModal` and deleted — see LogEntryModal below)*
 - "Generate Report" button (disabled state defined, wired in Phase 6)
 - `is_locked` banner shown when a report is pending/approved for this event
 
@@ -230,7 +230,7 @@ Build the complete entry logging UI (both methods) with mock data.
 
 **UI:**
 
-- `/treasurer/events/[eventId]/entries/new` — method toggle: Receipt Upload vs No Receipt (manual form)
+- `/treasurer/events/[eventId]/entries/new` — method toggle: Receipt Upload vs No Receipt (manual form) *(superseded: page deleted — same toggle now lives in `LogEntryModal` on the event dashboard)*
 - Receipt Upload — drag/drop or file picker (image only), "one document per upload" note, upload progress state
 - Receipt Review (post-parse) — all extracted fields shown **read-only**: document type (verbatim), document number, issue date/time, supplier name, amount, itemized breakdown table; Confirm and Discard buttons
 - Manual form — 2-step flow: category icon picker → per-category form

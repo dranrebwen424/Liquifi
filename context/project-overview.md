@@ -42,9 +42,7 @@ Public
 
 Treasurer
   /treasurer/home                          → Events list
-  /treasurer/events/[eventId]              → Event dashboard (Total / Spent / Remaining, entries)
-  /treasurer/events/[eventId]/entries/new  → Receipt upload or manual form
-  /treasurer/reports
+  /treasurer/events/[eventId]              → Event dashboard (Total / Spent / Remaining, entries; "Log Entry" button opens the LogEntryModal — no /entries/new page)
   /treasurer/reports/[eventId]
   /treasurer/notifications
   /treasurer/profile

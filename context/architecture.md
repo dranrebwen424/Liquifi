@@ -48,8 +48,7 @@
 │   │   ├── events/
 │   │   │   ├── new/page.tsx                         → Event creation form
 │   │   │   └── [eventId]/
-│   │   │       ├── page.tsx                         → Event dashboard
-│   │   │       └── entries/new/page.tsx             → Receipt upload or manual form
+│   │   │       └── page.tsx                         → Event dashboard (Log Entry = LogEntryModal on this page)
 │   │   ├── reports/
 │   │   │   ├── page.tsx
 │   │   │   └── [eventId]/page.tsx
