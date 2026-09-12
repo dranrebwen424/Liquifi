@@ -155,7 +155,7 @@ Sidebar (web) / Bottom nav (mobile) — icons, minimal:
 ### Archiving an Event
 
 - Treasurer uploads all pages of the physically signed report.
-- OpenRouter verifies: matching `fs_document_number`, signature-like marks in each signatory block, and matching page count (completeness check only — not a forgery/authenticity check).
+- Gemini verifies: matching `fs_document_number`, signature-like marks in each signatory block, and matching page count (completeness check only — not a forgery/authenticity check).
 - All checks pass → event status becomes `archived` (terminal, fully read-only forever). No further entries, voids, edits, or report regeneration.
 - The approved report remains downloadable/printable indefinitely.
 

@@ -1,4 +1,4 @@
-// Agent I/O contracts — zod schemas for every OpenRouter response we consume.
+// Agent I/O contracts — zod schemas for every AI (Gemini) response we consume.
 // Validate with safeParse, never parse; agent output is not guaranteed to match.
 
 import { z } from "zod";
@@ -143,14 +143,14 @@ export function toParsedReceiptClient(r: ReceiptParseResult): ParsedReceipt {
 
 // ─── Document Verification (signed-report completeness check) ───────
 
-/** Per-check verdict from the OpenRouter document verifier. */
+/** Per-check verdict from the Gemini document verifier. */
 export const documentCheckSchema = z.object({
   passed: z.boolean(),
   reason: z.string().min(1),
 });
 
 /**
- * Raw OpenRouter response for the signed-document completeness check.
+ * Raw Gemini response for the signed-document completeness check.
  * `page_count_observed` is the model's count of distinct pages in the upload —
  * the route cross-checks it against the expected count parsed from the
  * generated PDF, which catches duplicate/missing page uploads that a pure

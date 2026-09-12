@@ -1,4 +1,4 @@
-// Server-only Google Gemini API client for receipt parsing (direct, not OpenRouter).
+// Server-only Google Gemini API client (receipt parsing + document verification).
 // Never import this from client components — it reads GOOGLE_GENERATIVE_AI_API_KEY.
 
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta";

@@ -207,9 +207,9 @@ channel.subscribe();
 
 ---
 
-## Google Gemini (Receipt Parsing)
+## Google Gemini (Receipt Parsing & Document Verification)
 
-**Check first:** `lib/gemini.ts` — receipt OCR/parsing calls Google Gemini directly (free tier, `gemini-3.5-flash-lite`). OpenRouter is used only for signed-document verification. We never call OpenAI directly.
+**Check first:** `lib/gemini.ts` — receipt OCR/parsing and signed-document verification both call Google Gemini directly (free tier, `gemini-3.5-flash-lite`, multi-image `inline_data`). We never call OpenAI directly.
 
 ### Receipt Parsing (`agent/receipt-parser.ts`)
 
@@ -218,7 +218,7 @@ One document per upload — AI never auto-splits multiple documents from one ima
 ```typescript
 // agent/receipt-parser.ts
 // A failed/malformed parse never creates an Entry row — the image stays client-side
-const content = await geminiChatCompletion({
+const { text } = await geminiChatCompletion({
   model: GEMINI_MODEL, // gemini-3.5-flash-lite — pinned in lib/gemini.ts
   messages: [
     { role: "system", content: RECEIPT_EXTRACTION_PROMPT },
@@ -230,7 +230,7 @@ const content = await geminiChatCompletion({
   responseFormat: { type: "json_object" }, // mapped to responseMimeType: application/json
 });
 
-const parsed = JSON.parse(content);
+const parsed = JSON.parse(text);
 ```
 
 **Extracted fields:**
@@ -256,17 +256,17 @@ const parsed = JSON.parse(content);
 
 ---
 
-## OpenRouter (Document Verification)
+## Document Verification (GitHub Gemini)
 
-**Check first:** Check AGENTS.md for an installed OpenRouter skill. OpenRouter is used only for signed-document verification — receipt parsing calls Google Gemini directly.
+**Check first:** `lib/gemini.ts` — signed-document verification calls Google Gemini directly (free tier, `gemini-3.5-flash-lite`), same client as receipt parsing. We never call OpenAI directly.
 
 ### Document Verification (`agent/document-verifier.ts`)
 
 ```typescript
 // agent/document-verifier.ts
 // Signed-document completeness check — not a forgery/authenticity check
-const response = await openrouter.chat.completions.create({
-  model: "gpt-4o",
+const { text } = await geminiChatCompletion({
+  model: GEMINI_MODEL, // gemini-3.5-flash-lite — pinned in lib/gemini.ts
   messages: [
     { role: "system", content: SIGNED_DOCUMENT_PROMPT },
     {
@@ -277,7 +277,10 @@ const response = await openrouter.chat.completions.create({
       })),
     },
   ],
+  responseFormat: { type: "json_object" }, // mapped to responseMimeType: application/json
 });
+
+const parsed = JSON.parse(text);
 ```
 
 **Checks performed:**
@@ -288,13 +291,13 @@ const response = await openrouter.chat.completions.create({
 
 **Rules:**
 
-- Always use **3-attempt fallback**: if OpenRouter returns malformed JSON or fails to extract, retry up to 3 times with the same image
-- After 3 failures, the upload fails gracefully and the treasurer re-uploads
-- Always wrap every OpenRouter call in try/catch — agent failures must never crash the API route
-- Model is always `gpt-4o` (via OpenRouter) — never other models
-- Use `response_format: { type: "json_object" }` for structured output
-- Always parse `response.choices[0].message.content` as string and JSON.parse — even with json_object it returns a string
-- Always validate parsed JSON with zod before using
+- Always use **3-attempt retry**: zod-inconsistent responses retry up to 3 times with the same image; transport/auth failures (`GeminiError`) throw immediately — no retry for a dead key
+- After 3 failed schema attempts, the verification fails gracefully (per-check failures) and the treasurer re-uploads
+- Always wrap every `geminiChatCompletion` call in try/catch — agent failures must never crash the API route
+- Model is always `GEMINI_MODEL` (`gemini-3.5-flash-lite`) — never other models
+- Use `responseFormat: { type: "json_object" }` for structured output
+- Response comes back as `{ text }` — always JSON.parse it and validate with zod before using
+- The archive route maps `GeminiError` to 502 (verification service unavailable) — never a bare 500
 
 ---
 
@@ -548,7 +551,7 @@ await createInsforgeServer()
 ```typescript
 import { z } from "zod";
 
-// OpenRouter response validation
+// Gemini response validation
 const ReceiptParseSchema = z.object({
   document_type_raw: z.string(),
   document_type_category: z.enum([
@@ -583,7 +586,7 @@ if (!result.success) {
 **Rules:**
 
 - Use `safeParse` over `parse` — never throw on validation failure, always handle gracefully
-- Validate every OpenRouter response before using the data — agent output is not guaranteed to match the schema
+- Validate every Gemini response before using the data — agent output is not guaranteed to match the schema
 - Validate API route input bodies with zod schemas — never trust raw request data
 - Schemas for agent responses live in `agent/types.ts`
 - Schemas for API routes live in the route handler file

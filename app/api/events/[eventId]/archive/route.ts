@@ -11,9 +11,10 @@ import {
   verifySignedDocument,
   countPdfPages,
 } from "@/agent/document-verifier";
+import { GeminiError } from "@/lib/gemini";
 
 // Step 25 — Archive Event. The treasurer uploads every page of the fully
-// signed report; OpenRouter verifies completeness (fs number, signature marks,
+// signed report; Gemini verifies completeness (fs number, signature marks,
 // page count); on full pass the event is terminal-archived with the signed
 // pages stored. Any check fails → uploads rolled back, nothing saved, the
 // modal stays open with per-check reasons.
@@ -215,6 +216,11 @@ export async function POST(request: NextRequest, { params }: Props) {
     if (err instanceof Error && "code" in err) {
       const status = (err as Error & { status?: unknown }).status;
       return errorResponse(err.message, typeof status === "number" ? status : 403);
+    }
+    if (err instanceof GeminiError) {
+      // transport/auth failure from the verification call — surface it
+      // instead of the generic message below so the fix is actionable.
+      return errorResponse(`Verification service unavailable: ${err.message}`, 502);
     }
     console.error("[api/events/archive]", err);
     return errorResponse("Something went wrong.", 500);

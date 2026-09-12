@@ -411,7 +411,7 @@ Build the complete signed-document upload / archive UI with mock data.
 
 **Logic:**
 
-- `agent/document-verifier.ts` (OpenRouter) checks: `fs_document_number` on uploaded pages matches this report, signature-like marks present in each expected signatory block, page count matches the originally generated PDF
+- `agent/document-verifier.ts` (Gemini, `gemini-3.5-flash-lite`) checks: `fs_document_number` on uploaded pages matches this report, signature-like marks present in each expected signatory block, page count matches the originally generated PDF
 - Scope explicitly limited to completeness/presence checks — never claims authenticity verification
 - Any check fails → reject upload, show reason, modal stays open, nothing saved
 - All pass → `signed_document_urls`, `signing_confirmed_by/at` saved; `Event.status = archived` (terminal); `archived_at`/`archived_by` recorded

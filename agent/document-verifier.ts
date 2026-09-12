@@ -5,13 +5,13 @@
 // the generated PDF. Never throws on a failed verification — it returns a
 // per-check verdict so the route can reject with reasons and keep nothing.
 
-import { chatCompletion, OpenRouterError } from "@/lib/openrouter";
+import { geminiChatCompletion, GEMINI_MODEL, GeminiError } from "@/lib/gemini";
 import {
   documentVerificationResponseSchema,
   type DocumentVerificationResult,
 } from "@/agent/types";
 
-const MODEL = "gpt-4o"; // pinned — see library-docs.md OpenRouter section
+const MODEL = GEMINI_MODEL; // gemini-3.5-flash-lite — pinned in lib/gemini.ts
 const ATTEMPTS = 3;
 
 const SYSTEM_PROMPT = `You are a document completeness verifier for a Philippine college liquidation system. You are given images of the pages of a PHYSICALLY SIGNED liquidation report, uploaded by the department treasurer, plus the expected document number and the expected signatory list.
@@ -45,8 +45,8 @@ export type VerifySignedDocumentArgs = {
 };
 
 /**
- * Runs the completeness check against OpenRouter.
- * @throws OpenRouterError on transport/auth failure only (caller may 500);
+ * Runs the completeness check against Gemini.
+ * @throws GeminiError on transport/auth failure only (route maps to 502);
  *         a failed verification never throws — it returns the per-check verdict.
  */
 export async function verifySignedDocument({
@@ -79,7 +79,7 @@ export async function verifySignedDocument({
   for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
     const startedAt = Date.now();
     try {
-      const text = await chatCompletion({
+      const { text } = await geminiChatCompletion({
         model: MODEL,
         messages,
         responseFormat: { type: "json_object" },
@@ -103,7 +103,7 @@ export async function verifySignedDocument({
       }
       lastDetail = `schema mismatch: ${result.error.issues[0]?.path.join(".") ?? "?"} — ${result.error.issues[0]?.message ?? "invalid"}`;
     } catch (err) {
-      if (err instanceof OpenRouterError) throw err; // transport/auth — no retry for a dead key
+      if (err instanceof GeminiError) throw err; // transport/auth — no retry for a dead key
       lastDetail = err instanceof Error ? err.message : String(err);
     }
     console.warn(

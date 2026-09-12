@@ -357,16 +357,16 @@ channel.subscribe();
 
 # AI Gateway
 
-**Receipt OCR/parsing calls Google Gemini directly** (`lib/gemini.ts`, free tier, `gemini-3.5-flash-lite`). Signed-document verification goes through OpenRouter. We never call OpenAI directly.
+**Receipt OCR/parsing and signed-document verification both call Google Gemini directly** (`lib/gemini.ts`, free tier, `gemini-3.5-flash-lite`, multi-image `inline_data`). We never call OpenAI directly.
 
-**Credentials:** `GOOGLE_GENERATIVE_AI_API_KEY` (Gemini, receipt parsing) and `OPENROUTER_API_KEY` (document verification) in `.env.local` — server-side only, never exposed to the client.
+**Credentials:** `GOOGLE_GENERATIVE_AI_API_KEY` (Gemini — receipt parsing and document verification) in `.env.local` — server-side only, never exposed to the client. (`OPENROUTER_API_KEY` is legacy/unused — can be removed from env at any time.)
 
 ## Receipt Parsing (`agent/receipt-parser.ts`)
 
 One document per upload — AI never auto-splits multiple documents from one image.
 
 ```typescript
-const content = await geminiChatCompletion({
+const { text } = await geminiChatCompletion({
   model: GEMINI_MODEL, // gemini-3.5-flash-lite — pinned in lib/gemini.ts
   messages: [
     { role: "system", content: RECEIPT_EXTRACTION_PROMPT },
@@ -412,7 +412,7 @@ Signed-document completeness check — **not** a forgery/authenticity check.
 - 3-attempt retry with the same image, then fail gracefully
 - Always use `response_format: { type: "json_object" }` for structured output
 - Always wrap in try/catch — agent failures must never crash the API route
-- Model is always `gpt-4o` via OpenRouter
+- Model is always `GEMINI_MODEL` (`gemini-3.5-flash-lite`) via `lib/gemini.ts` (free tier, multi-image supported)
 
 ---
 
@@ -452,7 +452,7 @@ Signed-document completeness check — **not** a forgery/authenticity check.
 ## zod
 
 - Use `safeParse` over `parse` — never throw on validation failure, handle gracefully
-- Validate every OpenRouter response and API route input body
+- Validate every Gemini response and API route input body
 - Schemas for agent responses in `agent/types.ts`; for API routes inline
 
 ## shadcn/ui
@@ -482,8 +482,7 @@ const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600", "700
 |---|---|
 | `NEXT_PUBLIC_INSFORGE_URL` | `lib/insforge-client.ts`, `lib/insforge-server.ts` |
 | `NEXT_PUBLIC_INSFORGE_ANON_KEY` | `lib/insforge-client.ts`, `lib/insforge-server.ts` |
-| `OPENROUTER_API_KEY` | `agent/` functions |
-| `GOOGLE_GENERATIVE_AI_API_KEY` | `lib/gemini.ts` (receipt parsing) |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | `lib/gemini.ts` (receipt parsing + document verification) |
 | `WEB_PUSH_PUBLIC_KEY` | `lib/web-push.ts`, client subscription |
 | `WEB_PUSH_PRIVATE_KEY` | `lib/web-push.ts` |
 | `WEB_PUSH_SUBJECT` | `lib/web-push.ts` |

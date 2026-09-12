@@ -237,7 +237,7 @@ These are project-specific and non-negotiable:
 - Never use empty catch blocks — always log or handle
 - Console errors always include context prefix: `[component/function name]`
 - User-facing errors must be human readable — never expose raw error messages
-- Agent errors (Gemini/OpenRouter, Polygon) are always logged with enough context to trace back to the entry/report/event — never surface raw agent errors to the UI
+- Agent errors (Gemini, Polygon) are always logged with enough context to trace back to the entry/report/event — never surface raw agent errors to the UI
 - API route errors return `status: 500` with a generic message — never expose internals
 
 ---
@@ -273,7 +273,7 @@ All environment variables defined in `.env.local` for development. Never hardcod
 | ------------------------------------ | ------------------------ |
 | `NEXT_PUBLIC_INSFORGE_URL`           | `lib/insforge-client.ts` |
 | `NEXT_PUBLIC_INSFORGE_ANON_KEY`      | `lib/insforge-client.ts` |
-| `OPENROUTER_API_KEY`                  | `agent/` functions       |
+| `GOOGLE_GENERATIVE_AI_API_KEY`         | `lib/gemini.ts` (receipt parsing + document verification) |
 | `WEB_PUSH_PUBLIC_KEY`                  | `lib/web-push.ts`, client subscription |
 | `WEB_PUSH_PRIVATE_KEY`                 | `lib/web-push.ts`        |
 | `WEB_PUSH_SUBJECT`                     | `lib/web-push.ts`        |

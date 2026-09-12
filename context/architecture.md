@@ -7,7 +7,7 @@
 | Framework                    | Next.js (latest, App Router)               | Full stack framework                                 |
 | Auth + DB + Storage + Realtime + OTP | InsForge                             | Entire backend                                       |
 | Push notifications           | Web Push API + `web-push` + Service Worker  | Adviser/treasurer alerts                             |
-| AI                           | Google Gemini (receipt parsing) + OpenRouter (document verification) | Receipt OCR/parsing, signed-document completeness check |
+| AI                           | Google Gemini (receipt parsing + document verification) | Receipt OCR/parsing, signed-document completeness check |
 | PDF generation               | @react-pdf/renderer                         | Financial Report PDF rendering                       |
 | Immutability                 | Polygon (hash-anchoring only)               | Tamper-evidence for approved reports                 |
 | Styling                      | Tailwind CSS + shadcn/ui                    | UI components and styling                            |
@@ -149,7 +149,7 @@
 ├── lib/
 │   ├── insforge-client.ts                            → InsForge browser client
 │   ├── insforge-server.ts                            → InsForge server client
-│   ├── openrouter.ts                                  → OpenRouter API client
+│   ├── gemini.ts                                     → Google Gemini client (receipt parsing + document verification)
 │   ├── web-push.ts                                    → Push notification sending
 │   ├── polygon.ts                                     → Hash-anchoring transaction submission
 │   ├── auth-guard.ts                                  → Server-side role × department × state checks
@@ -236,7 +236,7 @@ Treasurer uploads signed document pages
         ↓
 API route app/api/events/[eventId]/archive
         ↓
-Calls agent/document-verifier.ts (OpenRouter)
+Calls agent/document-verifier.ts (Gemini)
         ↓
 Checks: fs_document_number match, signature marks per signatory, page count match
         ↓
@@ -508,12 +508,13 @@ export const createInsforgeServer = async () => {
 ```typescript
 // agent/receipt-parser.ts
 // One document per upload — AI never auto-splits multiple documents from one image
-const response = await openrouter.chat.completions.create({
-  model: "...",
+const { text } = await geminiChatCompletion({
+  model: GEMINI_MODEL, // gemini-3.5-flash-lite — pinned in lib/gemini.ts
   messages: [
     { role: "system", content: RECEIPT_EXTRACTION_PROMPT },
     { role: "user", content: [{ type: "image_url", image_url: { url: imageUrl } }] },
   ],
+  responseFormat: { type: "json_object" }, // mapped to responseMimeType: application/json
 });
 // Extracted fields: document_type_raw (verbatim, never forced into an enum),
 // document_type_category (normalization, falls to "other"),
