@@ -198,8 +198,8 @@ Build the complete treasurer events list and event creation UI with mock data.
 **Logic:**
 
 - Server Action `actions/events.ts` — creates `Event` row (`status = open`, `budget_locked` computed, not stored)
-- `budget_total` editable only while `budget_locked = false` — `budget_locked` derived as `EXISTS(entry WHERE event_id = X AND status = 'deducted')`
-- Budget edit form is disabled once `budget_locked = true`, with a visible reason shown, not just a silently failing save
+- `budget_total` is never directly edited — increases go through verified proof uploads (`POST /api/proofs`, `type: "increase"`), gated by `is_locked = false` (no pending/approved report); `budget_locked` derived as `EXISTS(entry WHERE event_id = X)` — any entry row, statuses irrelevant
+- Increase-budget action is disabled once `is_locked = true` (pending/approved report), with a visible reason shown, not just a silently failing save
 - Server Action rejects a budget edit attempt server-side too, even if the UI is bypassed
 
 ---

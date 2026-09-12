@@ -114,12 +114,17 @@ const { data, error } = await insforge
   .select()
   .single();
 
-// Update — always filter by department_id
-const { error } = await insforge
-  .from("events")
-  .update({ budget_total: newTotal })
-  .eq("id", eventId)
-  .eq("department_id", session.department_id);
+// Budget increases — POST /api/proofs (multipart/form-data), not direct DB updates.
+// form fields: eventId, type ("increase"), claimedAmount (numeric string), image (up to 5).
+const form = new FormData();
+form.append("eventId", eventId);
+form.append("type", "increase");
+form.append("claimedAmount", "15000");
+form.append("image", proofImageFile);
+
+const res = await fetch("/api/proofs", { method: "POST", body: form });
+const { success, budget_total, verification_status } = await res.json();
+// verification_status: "matched" → budget_total increased; "mismatch" → audit row only.
 ```
 
 **Rules:**

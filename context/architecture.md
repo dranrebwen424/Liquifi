@@ -105,7 +105,7 @@
 │   ├── report-anchor.ts                              → Polygon hash-anchoring
 │   └── types.ts
 ├── actions/
-│   ├── events.ts                                     → Create event, edit budget (while unlocked)
+│   ├── events.ts                                     → Create event
 │   ├── entries.ts                                     → Confirm/discard receipt entry, submit manual entry
 │   ├── reports.ts                                     → Signatory setup, cancel report
 │   └── departments.ts                                 → Admin department CRUD
@@ -311,8 +311,8 @@ UNIQUE(department_id) WHERE role = 'treasurer' AND account_status = 'active'
 | department_id              | uuid        |                                                                          |
 | created_by                 | uuid        | Attribution only                                                       |
 | created_at                 | timestamptz |                                                                          |
-| budget_total                | decimal(12,2) | Editable only while `budget_locked = false`                          |
-| budget_locked               | boolean     | Derived — true once any entry reaches `deducted`                        |
+| budget_total                | decimal(12,2) | Never edited directly — increases via verified proof upload (POST /api/proofs), gated by `is_locked` |
+| budget_locked               | boolean     | Derived — true once any entry row exists for the event (statuses irrelevant)  |
 | status                     | text        | open / archived                                                        |
 | is_locked                   | boolean     | Derived — true while a Report is `pending_adviser_approval` or `approved` |
 | has_unresolved_overspend   | boolean     | Blocks archiving                                                        |
@@ -568,7 +568,7 @@ Rules the AI agent must never violate:
 - Server Actions never call agent functions directly for AI/blockchain work — those go through API routes.
 - All InsForge server-side writes use `createInsforgeServer()` — never the browser client.
 - Every mutating action re-checks role × department × resource state server-side — never trust client-provided state.
-- `Event.budget_locked`, `Event.is_locked`, `budget_total` editability, and `Entry.status` transitions must always match the state machines in `project-overview.md` — never shortcut a transition.
+- `Event.budget_locked`, `Event.is_locked`, `budget_total` increase flow (proof uploads only, never direct DB updates), and `Entry.status` transitions must always match the state machines in `project-overview.md` — never shortcut a transition.
 - Receipt entries never receive manual field edits after AI parsing — discard and re-upload only.
 - A failed/malformed AI parse never creates an `Entry` row.
 - Void is only permitted while `Event.is_locked = false`, and is always attributed to the **current active treasurer**, regardless of who created the entry.

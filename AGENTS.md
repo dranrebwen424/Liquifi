@@ -30,7 +30,7 @@ Read in this exact order before any implementation:
 
 - **Never use hardcoded hex values or raw Tailwind color classes** — always use `@theme` tokens from `ui-tokens.md` via generated utility classes (`bg-surface`, `text-text-primary`, `border-border`)
 - **State machines are law** — `Event.status`, `Event.budget_locked`, `Event.is_locked`, `Entry.status`, `Report.status` each have strict transition rules. Never shortcut a precondition check, even if it seems safe in one case.
-- **`budget_locked` and `is_locked` are derived** — never persist them as independent booleans. `budget_locked` = EXISTS(entry WHERE event_id = X AND status = 'deducted'). `is_locked` = EXISTS(report WHERE event_id = X AND status IN ('pending_adviser_approval','approved')).
+- **`budget_locked` and `is_locked` are derived** — never persist them as independent booleans. `budget_locked` = EXISTS(entry WHERE event_id = X) — any entry row, statuses irrelevant; locks never reopen. `is_locked` = EXISTS(report WHERE event_id = X AND status IN ('pending_adviser_approval','approved')).
 - **A failed AI parse never creates an Entry row** — the image stays client-side as a retryable upload. Only a successful parse creates the row at `ai_parsed`.
 - **Reports are never overwritten** — every regeneration after rejection/cancellation creates a new `Report` row reusing the same `fs_document_number` with `revision_count` incremented.
 - **Polygon anchoring happens exactly once** — at the moment `Report.status` transitions to `approved`. Never call it from any other trigger.
@@ -196,12 +196,16 @@ const { data, error } = await insforge
   .select()
   .single();
 
-// Update — always filter by department_id
-const { error } = await insforge
-  .from("events")
-  .update({ budget_total: newTotal })
-  .eq("id", eventId)
-  .eq("department_id", session.department_id);
+// Budget increases go through POST /api/proofs (multipart/form-data), not direct DB updates.
+const form = new FormData();
+form.append("eventId", eventId);
+form.append("type", "increase");
+form.append("claimedAmount", "15000");
+form.append("image", proofImageFile); // up to 5 images per request
+
+const res = await fetch("/api/proofs", { method: "POST", body: form });
+const { success, budget_total, verification_status } = await res.json();
+// verification_status: "matched" → budget_total increased, "mismatch" → proof recorded, budget unchanged
 ```
 
 **Rules:**
@@ -248,8 +252,8 @@ UNIQUE(department_id) WHERE role = 'treasurer' AND account_status = 'active'
 | name | text | |
 | department_id | uuid | |
 | created_by | uuid | Attribution only |
-| budget_total | decimal(12,2) | Editable only while `budget_locked = false` |
-| budget_locked | boolean | **Derived** — true once any entry reaches `deducted` |
+| budget_total | decimal(12,2) | Never directly edited — increases via verified proof upload (`POST /api/proofs`), gated by `is_locked` |
+| budget_locked | boolean | **Derived** — true once any entry row exists for the event (statuses irrelevant) |
 | status | text | open / archived |
 | is_locked | boolean | **Derived** — true while Report is pending/approved |
 | has_unresolved_overspend | boolean | Blocks archiving |

@@ -78,6 +78,13 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Decisions Made During Build
 
+### 2026-09-13 - Budget docs sync: add-via-proof flow, stale "edit budget" removed
+
+- **Doc audit fixed the 08-30 rule's orphaned references.** The "budget add via `POST /api/proofs` (increase)" flow replaced the old direct `events.update({ budget_total })` editing path in `AGENTS.md` (table notes + SDK example), `context/project-overview.md`, `context/architecture.md` (`events` table row, actions layout, rule), `context/build-plan.md`, `context/code-standards.md`, `context/library-docs.md` (SDK example), and `types/index.ts` comment (now `EXISTS(entry)` any-status). `budget_locked` is documented identically everywhere: derived from **any entry row existing** (statuses irrelevant), never reopens; increase gate is `is_locked` (no pending/approved report) per `app/api/proofs/route.ts`.
+- **Dead prop removed:** `BudgetSummary`'s `budgetLocked` prop was passed at 4 call sites (treasurer/adviser event pages) but never read — the increase button gates on `canMutate && !isLocked` (`BudgetSummary.tsx:55`). Deleted prop + all 4 usages. `budget_locked` stays in the `events` row type/query output (audit/history), it's just no longer threaded into the UI.
+- **Verifier updated:** `scripts/check-void-logic.ts` still asserted the old "ever deducted" derivation (`["pending_approval"] → false`), which now fails against `deriveBudgetLocked` = `statuses.length > 0`. Rewrote assertions to the current rule — any entry row locks, voided stays locked, empty unlocks. `npx tsx scripts/check-void-logic.ts` green.
+- **Verification:** `npx tsc --noEmit` green; void-logic script green.
+
 ### 2026-09-12 - Budget History read path (BudgetProof feature, UI slice)
 
 - **Figma-directed UI slice:** added a full-width white **Budget History** card below the two CTAs on the treasurer event dashboard (Figma 171:212; `EventDashboardActions.tsx`, mobile-only - the desktop CTA frame is `lg:hidden` on that route). Nothing else on the event page changed.

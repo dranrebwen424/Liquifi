@@ -784,7 +784,7 @@ export async function withdrawPendingEntry(entryId: string) {
  *
  * Void authority belongs to the CURRENT ACTIVE treasurer of the department,
  * verified fresh at void time — never assumed from `created_by`.
- * Voiding never unlocks `budget_locked` (that flag means "ever deducted").
+ * Voiding never unlocks `budget_locked` (derived from any entry row existing).
  */
 export async function voidEntry(entryId: string, reason: string) {
   try {

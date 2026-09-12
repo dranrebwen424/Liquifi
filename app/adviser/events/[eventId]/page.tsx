@@ -101,7 +101,6 @@ export default async function AdviserEventPage({ params }: Props) {
           canMutate={false}
           isArchived={isArchived}
           isLocked={event.is_locked}
-          budgetLocked={event.budget_locked}
           readOnly
           className="mt-4"
           mobileOnly
@@ -207,7 +206,6 @@ export default async function AdviserEventPage({ params }: Props) {
             canMutate={false}
             isArchived={isArchived}
             isLocked={event.is_locked}
-            budgetLocked={event.budget_locked}
             readOnly
             className="lg:w-3/5"
           />

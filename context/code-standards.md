@@ -221,7 +221,7 @@ const insforge = await createInsforgeServer();
 These are project-specific and non-negotiable:
 
 - Every mutating action checks, server-side: **(a)** actor's role, **(b)** actor's `department_id` match, **(c)** target resource's current state. Never trust any of these from the client.
-- `Event.budget_total` is only writable while `budget_locked = false`. `budget_locked` is derived (`true` once any entry for the event reaches `deducted`) — never store it as a persisted boolean that could drift from the derivation.
+- `Event.budget_total` is never directly updated — budget increases go through verified proof uploads (`POST /api/proofs`, `type: "increase"`), gated by `is_locked` (no pending/approved report). `budget_locked` is derived (`true` once any entry row exists for the event, regardless of status) — never store it as a persisted boolean that could drift from the derivation.
 - `Event.is_locked` is derived from whether a `Report` row for the event is `pending_adviser_approval` or `approved` — never persist it as an independent field that could go stale.
 - Void actions must check `Event.is_locked = false` and must attribute to the **current active treasurer**, looked up fresh at void time — never assume the entry's `created_by` has void rights.
 - Report regeneration after rejection or cancellation always creates a **new** `Report` row. Never update an existing `Report` row's `pdf_url` in place.

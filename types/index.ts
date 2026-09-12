@@ -191,5 +191,5 @@ export type GuardContext = {
 export type PreconditionCheck = (ctx: GuardContext) => Promise<void> | void;
 
 // ─── Derived (computed at query time, never stored) ─────────────────
-/** budget_locked = EXISTS(entry WHERE event_id = X AND status = 'deducted') */
+/** budget_locked = EXISTS(entry WHERE event_id = X) — any entry row, statuses irrelevant */
 /** is_locked = EXISTS(report WHERE event_id = X AND status IN ('pending_adviser_approval','approved')) */

@@ -108,7 +108,6 @@ export default async function EventDashboardPage({ params }: Props) {
           canMutate={canMutate}
           isArchived={isArchived}
           isLocked={event.is_locked}
-          budgetLocked={event.budget_locked}
           className="mt-4"
           mobileOnly
         />
@@ -215,7 +214,6 @@ export default async function EventDashboardPage({ params }: Props) {
             canMutate={canMutate}
             isArchived={isArchived}
             isLocked={event.is_locked}
-            budgetLocked={event.budget_locked}
             className="lg:w-3/5"
           />
 

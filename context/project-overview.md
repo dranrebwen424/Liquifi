@@ -110,7 +110,7 @@ Sidebar (web) / Bottom nav (mobile) — icons, minimal:
 ### Event & Budget
 
 - Treasurer creates an event with a name and total budget (`budget_total`).
-- `budget_total` is editable only until the first entry is deducted — once any entry reaches `deducted` status, the budget is permanently locked (historical accuracy).
+- `budget_total` is never directly edited. Budget **increases** are submitted as verified proof uploads (`IncreaseBudgetModal` → `POST /api/proofs`, `type: "increase"`) — a matched proof adds the claimed amount to the running total. Gate: increase allowed only while `is_locked = false` (no pending/approved report). The budget is locked once any entry row exists for the event (`budget_locked` derived regardless of status) and never reopens.
 - Event dashboard shows Total / Spent / Remaining in real time.
 
 ### Logging Expenses — Two Methods

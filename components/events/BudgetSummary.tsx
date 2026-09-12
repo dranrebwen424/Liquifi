@@ -15,12 +15,6 @@ type BudgetSummaryProps = {
   canMutate: boolean;
   isArchived: boolean;
   isLocked: boolean;
-  /**
-   * Kept for caller compatibility — no longer gates the budget UI.
-   * Budgets are now increase-only via verified proofs; the only lock is
-   * `isLocked` (report pending/approved).
-   */
-  budgetLocked?: boolean;
   /** Adviser/admin read-only mode — omits all mutating controls entirely. */
   readOnly?: boolean;
   /** Mobile-only Figma layout — shows budget info with creator details. */
