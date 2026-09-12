@@ -5,7 +5,6 @@ import {
   useEffect,
   useRef,
   useState,
-  type CSSProperties,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
@@ -48,8 +47,12 @@ export function CssBottomSheet({
   onClose,
 }: CssBottomSheetProps) {
   const [mounted, setMounted] = useState(open);
-  const [entered, setEntered] = useState(false);
-  const [dragging, setDragging] = useState(false);
+  // Render-time translate (px). `null` means "first frame off-screen: 100%".
+  // Drag moves write the transform imperatively (no React renders on move, so
+  // the finger is never a frame behind); settle/close sync this state to the
+  // current offset first, then animate via state commits so the CSS transition
+  // always runs between two rendered states.
+  const [sheetTranslate, setSheetTranslate] = useState<number | null>(null);
   const [snapIndex, setSnapIndex] = useState(TOP_INDEX);
   const [springBack, setSpringBack] = useState(false);
   const sheetRef = useRef<HTMLDivElement | null>(null);
@@ -69,15 +72,35 @@ export function CssBottomSheet({
   const bottomPullAccum = useRef(0);
   const bottomPullElement = useRef<HTMLElement | null>(null);
   const bottomPullTimeout = useRef<number | null>(null);
+  const sheetSettleTimeout = useRef<number | null>(null);
+  const sheetSettleFrame = useRef<number | null>(null);
   // Momentum: frame + target of the post-release glide (null while idle).
   const momentumFrame = useRef<number | null>(null);
   const momentumScrollable = useRef<HTMLElement | null>(null);
 
-  const setSheetTransition = (transition: string): void => {
+  const setSheetTransition = useCallback((transition: string): void => {
     sheetRef.current?.style.setProperty("transition", transition);
-  };
+  }, []);
 
-  const setSheetOffset = (nextOffset: number): void => {
+  const cancelSheetAnimation = useCallback((): void => {
+    if (sheetSettleTimeout.current !== null) {
+      window.clearTimeout(sheetSettleTimeout.current);
+      sheetSettleTimeout.current = null;
+    }
+    if (sheetSettleFrame.current !== null) {
+      cancelAnimationFrame(sheetSettleFrame.current);
+      sheetSettleFrame.current = null;
+    }
+  }, []);
+
+  const setCursor = useCallback((grabbing: boolean): void => {
+    const sheet = sheetRef.current;
+    if (!sheet) return;
+    sheet.classList.toggle("cursor-grabbing", grabbing);
+    sheet.classList.toggle("cursor-grab", !grabbing);
+  }, []);
+
+  const setSheetOffset = useCallback((nextOffset: number): void => {
     // An up-drag past the top snap is rubber-banded (elastic) rather than
     // hard-clamped. Settle only ever writes non-negative snap targets, so
     // only live drags end up negative here.
@@ -85,10 +108,43 @@ export function CssBottomSheet({
     const shaped = nextOffset < 0 ? elasticOffset(nextOffset) : nextOffset;
     offsetRef.current = clampSheetTranslate(shaped, sheetHeight.current);
     // Pointer-move transforms bypass React state. React renders were one
-    // pointer event behind on real drags; a CSS variable write stays on the
-    // compositor and tracks the finger immediately.
-    sheetRef.current?.style.setProperty("--sheet-y", `${offsetRef.current}px`);
-  };
+    // pointer event behind on real drags; a direct transform write stays on the
+    // compositor and tracks the finger immediately. The rendered state is
+    // synced back to this offset at settle time (see animateSheetTo).
+    if (sheetRef.current) {
+      sheetRef.current.style.transform = `translate3d(0, ${offsetRef.current}px, 0)`;
+    }
+  }, []);
+
+  const animateSheetTo = useCallback((
+    targetOffset: number,
+    easing: string,
+    onDone?: () => void,
+  ): void => {
+    const sheet = sheetRef.current;
+    const from = offsetRef.current;
+    if (!sheet || Math.abs(from - targetOffset) < 0.5) {
+      setSheetTranslate(targetOffset);
+      onDone?.();
+      return;
+    }
+
+    cancelSheetAnimation();
+    // Sync the rendered state to where the finger left the sheet before any
+    // re-render (a parent `onClose` render committing a stale 0 would yank the
+    // sheet back to the top). Then the next frames transition between two
+    // state-rendered values, which Chrome animates reliably.
+    setSheetTranslate(from);
+    setSheetTransition(`transform ${SHEET_MS}ms ${easing}`);
+    sheetSettleFrame.current = requestAnimationFrame(() => {
+      sheetSettleFrame.current = null;
+      setSheetTranslate(targetOffset);
+    });
+    sheetSettleTimeout.current = window.setTimeout(() => {
+      sheetSettleTimeout.current = null;
+      onDone?.();
+    }, SHEET_MS);
+  }, [cancelSheetAnimation, setSheetTransition]);
 
   const bottomPullTarget = (scrollable: HTMLElement): HTMLElement => {
     const first = scrollable.firstElementChild;
@@ -170,18 +226,12 @@ export function CssBottomSheet({
     activePointer.current = null;
     scrollTarget.current = null;
     draggingRef.current = false;
-    setDragging(false);
+    setCursor(false);
     velocitySamples.current = [];
     rawOffsetRef.current = 0;
     topPullAccum.current = 0;
     bottomPullAccum.current = 0;
-  }, []);
-
-  const resetSheet = useCallback((): void => {
-    resetBottomPull(false);
-    clearDragState();
-    setSheetOffset(0);
-  }, [clearDragState, resetBottomPull]);
+  }, [setCursor]);
 
   // Post-release inertia for the JS-driven scroll (the whole sheet subtree is
   // touch-action: none, so the browser never animates a glide itself). A
@@ -280,63 +330,72 @@ export function CssBottomSheet({
       if (offsetRef.current <= MIN_SHEET_DRAG) {
         setSpringBack(false);
         setSnapIndex(TOP_INDEX);
-        setSheetTransition(`transform ${SHEET_MS}ms ${SHEET_EASE}`);
-        setSheetOffset(0);
+        animateSheetTo(0, SHEET_EASE);
         return;
       }
-      // Fast fling down or a slow drag past the mid line: slide away.
-      setSheetTransition(`transform ${SHEET_MS}ms ${SHEET_EASE}`);
+      // Fast fling down or a slow drag past the mid line: slide away. Sync
+      // the rendered state to where the finger left the sheet BEFORE the
+      // parent `onClose` re-render commits — a stale 0 render would yank the
+      // sheet back to the top before the exit slide.
+      setSheetTranslate(offsetRef.current);
       onClose?.();
       return;
     }
     // Slow release before the mid line: spring back to the snap the
     // gesture started from (fling-up arrives here too, with `spring` false).
-    setSheetTransition(
-      target.spring
-        ? `transform ${SHEET_MS}ms ${SHEET_SPRING_EASE}`
-        : `transform ${SHEET_MS}ms ${SHEET_EASE}`,
-    );
     setSpringBack(target.spring);
     setSnapIndex(target.index);
-    setSheetOffset(snapTranslate(target.index, sheetHeight.current));
-  }, [clearDragState, onClose, resetBottomPull, startMomentum]);
+    animateSheetTo(
+      snapTranslate(target.index, sheetHeight.current),
+      target.spring ? SHEET_SPRING_EASE : SHEET_EASE,
+    );
+  }, [animateSheetTo, clearDragState, onClose, resetBottomPull, startMomentum]);
 
   useEffect(() => {
     if (open) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-then-animate: render off-screen first; the layout effect below flips `entered` deterministically so the CSS transition runs on every open
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-then-animate: render off-screen first; the post-paint effect commits `sheetTranslate` to 0 so the CSS transition runs on every open, and reopening from a closed offset (height px) must start off-screen again
       setMounted(true);
-      setSheetTransition(`transform ${SHEET_MS}ms ${SHEET_EASE}`);
+      setSheetTranslate(null);
       setSnapIndex(TOP_INDEX);
-      setSheetOffset(0);
       setSpringBack(false);
       return;
     }
 
-    resetSheet();
-    setEntered(false);
-    const timeout = window.setTimeout(() => setMounted(false), SHEET_MS);
-    return () => window.clearTimeout(timeout);
-  }, [open, resetSheet]);
+    animateSheetTo(sheetHeight.current || sheetRef.current?.offsetHeight || 320, SHEET_EASE, () => {
+      setMounted(false);
+      resetBottomPull(false);
+      clearDragState();
+      rawOffsetRef.current = 0;
+      offsetRef.current = 0;
+    });
+    return cancelSheetAnimation;
+  }, [animateSheetTo, cancelSheetAnimation, clearDragState, open, resetBottomPull, setSheetOffset, setSheetTransition]);
 
-  // Deterministic entrance: `mounted` commits the sheet at `translate3d(0,
-  // 100%, 0)`, and this post-paint effect runs only after that off-screen frame
-  // has been painted and laid out (React guarantees effects run post-paint).
-  // Flipping `entered` here makes the CSS transition start from a frame the
-  // browser has definitely seen. The previous single requestAnimationFrame in
-  // the open effect could be batched with `setMounted` into one commit, so the
-  // starting frame was never painted and the sheet popped in without sliding.
+  // Deterministic entrance: `mounted` + `sheetTranslate: null` commits the sheet
+  // at `translate3d(0, 100%, 0)`, and this post-paint effect runs only after
+  // that off-screen frame has been painted and laid out (React guarantees
+  // effects run post-paint). Committing `sheetTranslate` to 0 here makes the
+  // CSS transition start from a frame the browser has definitely seen — the
+  // previous single requestAnimationFrame in the open effect could be batched
+  // with `setMounted` into one commit, so the starting frame was never painted
+  // and the sheet popped in without sliding.
   useEffect(() => {
     if (!mounted) return;
-    void sheetRef.current?.offsetHeight;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-then-animate: the sheet is already painted off-screen; flipping `entered` is the animation trigger, not a cascading render
-    setEntered(true);
-  }, [mounted]);
+    const sheet = sheetRef.current;
+    if (!sheet) return;
+    sheetHeight.current = sheet.offsetHeight;
+    setSheetTransition(`transform ${SHEET_MS}ms ${SHEET_EASE}`);
+    // mount-then-animate: the sheet is already painted off-screen; committing
+    // `sheetTranslate` is the animation trigger, not a cascading render
+    setSheetTranslate(0);
+  }, [mounted, setSheetTransition]);
 
   useEffect(() => () => {
+    cancelSheetAnimation();
     if (momentumFrame.current !== null) cancelAnimationFrame(momentumFrame.current);
     if (bottomPullTimeout.current !== null) window.clearTimeout(bottomPullTimeout.current);
     momentumScrollable.current = null;
-  }, []);
+  }, [cancelSheetAnimation]);
 
   const findScrollableParent = (
     target: EventTarget | null,
@@ -371,6 +430,7 @@ export function CssBottomSheet({
     scrollTarget.current = findScrollableParent(event.target, event.currentTarget);
     // A new touch stops any glide in flight; the next gesture starts with a
     // fresh rubber-band budget.
+    cancelSheetAnimation();
     resetBottomPull(false);
     if (momentumFrame.current !== null) {
       cancelAnimationFrame(momentumFrame.current);
@@ -388,7 +448,6 @@ export function CssBottomSheet({
 
     if (!draggingRef.current) {
       draggingRef.current = true;
-      setDragging(true);
       // Explicit capture only for mouse/pen: touch already implicitly captures
       // to the pointerdown target for the whole gesture (moves bubble through
       // the sheet root), and calling setPointerCapture on a touch pointer
@@ -486,15 +545,15 @@ export function CssBottomSheet({
       className={cn(
         "fixed inset-x-0 bottom-0 z-50 overscroll-y-contain touch-none select-none transform-gpu motion-reduce:transition-none",
         hideAt === "md" ? "md:hidden" : "sm:hidden",
-        dragging ? "cursor-grabbing transition-none" : cn("cursor-grab transition-transform duration-[450ms]", springBack ? "ease-[cubic-bezier(0.34,1.56,0.64,1)]" : "ease-[cubic-bezier(0.22,1,0.36,1)]"),
+        cn("cursor-grab transition-transform duration-[450ms]", springBack ? "ease-[cubic-bezier(0.34,1.56,0.64,1)]" : "ease-[cubic-bezier(0.22,1,0.36,1)]"),
         className,
       )}
       style={{
-        "--sheet-y": "0px",
-        transform: entered
-          ? "translate3d(0, var(--sheet-y), 0)"
-          : "translate3d(0, 100%, 0)",
-      } as CSSProperties}
+        transform:
+          sheetTranslate === null
+            ? "translate3d(0, 100%, 0)"
+            : `translate3d(0, ${sheetTranslate}px, 0)`,
+      }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={finishDrag}
