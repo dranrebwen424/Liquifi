@@ -5,6 +5,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type CSSProperties,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
@@ -22,6 +23,8 @@ import {
 } from "@/lib/bottom-sheet-drag";
 
 const SHEET_MS = 450;
+const SHEET_EASE = "cubic-bezier(0.22,1,0.36,1)";
+const SHEET_SPRING_EASE = "cubic-bezier(0.34,1.56,0.64,1)";
 const VELOCITY_SAMPLES = 5;
 // A sheet only dismisses once it has genuinely been dragged this far. A fast
 // down-gesture that just scrolls the content (ending while the sheet is still
@@ -46,7 +49,6 @@ export function CssBottomSheet({
 }: CssBottomSheetProps) {
   const [mounted, setMounted] = useState(open);
   const [entered, setEntered] = useState(false);
-  const [offset, setOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [snapIndex, setSnapIndex] = useState(TOP_INDEX);
   const [springBack, setSpringBack] = useState(false);
@@ -55,10 +57,10 @@ export function CssBottomSheet({
   const activePointer = useRef<number | null>(null);
   const startY = useRef(0);
   const lastY = useRef(0);
+  const rawOffsetRef = useRef(0);
   const offsetRef = useRef(0);
   const startSnapRef = useRef(TOP_INDEX);
   const draggingRef = useRef(false);
-  const frame = useRef<number | null>(null);
   const scrollTarget = useRef<HTMLElement | null>(null);
   const velocitySamples = useRef<Array<{ time: number; y: number }>>([]);
   // Gesture-scoped: how much of the current top-pull has been accumulated so
@@ -71,20 +73,26 @@ export function CssBottomSheet({
   const momentumFrame = useRef<number | null>(null);
   const momentumScrollable = useRef<HTMLElement | null>(null);
 
+  const setSheetTransition = (transition: string): void => {
+    sheetRef.current?.style.setProperty("transition", transition);
+  };
+
   const setSheetOffset = (nextOffset: number): void => {
     // An up-drag past the top snap is rubber-banded (elastic) rather than
     // hard-clamped. Settle only ever writes non-negative snap targets, so
     // only live drags end up negative here.
+    rawOffsetRef.current = nextOffset;
     const shaped = nextOffset < 0 ? elasticOffset(nextOffset) : nextOffset;
     offsetRef.current = clampSheetTranslate(shaped, sheetHeight.current);
-    // Write synchronously. A rAF-guarded version once coalesced rapid moves,
-    // but a frame scheduled here could be cancelled by React's effect
-    // teardown before it ran, leaving `frame.current` permanently non-null and
-    // wedging the live drag (the sheet stopped tracking the finger). React
-    // batches the setState fine on its own; the coalescing buy was not worth
-    // the wedge. ponytail: if a drag ever needs per-frame coalescing, guard
-    // with a timestamp-last-commit instead of a rAF id.
-    setOffset(offsetRef.current);
+    // Pointer-move transforms bypass React state. React renders were one
+    // pointer event behind on real drags; a CSS variable write stays on the
+    // compositor and tracks the finger immediately.
+    sheetRef.current?.style.setProperty("--sheet-y", `${offsetRef.current}px`);
+  };
+
+  const bottomPullTarget = (scrollable: HTMLElement): HTMLElement => {
+    const first = scrollable.firstElementChild;
+    return first instanceof HTMLElement ? first : scrollable;
   };
 
   const setBottomPull = (element: HTMLElement, pull: number): void => {
@@ -113,7 +121,7 @@ export function CssBottomSheet({
       return;
     }
 
-    element.style.transition = "transform 260ms cubic-bezier(0.34,1.56,0.64,1)";
+    element.style.transition = `transform 260ms ${SHEET_SPRING_EASE}`;
     element.style.transform = "";
     bottomPullTimeout.current = window.setTimeout(() => {
       element.style.transition = "";
@@ -164,6 +172,7 @@ export function CssBottomSheet({
     draggingRef.current = false;
     setDragging(false);
     velocitySamples.current = [];
+    rawOffsetRef.current = 0;
     topPullAccum.current = 0;
     bottomPullAccum.current = 0;
   }, []);
@@ -271,15 +280,22 @@ export function CssBottomSheet({
       if (offsetRef.current <= MIN_SHEET_DRAG) {
         setSpringBack(false);
         setSnapIndex(TOP_INDEX);
+        setSheetTransition(`transform ${SHEET_MS}ms ${SHEET_EASE}`);
         setSheetOffset(0);
         return;
       }
       // Fast fling down or a slow drag past the mid line: slide away.
+      setSheetTransition(`transform ${SHEET_MS}ms ${SHEET_EASE}`);
       onClose?.();
       return;
     }
     // Slow release before the mid line: spring back to the snap the
     // gesture started from (fling-up arrives here too, with `spring` false).
+    setSheetTransition(
+      target.spring
+        ? `transform ${SHEET_MS}ms ${SHEET_SPRING_EASE}`
+        : `transform ${SHEET_MS}ms ${SHEET_EASE}`,
+    );
     setSpringBack(target.spring);
     setSnapIndex(target.index);
     setSheetOffset(snapTranslate(target.index, sheetHeight.current));
@@ -289,6 +305,7 @@ export function CssBottomSheet({
     if (open) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-then-animate: render off-screen first; the layout effect below flips `entered` deterministically so the CSS transition runs on every open
       setMounted(true);
+      setSheetTransition(`transform ${SHEET_MS}ms ${SHEET_EASE}`);
       setSnapIndex(TOP_INDEX);
       setSheetOffset(0);
       setSpringBack(false);
@@ -316,7 +333,6 @@ export function CssBottomSheet({
   }, [mounted]);
 
   useEffect(() => () => {
-    if (frame.current !== null) cancelAnimationFrame(frame.current);
     if (momentumFrame.current !== null) cancelAnimationFrame(momentumFrame.current);
     if (bottomPullTimeout.current !== null) window.clearTimeout(bottomPullTimeout.current);
     momentumScrollable.current = null;
@@ -327,19 +343,18 @@ export function CssBottomSheet({
     root: HTMLElement,
   ): HTMLElement | null => {
     let element = target instanceof HTMLElement ? target : null;
+    let fallback: HTMLElement | null = null;
 
     while (element && element !== root) {
       const overflowY = window.getComputedStyle(element).overflowY;
-      if (
-        (overflowY === "auto" || overflowY === "scroll") &&
-        element.scrollHeight > element.clientHeight
-      ) {
-        return element;
+      if (overflowY === "auto" || overflowY === "scroll") {
+        fallback ??= element;
+        if (element.scrollHeight > element.clientHeight) return element;
       }
       element = element.parentElement;
     }
 
-    return null;
+    return fallback;
   };
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>): void => {
@@ -384,6 +399,7 @@ export function CssBottomSheet({
           event.target instanceof Element ? event.target : event.currentTarget;
         target.setPointerCapture(event.pointerId);
       }
+      setSheetTransition("none");
     }
 
     const step = event.clientY - lastY.current;
@@ -395,7 +411,7 @@ export function CssBottomSheet({
 
       if (bottomPullAccum.current > 0 && step > 0) {
         bottomPullAccum.current = Math.max(0, bottomPullAccum.current - step);
-        setBottomPull(scrollable, bottomNudge(bottomPullAccum.current));
+        setBottomPull(bottomPullTarget(scrollable), bottomNudge(bottomPullAccum.current));
         velocitySamples.current.push({ time: event.timeStamp, y: event.clientY });
         if (velocitySamples.current.length > VELOCITY_SAMPLES) {
           velocitySamples.current.shift();
@@ -411,7 +427,7 @@ export function CssBottomSheet({
       if (rawNextScrollTop > maxScrollTop && step < 0) {
         topPullAccum.current = 0;
         bottomPullAccum.current += rawNextScrollTop - maxScrollTop;
-        setBottomPull(scrollable, bottomNudge(bottomPullAccum.current));
+        setBottomPull(bottomPullTarget(scrollable), bottomNudge(bottomPullAccum.current));
         velocitySamples.current.push({ time: event.timeStamp, y: event.clientY });
         if (velocitySamples.current.length > VELOCITY_SAMPLES) {
           velocitySamples.current.shift();
@@ -445,7 +461,7 @@ export function CssBottomSheet({
       topPullAccum.current += step;
       setSheetOffset(topPull(topPullAccum.current));
     } else {
-      setSheetOffset(offsetRef.current + step);
+      setSheetOffset(rawOffsetRef.current + step);
     }
 
     velocitySamples.current.push({ time: event.timeStamp, y: event.clientY });
@@ -474,10 +490,11 @@ export function CssBottomSheet({
         className,
       )}
       style={{
+        "--sheet-y": "0px",
         transform: entered
-          ? `translate3d(0, ${offset}px, 0)`
+          ? "translate3d(0, var(--sheet-y), 0)"
           : "translate3d(0, 100%, 0)",
-      }}
+      } as CSSProperties}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={finishDrag}
