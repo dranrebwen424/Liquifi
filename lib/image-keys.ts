@@ -9,7 +9,7 @@
  * count images for the modal grid) and server modules (to resolve blob keys)
  * alike — unlike `lib/storage.ts`, which pulls in the server SDK.
  */
-export function parseEntryImageKeys(imageUrl?: string | null): string[] {
+export function parseImageKeys(imageUrl?: string | null): string[] {
   if (!imageUrl) return [];
   if (imageUrl.startsWith("[")) {
     try {

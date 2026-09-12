@@ -174,6 +174,12 @@ Files: components/layout/{Sidebar.tsx, NavItem.tsx, MobileBottomNav.tsx}
 - **MobileBottomNav** — `fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-surface md:hidden` (solid white per ui-rules). **Route-aware (2026-08-25):** on event pages (`isEventPage` = `pathname.includes("/events/")`) applies `translate-y-full opacity-0 pointer-events-none` over 300ms `cubic-bezier(0.25,0.1,0.25,1)`.
 - **MobileTopBar family** — treasurer + `AdviserMobileTopBar` (role-path wrapper) + `AdminMobileTopBar` (extracted from admin layout) share the same slide-up transition on event pages; `SidebarShell` swaps `pb-20 → pb-0` on mobile there too.
 
+### Budget-proof history (2026-09-12)
+Files: components/events/{BudgetHistoryList,BudgetProofDetailModal}.tsx + components/ui/ImageViewer.tsx + components/entries/EntryDetailModal.tsx (now imports shared viewer)
+- **BudgetHistoryList** (client) — groups proofs by month (`toLocaleDateString("en-PH", {month, year})` newest-first), card = button `rounded-[5px] bg-surface px-4 py-3.5` + soft `0 2px 10px rgba(0,0,0,0.02)`, leading type label (`Initial budget`/`Budget increase`) + `formatPHP(claimed_amount)` + context line (matched → `Verified · new total …`, mismatch → `Document shows …`, else `Submitted on …`), trailing `PILL` chip (Verified `bg-success-light text-success-foreground` / Mismatch `bg-warning-light text-warning-foreground` / Pending `bg-surface-secondary text-text-muted`) + ChevronRight. Tap → `BudgetProofDetailModal`.
+- **BudgetProofDetailModal** — same shell pattern as EntryDetailModal: latched proof (`contentProof = proof ?? lastProof`, stays open on close-anim), body scroll lock, Framer `AnimatePresence`, desktop `sm:` centered modal (`dialogOverlay`/`dialogContent` from motion-variants) + mobile `CssBottomSheet`; `DetailRow` label/value rows; verification badge via `proofStatusMap: Record<string, StatusEntry>` → `StatusBadge` (`icon`/`variant`/`label` props — StatusBadge has no `map` prop); image grid `<img src={/api/proofs/{id}/image?i={i}}>` with `onError` hide + "No proof image available" placeholder (parent) / `ImageViewer` paging with `index`/`count`.
+- **ImageViewer** (shared, extracted from EntryDetailModal 2026-09-12) — full-screen viewer; props `{open, src, index, count, onNavigate, onClose}`; fixed-full black overlay + zoom toggle + prev/next; `e.preventDefault()` wheel/drag scroll lock. Reuse for any single/multi image document — do not re-implement per-modal. Receipt images keep their own inline viewer? — no, EntryDetailModal now imports this one too.
+
 ---
 
 ## Cross-Reference
@@ -190,3 +196,4 @@ Files: components/layout/{Sidebar.tsx, NavItem.tsx, MobileBottomNav.tsx}
 ## Known Duplication / Debt
 
 - `LogEntryModal` carries an inline copy of `ReceiptReview` — keep field lists in sync (dedup planned).
+- `budget-history` page never shows event name while viewing history (back link carries it) — intentional minimal header.

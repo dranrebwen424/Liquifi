@@ -41,43 +41,46 @@ export function NewEventModal({ open, onClose }: NewEventModalProps) {
   const handleSubmit = async (
     name: string,
     budgetTotal: number,
-    proofFile: File | null,
+    proofFiles: File[],
   ) => {
     const result = await createEvent(name, budgetTotal);
     if (!result.success) {
       return { success: false, message: result.error };
     }
 
-    if (!proofFile) {
+    if (proofFiles.length === 0) {
       // Required field — server + form both enforce; this is the last line.
       return { success: false, message: "Budget proof is required." };
     }
 
     // Initial proof — posted AFTER the event row exists so the budget row is
-    // always rooted in a durable event.
-    let message: string | undefined;
+    // always rooted in a durable event. Any failure here is fatal: the server
+    // rolls the event back, so the form reports a hard error and stays open.
     const fd = new FormData();
     fd.append("eventId", result.eventId);
     fd.append("type", "initial");
     fd.append("claimedAmount", String(budgetTotal));
-    fd.append("image", proofFile);
+    for (const file of proofFiles) {
+      fd.append("image", file);
+    }
     try {
       const res = await fetch("/api/proofs", { method: "POST", body: fd });
       const body = await res.json().catch(() => null);
       if (!res.ok) {
-        message =
-          body?.error ??
-          "Event created, but its proof could not be verified now.";
+        return {
+          success: false,
+          message:
+            body?.error ??
+            "The budget proof couldn't be verified — the event was not created.",
+        };
       }
     } catch {
-      message =
-        "Event created, but the proof upload failed. You can still increase the budget later with proof.";
+      return {
+        success: false,
+        message: "The proof upload failed — the event was not created. Try again.",
+      };
     }
 
-    if (message) {
-      // Event exists; keep the form open with a notice + Done button.
-      return { success: true, message };
-    }
     onClose();
     router.refresh();
     return { success: true };
@@ -93,13 +96,7 @@ export function NewEventModal({ open, onClose }: NewEventModalProps) {
           Set up a new event budget to start tracking expenses.
         </p>
       </div>
-      <EventForm
-        onSubmit={handleSubmit}
-        onDone={() => {
-          onClose();
-          router.refresh();
-        }}
-      />
+      <EventForm onSubmit={handleSubmit} />
     </div>
   );
 

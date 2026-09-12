@@ -6,35 +6,31 @@ import { formatNumberInput } from "@/lib/format";
 
 export type EventSubmitResult = {
   success: boolean;
-  /**
-   * Fatal error when success=false. When success=true, a non-empty message
-   * means the event WAS created but the optional proof upload was rejected —
-   * the form stays open showing the notice with a Done button.
-   */
+  /** Fatal error when success=false. (Proofs are required — failure is fatal.) */
   message?: string;
 };
 
 type EventFormProps = {
   /** Called on submit. Defaults to mock behavior if omitted. */
-  onSubmit?: (name: string, budgetTotal: number, proofFile: File | null) => Promise<EventSubmitResult>;
-  /** Called from the notice state's Done button (close + refresh). */
-  onDone?: () => void;
+  onSubmit?: (name: string, budgetTotal: number, proofFiles: File[]) => Promise<EventSubmitResult>;
 };
 
-export function EventForm({ onSubmit, onDone }: EventFormProps) {
+export function EventForm({ onSubmit }: EventFormProps) {
   const [name, setName] = useState("");
   const [budgetTotal, setBudgetTotal] = useState("");
-  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [proofFiles, setProofFiles] = useState<File[]>([]);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
   const budgetRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const removeProof = (index: number) => {
+    setProofFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setNotice("");
 
     const nameTrimmed = name.trim();
     const parsed = parseFloat(budgetTotal.replace(/,/g, ""));
@@ -47,7 +43,7 @@ export function EventForm({ onSubmit, onDone }: EventFormProps) {
       setError("Budget must be a positive amount.");
       return;
     }
-    if (!proofFile) {
+    if (proofFiles.length === 0) {
       setError("Budget proof is required.");
       return;
     }
@@ -55,11 +51,9 @@ export function EventForm({ onSubmit, onDone }: EventFormProps) {
     setLoading(true);
     try {
       if (onSubmit) {
-        const result = await onSubmit(nameTrimmed, parsed, proofFile);
+        const result = await onSubmit(nameTrimmed, parsed, proofFiles);
         if (!result.success) {
           setError(result.message ?? "Failed to create event.");
-        } else if (result.message) {
-          setNotice(result.message);
         }
       } else {
         // ponytail: mock — simulate success
@@ -145,8 +139,13 @@ export function EventForm({ onSubmit, onDone }: EventFormProps) {
           ref={fileRef}
           type="file"
           accept="image/jpeg,image/png,image/webp"
+          multiple
           className="hidden"
-          onChange={(e) => setProofFile(e.target.files?.[0] ?? null)}
+          onChange={(e) => {
+            const picked = Array.from(e.target.files ?? []);
+            if (picked.length) setProofFiles((prev) => [...prev, ...picked]);
+            if (fileRef.current) fileRef.current.value = "";
+          }}
         />
         <button
           type="button"
@@ -156,34 +155,35 @@ export function EventForm({ onSubmit, onDone }: EventFormProps) {
           <span className="flex min-w-0 items-center gap-2">
             <ImagePlus className="h-4 w-4 shrink-0" />
             <span className="truncate">
-              {proofFile ? proofFile.name : "Attach funding letter or budget document"}
+              {proofFiles.length > 0
+                ? `Add another photo (${proofFiles.length} attached)`
+                : "Attach funding letter or budget document"}
             </span>
           </span>
-          {proofFile && (
-            <span
-              role="button"
-              tabIndex={0}
-              onClick={(e) => {
-                e.stopPropagation();
-                setProofFile(null);
-                if (fileRef.current) fileRef.current.value = "";
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.stopPropagation();
-                  setProofFile(null);
-                  if (fileRef.current) fileRef.current.value = "";
-                }
-              }}
-              className="shrink-0 rounded-full p-0.5 text-text-muted hover:text-error"
-              aria-label="Remove proof"
-            >
-              <X className="h-3.5 w-3.5" />
-            </span>
-          )}
         </button>
+        {proofFiles.length > 0 && (
+          <ul className="flex flex-col gap-1.5">
+            {proofFiles.map((file, i) => (
+              <li
+                key={`${file.name}-${i}`}
+                className="flex items-center justify-between gap-2 rounded-lg border border-border bg-surface-secondary px-3 py-2 text-xs text-text-secondary"
+              >
+                <span className="min-w-0 truncate">{file.name}</span>
+                <button
+                  type="button"
+                  onClick={() => removeProof(i)}
+                  className="shrink-0 rounded-full p-0.5 text-text-muted hover:text-error"
+                  aria-label={`Remove ${file.name}`}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
         <p className="text-xs text-text-muted">
-          Attach the funding approval that authorizes this budget. JPG, PNG, or WEBP.
+          Attach the funding approval that authorizes this budget. JPG, PNG, or
+          WEBP, up to 5 photos.
         </p>
       </div>
 
@@ -191,28 +191,13 @@ export function EventForm({ onSubmit, onDone }: EventFormProps) {
         <p className="text-sm text-error">{error}</p>
       )}
 
-      {notice ? (
-        <div className="flex flex-col gap-3">
-          <p className="rounded-lg border border-warning-light bg-warning-lightest px-3 py-2.5 text-sm text-warning-foreground">
-            {notice}
-          </p>
-          <button
-            type="button"
-            onClick={onDone}
-            className="inline-flex w-full items-center justify-center rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98]"
-          >
-            Done
-          </button>
-        </div>
-      ) : (
-        <button
-          type="submit"
-          disabled={loading}
-          className="inline-flex w-full items-center justify-center rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {loading ? "Creating…" : "Create Event"}
-        </button>
-      )}
+      <button
+        type="submit"
+        disabled={loading}
+        className="inline-flex w-full items-center justify-center rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {loading ? "Creating…" : "Create Event"}
+      </button>
     </form>
   );
 }

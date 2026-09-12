@@ -8,11 +8,17 @@ function errorResponse(message: string, status: number) {
 }
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ proofId: string }> },
 ) {
   try {
     const { proofId } = await params;
+    // `i` selects which image of a multi-image proof (0 = first/only). The
+    // proof_url column can hold a JSON array of keys; parseImageKeys covers
+    // both the array and legacy bare-key forms, and getBudgetProofBlob resolves
+    // the index-th key.
+    const rawIndex = request.nextUrl.searchParams.get("i");
+    const index = rawIndex ? Number.parseInt(rawIndex, 10) : 0;
 
     const insforge = await createInsforgeServer();
     const { data: proof, error } = await insforge.database
@@ -37,7 +43,7 @@ export async function GET(
     // Treasurers/advisers scoped to the owning department; admin unrestricted
     await requireRole(["treasurer", "adviser", "admin"], event.department_id);
 
-    const blob = await getBudgetProofBlob(proofId);
+    const blob = await getBudgetProofBlob(proofId, Number.isFinite(index) ? index : 0);
     return new Response(blob, {
       headers: {
         "Content-Type": blob.type || "image/jpeg",

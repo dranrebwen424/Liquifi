@@ -27,7 +27,7 @@ export function IncreaseBudgetModal({
 }: IncreaseBudgetModalProps) {
   const router = useRouter();
   const [value, setValue] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
@@ -38,7 +38,7 @@ export function IncreaseBudgetModal({
   useEffect(() => {
     if (open) {
       setValue("");
-      setFile(null);
+      setFiles([]);
       setError("");
       setLoading(false);
       setResult(null);
@@ -80,7 +80,7 @@ export function IncreaseBudgetModal({
       setError("Increase must be a positive amount.");
       return;
     }
-    if (!file) {
+    if (files.length === 0) {
       setError("Attach the funding document to verify this increase.");
       return;
     }
@@ -91,7 +91,9 @@ export function IncreaseBudgetModal({
       fd.append("eventId", eventId);
       fd.append("type", "increase");
       fd.append("claimedAmount", String(parsed));
-      fd.append("image", file);
+      for (const image of files) {
+        fd.append("image", image);
+      }
 
       const res = await fetch("/api/proofs", { method: "POST", body: fd });
       const body = await res.json().catch(() => null);
@@ -220,18 +222,48 @@ export function IncreaseBudgetModal({
               ref={fileRef}
               type="file"
               accept="image/jpeg,image/png,image/webp"
+              multiple
               className="hidden"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              onChange={(e) => {
+                const picked = Array.from(e.target.files ?? []);
+                if (picked.length) setFiles((prev) => [...prev, ...picked]);
+                if (fileRef.current) fileRef.current.value = "";
+              }}
             />
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
               className="inline-flex w-full items-center justify-center gap-2 truncate rounded-lg border border-dashed border-border bg-surface px-3 py-2.5 text-sm text-text-secondary transition-colors hover:border-accent hover:text-text-primary"
             >
-              {file ? file.name : "Attach funding letter or budget document"}
+              {files.length > 0
+                ? `Add another photo (${files.length} attached)`
+                : "Attach funding letter or budget document"}
             </button>
+            {files.length > 0 && (
+              <ul className="flex flex-col gap-1.5">
+                {files.map((image, i) => (
+                  <li
+                    key={`${image.name}-${i}`}
+                    className="flex items-center justify-between gap-2 rounded-lg border border-border bg-surface-secondary px-3 py-2 text-xs text-text-secondary"
+                  >
+                    <span className="min-w-0 truncate">{image.name}</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFiles((prev) => prev.filter((_, idx) => idx !== i))
+                      }
+                      className="shrink-0 rounded-full p-0.5 text-text-muted hover:text-error"
+                      aria-label={`Remove ${image.name}`}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
             <p className="text-xs text-text-muted">
-              Required — the amount on the document must match your increase.
+              Required — the amount on one of the documents must match your
+              increase.
             </p>
           </div>
 

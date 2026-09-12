@@ -14,7 +14,7 @@ export async function GET(
   try {
     const { entryId } = await params;
     // `i` selects which image of a multi-image entry (0 = first/only). The
-    // storage column can hold a JSON array of keys; parseEntryImageKeys covers
+    // storage column can hold a JSON array of keys; parseImageKeys covers
     // both the array and legacy bare-key forms.
     const rawIndex = request.nextUrl.searchParams.get("i");
     const index = rawIndex ? Number.parseInt(rawIndex, 10) : 0;
