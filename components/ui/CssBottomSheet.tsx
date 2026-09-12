@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import {
   MOMENTUM_MIN_VELOCITY,
   TOP_INDEX,
+  bottomNudge,
   clampSheetTranslate,
   elasticOffset,
   momentumDecay,
@@ -63,6 +64,9 @@ export function CssBottomSheet({
   // Gesture-scoped: how much of the current top-pull has been accumulated so
   // the rubber band shapes the TOTAL pull, not each move.
   const topPullAccum = useRef(0);
+  const bottomPullAccum = useRef(0);
+  const bottomPullElement = useRef<HTMLElement | null>(null);
+  const bottomPullTimeout = useRef<number | null>(null);
   // Momentum: frame + target of the post-release glide (null while idle).
   const momentumFrame = useRef<number | null>(null);
   const momentumScrollable = useRef<HTMLElement | null>(null);
@@ -82,6 +86,41 @@ export function CssBottomSheet({
     // with a timestamp-last-commit instead of a rAF id.
     setOffset(offsetRef.current);
   };
+
+  const setBottomPull = (element: HTMLElement, pull: number): void => {
+    if (bottomPullTimeout.current !== null) {
+      window.clearTimeout(bottomPullTimeout.current);
+      bottomPullTimeout.current = null;
+    }
+    bottomPullElement.current = element;
+    element.style.transition = "none";
+    element.style.transform = pull > 0 ? `translate3d(0, ${-pull}px, 0)` : "";
+  };
+
+  const resetBottomPull = useCallback((spring: boolean): void => {
+    const element = bottomPullElement.current;
+    bottomPullAccum.current = 0;
+    if (bottomPullTimeout.current !== null) {
+      window.clearTimeout(bottomPullTimeout.current);
+      bottomPullTimeout.current = null;
+    }
+    if (!element) return;
+
+    if (!spring) {
+      element.style.transition = "";
+      element.style.transform = "";
+      bottomPullElement.current = null;
+      return;
+    }
+
+    element.style.transition = "transform 260ms cubic-bezier(0.34,1.56,0.64,1)";
+    element.style.transform = "";
+    bottomPullTimeout.current = window.setTimeout(() => {
+      element.style.transition = "";
+      if (bottomPullElement.current === element) bottomPullElement.current = null;
+      bottomPullTimeout.current = null;
+    }, 260);
+  }, []);
 
   // Track content height (≤85dvh via consumer classes) so snap positions stay
   // correct when forms grow or the mobile URL bar collapses.
@@ -126,12 +165,14 @@ export function CssBottomSheet({
     setDragging(false);
     velocitySamples.current = [];
     topPullAccum.current = 0;
+    bottomPullAccum.current = 0;
   }, []);
 
   const resetSheet = useCallback((): void => {
+    resetBottomPull(false);
     clearDragState();
     setSheetOffset(0);
-  }, [clearDragState]);
+  }, [clearDragState, resetBottomPull]);
 
   // Post-release inertia for the JS-driven scroll (the whole sheet subtree is
   // touch-action: none, so the browser never animates a glide itself). A
@@ -214,6 +255,7 @@ export function CssBottomSheet({
     const wasPureScroll =
       scrollable !== null && offsetRef.current <= MIN_SHEET_DRAG;
     clearDragState();
+    resetBottomPull(true);
     // Release that ended as a real content scroll (the sheet never left the
     // top): glide the content instead of dead-stopping. Works alongside the
     // sheet resolve below — fling slows the list; the sheet springs to rest.
@@ -241,7 +283,7 @@ export function CssBottomSheet({
     setSpringBack(target.spring);
     setSnapIndex(target.index);
     setSheetOffset(snapTranslate(target.index, sheetHeight.current));
-  }, [clearDragState, onClose, startMomentum]);
+  }, [clearDragState, onClose, resetBottomPull, startMomentum]);
 
   useEffect(() => {
     if (open) {
@@ -276,6 +318,7 @@ export function CssBottomSheet({
   useEffect(() => () => {
     if (frame.current !== null) cancelAnimationFrame(frame.current);
     if (momentumFrame.current !== null) cancelAnimationFrame(momentumFrame.current);
+    if (bottomPullTimeout.current !== null) window.clearTimeout(bottomPullTimeout.current);
     momentumScrollable.current = null;
   }, []);
 
@@ -313,6 +356,7 @@ export function CssBottomSheet({
     scrollTarget.current = findScrollableParent(event.target, event.currentTarget);
     // A new touch stops any glide in flight; the next gesture starts with a
     // fresh rubber-band budget.
+    resetBottomPull(false);
     if (momentumFrame.current !== null) {
       cancelAnimationFrame(momentumFrame.current);
       momentumFrame.current = null;
@@ -347,9 +391,34 @@ export function CssBottomSheet({
 
     if (scrollable && offsetRef.current === 0) {
       const previousScrollTop = scrollable.scrollTop;
+      const maxScrollTop = Math.max(0, scrollable.scrollHeight - scrollable.clientHeight);
 
-      const nextScrollTop = Math.max(0, previousScrollTop - step);
+      if (bottomPullAccum.current > 0 && step > 0) {
+        bottomPullAccum.current = Math.max(0, bottomPullAccum.current - step);
+        setBottomPull(scrollable, bottomNudge(bottomPullAccum.current));
+        velocitySamples.current.push({ time: event.timeStamp, y: event.clientY });
+        if (velocitySamples.current.length > VELOCITY_SAMPLES) {
+          velocitySamples.current.shift();
+        }
+        lastY.current = event.clientY;
+        return;
+      }
+
+      const rawNextScrollTop = previousScrollTop - step;
+      const nextScrollTop = Math.max(0, Math.min(rawNextScrollTop, maxScrollTop));
       scrollable.scrollTop = nextScrollTop;
+
+      if (rawNextScrollTop > maxScrollTop && step < 0) {
+        topPullAccum.current = 0;
+        bottomPullAccum.current += rawNextScrollTop - maxScrollTop;
+        setBottomPull(scrollable, bottomNudge(bottomPullAccum.current));
+        velocitySamples.current.push({ time: event.timeStamp, y: event.clientY });
+        if (velocitySamples.current.length > VELOCITY_SAMPLES) {
+          velocitySamples.current.shift();
+        }
+        lastY.current = event.clientY;
+        return;
+      }
 
       if (nextScrollTop > 0 || step < 0) {
         // Content absorbed the move again — any prior rubber-band pull is

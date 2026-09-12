@@ -105,21 +105,6 @@ export function NewEventModal({ open, onClose }: NewEventModalProps) {
             </p>
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-2">
-          {["Details", "Budget", "Proof"].map((step, index) => (
-            <div
-              key={step}
-              className="rounded-xl border border-border bg-surface-secondary px-2.5 py-2"
-            >
-              <span className="text-[10px] font-semibold text-text-muted">
-                0{index + 1}
-              </span>
-              <p className="truncate text-[11px] font-medium text-text-primary">
-                {step}
-              </p>
-            </div>
-          ))}
-        </div>
       </div>
       <EventForm onSubmit={handleSubmit} />
     </div>
