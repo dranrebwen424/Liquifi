@@ -47,6 +47,10 @@ export function EventForm({ onSubmit, onDone }: EventFormProps) {
       setError("Budget must be a positive amount.");
       return;
     }
+    if (!proofFile) {
+      setError("Budget proof is required.");
+      return;
+    }
 
     setLoading(true);
     try {
@@ -132,10 +136,10 @@ export function EventForm({ onSubmit, onDone }: EventFormProps) {
         </p>
       </div>
 
-      {/* Optional initial proof — verification evidence for the budget */}
+      {/* Budget proof — required, verification evidence for the budget */}
       <div className="flex flex-col gap-1.5">
         <span className="text-sm font-medium text-text-primary">
-          Budget Proof (Optional)
+          Budget Proof
         </span>
         <input
           ref={fileRef}
@@ -179,7 +183,7 @@ export function EventForm({ onSubmit, onDone }: EventFormProps) {
           )}
         </button>
         <p className="text-xs text-text-muted">
-          Optional — attach funding approval to verify this budget. JPG, PNG, or WEBP.
+          Attach the funding approval that authorizes this budget. JPG, PNG, or WEBP.
         </p>
       </div>
 

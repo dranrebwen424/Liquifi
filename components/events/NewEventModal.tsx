@@ -48,27 +48,30 @@ export function NewEventModal({ open, onClose }: NewEventModalProps) {
       return { success: false, message: result.error };
     }
 
-    // Optional initial proof — posted AFTER the event row exists so the
-    // budget row is always rooted in a durable event.
+    if (!proofFile) {
+      // Required field — server + form both enforce; this is the last line.
+      return { success: false, message: "Budget proof is required." };
+    }
+
+    // Initial proof — posted AFTER the event row exists so the budget row is
+    // always rooted in a durable event.
     let message: string | undefined;
-    if (proofFile) {
-      const fd = new FormData();
-      fd.append("eventId", result.eventId);
-      fd.append("type", "initial");
-      fd.append("claimedAmount", String(budgetTotal));
-      fd.append("image", proofFile);
-      try {
-        const res = await fetch("/api/proofs", { method: "POST", body: fd });
-        const body = await res.json().catch(() => null);
-        if (!res.ok) {
-          message =
-            body?.error ??
-            "Event created, but its proof could not be verified now.";
-        }
-      } catch {
+    const fd = new FormData();
+    fd.append("eventId", result.eventId);
+    fd.append("type", "initial");
+    fd.append("claimedAmount", String(budgetTotal));
+    fd.append("image", proofFile);
+    try {
+      const res = await fetch("/api/proofs", { method: "POST", body: fd });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
         message =
-          "Event created, but the proof upload failed. You can still increase the budget later with proof.";
+          body?.error ??
+          "Event created, but its proof could not be verified now.";
       }
+    } catch {
+      message =
+        "Event created, but the proof upload failed. You can still increase the budget later with proof.";
     }
 
     if (message) {
