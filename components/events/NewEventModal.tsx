@@ -38,14 +38,46 @@ export function NewEventModal({ open, onClose }: NewEventModalProps) {
     };
   }, [open, handleKeyDown]);
 
-  const handleSubmit = async (name: string, budgetTotal: number) => {
+  const handleSubmit = async (
+    name: string,
+    budgetTotal: number,
+    proofFile: File | null,
+  ) => {
     const result = await createEvent(name, budgetTotal);
-    if (result.success) {
-      onClose();
-      router.refresh();
-    } else {
-      throw new Error(result.error);
+    if (!result.success) {
+      return { success: false, message: result.error };
     }
+
+    // Optional initial proof — posted AFTER the event row exists so the
+    // budget row is always rooted in a durable event.
+    let message: string | undefined;
+    if (proofFile) {
+      const fd = new FormData();
+      fd.append("eventId", result.eventId);
+      fd.append("type", "initial");
+      fd.append("claimedAmount", String(budgetTotal));
+      fd.append("image", proofFile);
+      try {
+        const res = await fetch("/api/proofs", { method: "POST", body: fd });
+        const body = await res.json().catch(() => null);
+        if (!res.ok) {
+          message =
+            body?.error ??
+            "Event created, but its proof could not be verified now.";
+        }
+      } catch {
+        message =
+          "Event created, but the proof upload failed. You can still increase the budget later with proof.";
+      }
+    }
+
+    if (message) {
+      // Event exists; keep the form open with a notice + Done button.
+      return { success: true, message };
+    }
+    onClose();
+    router.refresh();
+    return { success: true };
   };
 
   const formContent = (
@@ -58,7 +90,13 @@ export function NewEventModal({ open, onClose }: NewEventModalProps) {
           Set up a new event budget to start tracking expenses.
         </p>
       </div>
-      <EventForm onSubmit={handleSubmit} />
+      <EventForm
+        onSubmit={handleSubmit}
+        onDone={() => {
+          onClose();
+          router.refresh();
+        }}
+      />
     </div>
   );
 

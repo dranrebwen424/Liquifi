@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Plus, FileText, Pencil } from "lucide-react";
+import { Plus, FileText } from "lucide-react";
 import { formatPHP } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { LogEntryModal } from "@/components/entries/LogEntryModal";
-import { EditBudgetModal } from "@/components/events/EditBudgetModal";
+import { IncreaseBudgetModal } from "@/components/events/IncreaseBudgetModal";
 
 type BudgetSummaryProps = {
   budgetTotal: number;
@@ -15,7 +15,11 @@ type BudgetSummaryProps = {
   canMutate: boolean;
   isArchived: boolean;
   isLocked: boolean;
-  /** Budget immutable once any entry exists, or a report is pending/approved. */
+  /**
+   * Kept for caller compatibility — no longer gates the budget UI.
+   * Budgets are now increase-only via verified proofs; the only lock is
+   * `isLocked` (report pending/approved).
+   */
   budgetLocked?: boolean;
   /** Adviser/admin read-only mode — omits all mutating controls entirely. */
   readOnly?: boolean;
@@ -35,7 +39,6 @@ export function BudgetSummary({
   canMutate,
   isArchived,
   isLocked,
-  budgetLocked = false,
   readOnly,
   mobileOnly,
   createdByName,
@@ -43,13 +46,13 @@ export function BudgetSummary({
   className,
 }: BudgetSummaryProps) {
   const [logEntryOpen, setLogEntryOpen] = useState(false);
-  const [editBudgetOpen, setEditBudgetOpen] = useState(false);
+  const [increaseBudgetOpen, setIncreaseBudgetOpen] = useState(false);
   const remaining = budgetTotal - totalSpent;
   const pctUsed = budgetTotal > 0 ? (totalSpent / budgetTotal) * 100 : 0;
 
-  // A budget edit is allowed only while the event is fully untouched:
-  // not archived, no pending/approved report, and no entries (any status).
-  const canEditBudget = canMutate && !budgetLocked;
+  // A budget increase is allowed while the event is open and no report is
+  // pending/approved. Archive state is handled by canMutate upstream.
+  const canIncreaseBudget = canMutate && !isLocked;
 
   // Step 18: no text label at/over budget — negative red number is the signal
   // (user decision). Empty string keeps the layout row for a stable height.
@@ -72,11 +75,11 @@ export function BudgetSummary({
             </p>
             {!readOnly && (
               <button
-                onClick={() => setEditBudgetOpen(true)}
-                disabled={!canEditBudget}
+                onClick={() => setIncreaseBudgetOpen(true)}
+                disabled={!canIncreaseBudget}
                 className={cn(
                   "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
-                  canEditBudget
+                  canIncreaseBudget
                     ? "border-white/30 text-text-inverse active:bg-white/10"
                     : "cursor-not-allowed border-white/10 text-text-inverse/40",
                 )}
@@ -84,14 +87,12 @@ export function BudgetSummary({
                   isArchived
                     ? "Archived — read-only."
                     : isLocked
-                      ? "Budget is locked while a report is pending."
-                      : budgetLocked
-                        ? "Budget is locked once the first expense is added."
-                        : "Edit the event budget"
+                      ? "Budget can't be increased while a report is pending."
+                      : "Increase the event budget with a verified proof"
                 }
               >
-                <Pencil className="h-3 w-3" />
-                Edit
+                <Plus className="h-3 w-3" />
+                Add
               </button>
             )}
           </div>
@@ -156,9 +157,9 @@ export function BudgetSummary({
           eventId={eventId}
         />
 
-        <EditBudgetModal
-          open={editBudgetOpen}
-          onClose={() => setEditBudgetOpen(false)}
+        <IncreaseBudgetModal
+          open={increaseBudgetOpen}
+          onClose={() => setIncreaseBudgetOpen(false)}
           eventId={eventId}
           currentBudget={budgetTotal}
         />
@@ -257,11 +258,11 @@ export function BudgetSummary({
             )}
 
             <button
-              onClick={() => setEditBudgetOpen(true)}
-              disabled={!canEditBudget}
+              onClick={() => setIncreaseBudgetOpen(true)}
+              disabled={!canIncreaseBudget}
               className={cn(
                 "inline-flex items-center justify-center gap-2 rounded-lg border px-5 py-2.5 text-sm font-medium transition-[color,transform,shadow] hover:scale-[1.02]",
-                canEditBudget
+                canIncreaseBudget
                   ? "border-white/30 text-text-inverse hover:bg-white/10 hover:shadow-sm active:scale-[0.98]"
                   : "cursor-not-allowed border-white/10 text-text-inverse/50",
               )}
@@ -269,14 +270,12 @@ export function BudgetSummary({
                 isArchived
                   ? "Archived — read-only."
                   : isLocked
-                    ? "Budget is locked while a report is pending."
-                    : budgetLocked
-                      ? "Budget is locked once the first expense is added."
-                      : "Edit the event budget"
+                    ? "Budget can't be increased while a report is pending."
+                    : "Increase the event budget with a verified proof"
               }
             >
-              <Pencil className="h-3.5 w-3.5" />
-              Edit Budget
+              <Plus className="h-3.5 w-3.5" />
+              Add Budget
             </button>
             </div>
           )}
@@ -310,9 +309,9 @@ export function BudgetSummary({
         eventId={eventId}
       />
 
-      <EditBudgetModal
-        open={editBudgetOpen}
-        onClose={() => setEditBudgetOpen(false)}
+      <IncreaseBudgetModal
+        open={increaseBudgetOpen}
+        onClose={() => setIncreaseBudgetOpen(false)}
         eventId={eventId}
         currentBudget={budgetTotal}
       />

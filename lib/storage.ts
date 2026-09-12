@@ -4,6 +4,7 @@ import { parseEntryImageKeys } from "@/lib/image-keys";
 // ponytail: presigned URL expiry is S3 default, adjust if needed
 const RECEIPT_BUCKET = "receipts" as const;
 const SIGNED_REPORT_BUCKET = "signed-reports" as const;
+const BUDGET_PROOF_BUCKET = "budget-proofs" as const;
 
 async function getUserDeptId(): Promise<string | null> {
   const insforge = await createInsforgeServer();
@@ -120,6 +121,81 @@ export async function getReceiptBlob(entryId: string, index = 0): Promise<Blob> 
     .download(key);
 
   if (downloadError || !blob) throw new Error("Receipt not found");
+  return blob;
+}
+
+// ─── Budget Proofs ────────────────────────────────────────────────
+
+/**
+ * Upload a budget proof document image (initial budget or increase evidence).
+ * One image per proof row — `proof_url` stores the bare key (mirrors single-image
+ * receipt format). Ownership verified via event → user's department.
+ */
+export async function uploadBudgetProof(
+  eventId: string,
+  proofId: string,
+  file: File | Blob,
+): Promise<{ url: string; key: string }> {
+  const deptId = await getUserDeptId();
+  if (!deptId) throw new Error("Authentication required");
+
+  const insforge = await createInsforgeServer();
+  const { data: event, error: eventError } = await insforge.database
+    .from("events")
+    .select("department_id")
+    .eq("id", eventId)
+    .single();
+
+  if (eventError || !event) throw new Error("Event not found");
+  if (event.department_id !== deptId) throw new Error("Unauthorized");
+
+  const key = `${deptId}/events/${eventId}/proofs/${proofId}.jpg`;
+  const { data, error } = await insforge.storage
+    .from(BUDGET_PROOF_BUCKET)
+    .upload(key, file);
+
+  if (error || !data) throw new Error("Upload failed");
+  return { url: data.url, key: data.key };
+}
+
+/**
+ * Delete a budget proof blob by its storage key. Best-effort — used on the
+ * verdict path to roll back an upload before anything is saved.
+ */
+export async function deleteBudgetProofBlob(key: string): Promise<void> {
+  try {
+    const insforge = await createInsforgeServer();
+    const { error } = await insforge.storage
+      .from(BUDGET_PROOF_BUCKET)
+      .remove(key);
+    if (error) {
+      console.error("[storage] deleteBudgetProofBlob: blob delete failed:", key, error);
+    }
+  } catch (error) {
+    console.error("[storage] deleteBudgetProofBlob:", error);
+  }
+}
+
+/**
+ * Download a budget proof document blob by proof id. `proof_url` stores the
+ * storage key (no signed-URL support in the SDK) — reads go through the authed
+ * proxy route. Ownership is enforced by the caller (route-level requireRole).
+ */
+export async function getBudgetProofBlob(proofId: string): Promise<Blob> {
+  const insforge = await createInsforgeServer();
+  const { data: proof, error } = await insforge.database
+    .from("budget_proofs")
+    .select("id, proof_url")
+    .eq("id", proofId)
+    .single();
+
+  if (error || !proof || !proof.proof_url) throw new Error("Proof not found");
+
+  const { data: blob, error: downloadError } = await insforge.storage
+    .from(BUDGET_PROOF_BUCKET)
+    .download(proof.proof_url);
+
+  if (downloadError || !blob) throw new Error("Proof not found");
   return blob;
 }
 

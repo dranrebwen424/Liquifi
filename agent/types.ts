@@ -171,3 +171,38 @@ export type DocumentVerificationResult = {
   pageCountObserved: number;
   summary: string;
 };
+
+// ─── Budget Proof (initial budget / verified budget-increase document) ─────
+
+/**
+ * Raw Gemini response for a budget proof document (funding letter, approved
+ * budget resolution, etc.). Self-classified; only "valid" requires `amount`.
+ */
+export const budgetProofResponseSchema = z
+  .object({
+    classification: classificationSchema,
+    supplier_name: z.string().nullable(),
+    document_number: z.string().nullable(),
+    issue_date: z.string().nullable(),
+    amount: z.number().positive().nullable(),
+  })
+  .superRefine((d, ctx) => {
+    if (d.classification.outcome === "valid" && !d.amount) {
+      ctx.addIssue({ code: "custom", path: ["amount"], message: "required when outcome is valid" });
+    }
+  });
+
+/** Strict, non-null budget proof — the valid path's guaranteed shape. */
+export const budgetProofParseSchema = z.object({
+  supplier_name: z.string().min(1),
+  document_number: z.string(), // may be "" — no printed number is valid
+  issue_date: z.string(), // may be "" — no printed date is valid
+  amount: z.number().positive(),
+});
+
+export type BudgetProofParseResult = z.infer<typeof budgetProofParseSchema>;
+
+/** Discriminated parse result — verdicts short-circuit, only "valid" carries the strict proof. */
+export type BudgetProofParseOutcome =
+  | { outcome: "valid"; proof: BudgetProofParseResult }
+  | { outcome: "borderline" | "invalid" | "multiple"; reason: string };

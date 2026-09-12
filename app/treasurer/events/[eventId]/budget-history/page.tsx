@@ -42,6 +42,25 @@ export default async function BudgetHistoryPage({ params }: Props) {
     else byMonth.set(month, [p]);
   }
 
+  const PILL: Record<
+    BudgetProof["verification_status"],
+    { label: string; cls: string }
+  > = {
+    matched: { label: "Verified", cls: "bg-success-light text-success-foreground" },
+    mismatch: { label: "Mismatch", cls: "bg-warning-light text-warning-foreground" },
+    pending: { label: "Pending", cls: "bg-surface-secondary text-text-muted" },
+  };
+
+  function proofDetail(p: BudgetProof, submitted: string) {
+    if (p.verification_status === "matched" && p.resulting_budget_total != null) {
+      return `Verified · new total ${formatPHP(p.resulting_budget_total)}`;
+    }
+    if (p.verification_status === "mismatch" && p.ai_extracted_amount != null) {
+      return `Document shows ${formatPHP(p.ai_extracted_amount)}`;
+    }
+    return `Submitted on ${submitted}`;
+  }
+
   return (
     <div className="pb-16">
       {/* Header — back arrow + centered title */}
@@ -84,17 +103,27 @@ export default async function BudgetHistoryPage({ params }: Props) {
                         style={{ boxShadow: "0 2px 10px rgba(0,0,0,0.02)" }}
                       >
                         <div className="min-w-0">
+                          <p className="text-[11px] text-text-muted">
+                            {p.type === "initial" ? "Initial budget" : "Budget increase"}
+                          </p>
                           <p className="text-[15px] font-semibold tabular-nums text-text-primary">
                             {formatPHP(p.claimed_amount)}
                           </p>
                           <p className="mt-0.5 text-[11px] text-text-muted">
-                            Submitted on {submitted}
+                            {proofDetail(p, submitted)}
                           </p>
                         </div>
-                        <ChevronRight
-                          className="h-4 w-4 shrink-0 text-text-muted"
-                          aria-hidden
-                        />
+                        <div className="flex shrink-0 items-center gap-2">
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${PILL[p.verification_status].cls}`}
+                          >
+                            {PILL[p.verification_status].label}
+                          </span>
+                          <ChevronRight
+                            className="h-4 w-4 shrink-0 text-text-muted"
+                            aria-hidden
+                          />
+                        </div>
                       </div>
                     );
                   })}

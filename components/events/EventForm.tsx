@@ -1,23 +1,40 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { ImagePlus, X } from "lucide-react";
 import { formatNumberInput } from "@/lib/format";
+
+export type EventSubmitResult = {
+  success: boolean;
+  /**
+   * Fatal error when success=false. When success=true, a non-empty message
+   * means the event WAS created but the optional proof upload was rejected —
+   * the form stays open showing the notice with a Done button.
+   */
+  message?: string;
+};
 
 type EventFormProps = {
   /** Called on submit. Defaults to mock behavior if omitted. */
-  onSubmit?: (name: string, budgetTotal: number) => Promise<void>;
+  onSubmit?: (name: string, budgetTotal: number, proofFile: File | null) => Promise<EventSubmitResult>;
+  /** Called from the notice state's Done button (close + refresh). */
+  onDone?: () => void;
 };
 
-export function EventForm({ onSubmit }: EventFormProps) {
+export function EventForm({ onSubmit, onDone }: EventFormProps) {
   const [name, setName] = useState("");
   const [budgetTotal, setBudgetTotal] = useState("");
+  const [proofFile, setProofFile] = useState<File | null>(null);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
   const budgetRef = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setNotice("");
 
     const nameTrimmed = name.trim();
     const parsed = parseFloat(budgetTotal.replace(/,/g, ""));
@@ -34,7 +51,12 @@ export function EventForm({ onSubmit }: EventFormProps) {
     setLoading(true);
     try {
       if (onSubmit) {
-        await onSubmit(nameTrimmed, parsed);
+        const result = await onSubmit(nameTrimmed, parsed, proofFile);
+        if (!result.success) {
+          setError(result.message ?? "Failed to create event.");
+        } else if (result.message) {
+          setNotice(result.message);
+        }
       } else {
         // ponytail: mock — simulate success
         await new Promise((r) => setTimeout(r, 600));
@@ -106,7 +128,58 @@ export function EventForm({ onSubmit }: EventFormProps) {
           required
         />
         <p className="text-xs text-text-muted">
-          This can be edited later until the first expense is deducted.
+          You can increase this later with a verified budget proof.
+        </p>
+      </div>
+
+      {/* Optional initial proof — verification evidence for the budget */}
+      <div className="flex flex-col gap-1.5">
+        <span className="text-sm font-medium text-text-primary">
+          Budget Proof (Optional)
+        </span>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="hidden"
+          onChange={(e) => setProofFile(e.target.files?.[0] ?? null)}
+        />
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          className="inline-flex w-full items-center justify-between gap-2 rounded-lg border border-dashed border-border bg-surface px-3 py-2.5 text-sm text-text-secondary transition-colors hover:border-accent hover:text-text-primary"
+        >
+          <span className="flex min-w-0 items-center gap-2">
+            <ImagePlus className="h-4 w-4 shrink-0" />
+            <span className="truncate">
+              {proofFile ? proofFile.name : "Attach funding letter or budget document"}
+            </span>
+          </span>
+          {proofFile && (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                e.stopPropagation();
+                setProofFile(null);
+                if (fileRef.current) fileRef.current.value = "";
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.stopPropagation();
+                  setProofFile(null);
+                  if (fileRef.current) fileRef.current.value = "";
+                }
+              }}
+              className="shrink-0 rounded-full p-0.5 text-text-muted hover:text-error"
+              aria-label="Remove proof"
+            >
+              <X className="h-3.5 w-3.5" />
+            </span>
+          )}
+        </button>
+        <p className="text-xs text-text-muted">
+          Optional — attach funding approval to verify this budget. JPG, PNG, or WEBP.
         </p>
       </div>
 
@@ -114,13 +187,28 @@ export function EventForm({ onSubmit }: EventFormProps) {
         <p className="text-sm text-error">{error}</p>
       )}
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="inline-flex w-full items-center justify-center rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {loading ? "Creating…" : "Create Event"}
-      </button>
+      {notice ? (
+        <div className="flex flex-col gap-3">
+          <p className="rounded-lg border border-warning-light bg-warning-lightest px-3 py-2.5 text-sm text-warning-foreground">
+            {notice}
+          </p>
+          <button
+            type="button"
+            onClick={onDone}
+            className="inline-flex w-full items-center justify-center rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98]"
+          >
+            Done
+          </button>
+        </div>
+      ) : (
+        <button
+          type="submit"
+          disabled={loading}
+          className="inline-flex w-full items-center justify-center rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {loading ? "Creating…" : "Create Event"}
+        </button>
+      )}
     </form>
   );
 }
