@@ -1,8 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { ImagePlus, X } from "lucide-react";
-import { formatNumberInput } from "@/lib/format";
+import { useEffect, useRef, useState } from "react";
+import { Camera, Image as ImageIcon, ImagePlus, X } from "lucide-react";
+import { CameraViewfinder } from "@/components/entries/CameraViewfinder";
+import { FloatingInput } from "@/components/entries/FloatingInput";
+
+const MAX_PROOFS = 5;
+const MAX_PROOF_BYTES = 10 * 1024 * 1024;
+const ACCEPTED_PROOF_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 export type EventSubmitResult = {
   success: boolean;
@@ -19,16 +24,68 @@ export function EventForm({ onSubmit }: EventFormProps) {
   const [name, setName] = useState("");
   const [budgetTotal, setBudgetTotal] = useState("");
   const [proofFiles, setProofFiles] = useState<File[]>([]);
+  const [proofPreviews, setProofPreviews] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const budgetRef = useRef<HTMLInputElement>(null);
+  const [showCamera, setShowCamera] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const previewUrls = useRef<string[]>([]);
 
-  const removeProof = (index: number) => {
+  useEffect(() => {
+    return () => {
+      for (const url of previewUrls.current) URL.revokeObjectURL(url);
+      previewUrls.current = [];
+    };
+  }, []);
+
+  function removeProof(index: number): void {
+    const url = proofPreviews[index];
+    if (url) {
+      URL.revokeObjectURL(url);
+    }
     setProofFiles((prev) => prev.filter((_, i) => i !== index));
-  };
+    setProofPreviews((prev) => prev.filter((_, i) => i !== index));
+    setError("");
+  }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  function addProofs(picked: File[]): void {
+    if (picked.length === 0) return;
+
+    const nextFiles = [...proofFiles];
+    const nextPreviews = [...proofPreviews];
+    let nextError = "";
+
+    for (const file of picked) {
+      const lowerName = file.name.toLowerCase();
+      if (nextFiles.length >= MAX_PROOFS) {
+        nextError = `Up to ${MAX_PROOFS} photos only.`;
+        break;
+      }
+      if (file.type.includes("heic") || lowerName.endsWith(".heic") || lowerName.endsWith(".heif")) {
+        nextError = "HEIC isn't supported. Use JPG, PNG, or WEBP.";
+        continue;
+      }
+      if (!ACCEPTED_PROOF_TYPES.has(file.type)) {
+        nextError = "Upload JPG, PNG, or WEBP.";
+        continue;
+      }
+      if (file.size > MAX_PROOF_BYTES) {
+        nextError = "Each photo must be 10 MB or smaller.";
+        continue;
+      }
+
+      const preview = URL.createObjectURL(file);
+      previewUrls.current.push(preview);
+      nextFiles.push(file);
+      nextPreviews.push(preview);
+    }
+
+    setProofFiles(nextFiles);
+    setProofPreviews(nextPreviews);
+    setError(nextError);
+  }
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault();
     setError("");
 
@@ -64,140 +121,137 @@ export function EventForm({ onSubmit }: EventFormProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-      {/* Event name */}
-      <div className="flex flex-col gap-1.5">
-        <label
-          htmlFor="event-name"
-          className="text-sm font-medium text-text-primary"
-        >
-          Event Name
-        </label>
-        <input
-          id="event-name"
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. CCS Week 2026"
-          className="rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:ring-1 focus:ring-accent"
-          required
-        />
-      </div>
+    <>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
+        <div className="grid gap-3">
+          <FloatingInput
+            label="Event name"
+            value={name}
+            onChange={(value) => setName(String(value))}
+            required
+          />
+          <FloatingInput
+            label="Total budget"
+            value={budgetTotal}
+            onChange={(value) => setBudgetTotal(String(value))}
+            inputMode="decimal"
+            prefix="₱"
+            currency
+            required
+          />
+          <p className="text-xs text-text-muted">
+            You can increase this later with a verified proof.
+          </p>
+        </div>
 
-      {/* Budget total */}
-      <div className="flex flex-col gap-1.5">
-        <label
-          htmlFor="event-budget"
-          className="text-sm font-medium text-text-primary"
-        >
-          Total Budget (₱)
-        </label>
-        <input
-          id="event-budget"
-          ref={budgetRef}
-          type="text"
-          inputMode="decimal"
-          value={budgetTotal}
-          onChange={(e) => {
-            const raw = e.target.value;
-            const cursor = e.target.selectionStart ?? raw.length;
-            const pre = raw.slice(0, cursor).replace(/,/g, "").length;
-            const formatted = formatNumberInput(raw);
-            setBudgetTotal(formatted);
-            requestAnimationFrame(() => {
-              if (!budgetRef.current) return;
-              // Find where the cursor should be after formatting by counting
-              // how many commas appear before the pre-formatted cursor pos
-              let newCursor = 0;
-              let digitsSeen = 0;
-              for (const ch of formatted) {
-                if (digitsSeen >= pre) break;
-                if (ch !== ",") digitsSeen++;
-                newCursor++;
-              }
-              budgetRef.current.setSelectionRange(newCursor, newCursor);
-            });
-          }}
-          placeholder="0.00"
-          className="rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:ring-1 focus:ring-accent"
-          required
-        />
-        <p className="text-xs text-text-muted">
-          You can increase this later with a verified budget proof.
-        </p>
-      </div>
+        <div className="flex flex-col gap-3">
+          <div>
+            <p className="text-sm font-semibold text-text-primary">Budget proof</p>
+            <p className="text-xs text-text-muted">Funding letter or approved budget document.</p>
+          </div>
 
-      {/* Budget proof — required, verification evidence for the budget */}
-      <div className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium text-text-primary">
-          Budget Proof
-        </span>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          multiple
-          className="hidden"
-          onChange={(e) => {
-            const picked = Array.from(e.target.files ?? []);
-            if (picked.length) setProofFiles((prev) => [...prev, ...picked]);
-            if (fileRef.current) fileRef.current.value = "";
-          }}
-        />
-        <button
-          type="button"
-          onClick={() => fileRef.current?.click()}
-          className="inline-flex w-full items-center justify-between gap-2 rounded-lg border border-dashed border-border bg-surface px-3 py-2.5 text-sm text-text-secondary transition-colors hover:border-accent hover:text-text-primary"
-        >
-          <span className="flex min-w-0 items-center gap-2">
-            <ImagePlus className="h-4 w-4 shrink-0" />
-            <span className="truncate">
-              {proofFiles.length > 0
-                ? `Add another photo (${proofFiles.length} attached)`
-                : "Attach funding letter or budget document"}
-            </span>
-          </span>
-        </button>
-        {proofFiles.length > 0 && (
-          <ul className="flex flex-col gap-1.5">
-            {proofFiles.map((file, i) => (
-              <li
-                key={`${file.name}-${i}`}
-                className="flex items-center justify-between gap-2 rounded-lg border border-border bg-surface-secondary px-3 py-2 text-xs text-text-secondary"
-              >
-                <span className="min-w-0 truncate">{file.name}</span>
-                <button
-                  type="button"
-                  onClick={() => removeProof(i)}
-                  className="shrink-0 rounded-full p-0.5 text-text-muted hover:text-error"
-                  aria-label={`Remove ${file.name}`}
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              addProofs(Array.from(e.target.files ?? []));
+              e.target.value = "";
+            }}
+          />
+
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            className="hidden min-h-32 w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border-strong bg-surface px-4 py-6 text-sm font-medium text-text-secondary transition-colors hover:border-accent hover:bg-accent-muted hover:text-text-primary md:flex"
+          >
+            <ImagePlus className="h-6 w-6 text-text-muted" />
+            {proofFiles.length > 0 ? `Add more proof photos (${proofFiles.length}/${MAX_PROOFS})` : "Add proof photos"}
+            <span className="text-xs font-normal text-text-muted">JPG, PNG, or WEBP · up to 5 photos</span>
+          </button>
+
+          <div className="grid grid-cols-2 gap-2 md:hidden">
+            <button
+              type="button"
+              onClick={() => setShowCamera(true)}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98]"
+            >
+              <Camera className="h-4 w-4" />
+              Take photo
+            </button>
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-border bg-surface px-4 py-2.5 text-sm font-medium text-text-primary transition-colors hover:border-border-strong hover:bg-surface-secondary"
+            >
+              <ImageIcon className="h-4 w-4" />
+              Library
+            </button>
+          </div>
+
+          {proofFiles.length > 0 && (
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+              {proofFiles.map((file, index) => (
+                <div
+                  key={`${file.name}-${index}`}
+                  className="relative aspect-[3/4] overflow-hidden rounded-xl border border-border bg-surface-secondary"
                 >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </li>
-            ))}
-          </ul>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={proofPreviews[index]}
+                    alt={`Budget proof ${index + 1}`}
+                    className="h-full w-full object-contain"
+                  />
+                  <span className="absolute bottom-1.5 left-1.5 rounded-full bg-surface px-2 py-0.5 text-[10px] font-medium text-text-primary shadow-card">
+                    Proof {index + 1}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeProof(index)}
+                    className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-surface/95 text-text-muted shadow-card transition-colors hover:text-error"
+                    aria-label={`Remove proof ${index + 1}`}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {error && (
+          <p className="rounded-xl border border-error bg-error-lightest px-3 py-2 text-sm font-medium text-error-foreground" role="alert">
+            {error}
+          </p>
         )}
-        <p className="text-xs text-text-muted">
-          Attach the funding approval that authorizes this budget. JPG, PNG, or
-          WEBP, up to 5 photos.
-        </p>
-      </div>
 
-      {error && (
-        <p className="text-sm text-error">{error}</p>
+        <button
+          type="submit"
+          disabled={loading}
+          className="inline-flex w-full items-center justify-center rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {loading ? "Creating…" : "Create event"}
+        </button>
+      </form>
+
+      {showCamera && (
+        <CameraViewfinder
+          onCapture={(file) => {
+            setShowCamera(false);
+            addProofs([file]);
+          }}
+          onClose={() => setShowCamera(false)}
+          onUseLibrary={() => {
+            setShowCamera(false);
+            fileRef.current?.click();
+          }}
+        />
       )}
-
-      <button
-        type="submit"
-        disabled={loading}
-        className="inline-flex w-full items-center justify-center rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {loading ? "Creating…" : "Create Event"}
-      </button>
-    </form>
+    </>
   );
 }

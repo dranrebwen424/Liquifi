@@ -13,6 +13,7 @@ import {
   ShieldAlert,
   Camera,
   Image as ImageIcon,
+  FileCheck2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { dialogOverlay, dialogContent } from "@/lib/motion-variants";
@@ -97,6 +98,7 @@ type ArchiveEventModalProps = {
 export function ArchiveEventModal({ open, onClose, eventId }: ArchiveEventModalProps) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
+  const previewUrls = useRef<string[]>([]);
 
   const [phase, setPhase] = useState<Phase>("upload");
   const [files, setFiles] = useState<File[]>([]);
@@ -110,8 +112,11 @@ export function ArchiveEventModal({ open, onClose, eventId }: ArchiveEventModalP
   // Reset on open.
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- opening the modal intentionally resets its local machine
       setPhase("upload");
       setFiles([]);
+      for (const url of previewUrls.current) URL.revokeObjectURL(url);
+      previewUrls.current = [];
       setPreviews([]);
       setChecks(null);
       setSummary(null);
@@ -120,6 +125,13 @@ export function ArchiveEventModal({ open, onClose, eventId }: ArchiveEventModalP
       setShowCamera(false);
     }
   }, [open]);
+
+  useEffect(() => {
+    return () => {
+      for (const url of previewUrls.current) URL.revokeObjectURL(url);
+      previewUrls.current = [];
+    };
+  }, []);
 
   // Body scroll lock while open.
   useEffect(() => {
@@ -142,18 +154,35 @@ export function ArchiveEventModal({ open, onClose, eventId }: ArchiveEventModalP
 
   /** Validate + append a page — shared by the library input and the camera shutter. */
   const appendPage = useCallback((file: File) => {
+    const lowerName = file.name.toLowerCase();
+    if (file.type.includes("heic") || lowerName.endsWith(".heic") || lowerName.endsWith(".heif")) {
+      setError("HEIC isn't supported. Use JPG, PNG, or WEBP.");
+      return;
+    }
     if (!file.type.startsWith("image/")) {
-      setError("Only image files are accepted.");
+      setError("Upload signed pages as images.");
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      setError("File too large (max 10 MB).");
+      setError("Each page must be 10 MB or smaller.");
       return;
     }
-    setFiles((prev) => [...prev, file].slice(0, 20));
-    setPreviews((prev) => [...prev, URL.createObjectURL(file)]);
+    const preview = URL.createObjectURL(file);
+    previewUrls.current.push(preview);
+    setFiles((prev) => [...prev, file]);
+    setPreviews((prev) => [...prev, preview]);
     setError(null);
   }, []);
+
+  const removePage = (index: number) => {
+    const url = previews[index];
+    if (url) {
+      URL.revokeObjectURL(url);
+    }
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+    setPreviews((prev) => prev.filter((_, i) => i !== index));
+    setError(null);
+  };
 
   const addFiles = (list: FileList | null) => {
     if (!list || list.length === 0) return;
@@ -223,6 +252,8 @@ export function ArchiveEventModal({ open, onClose, eventId }: ArchiveEventModalP
 
   const resetToUpload = () => {
     setFiles([]);
+    for (const url of previewUrls.current) URL.revokeObjectURL(url);
+    previewUrls.current = [];
     setPreviews([]);
     setChecks(null);
     setSummary(null);
@@ -231,14 +262,21 @@ export function ArchiveEventModal({ open, onClose, eventId }: ArchiveEventModalP
   };
 
   const uploadContent = () => (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-text-primary">Archive event</h2>
-          <p className="mt-0.5 text-sm text-text-muted">
-            Upload the fully signed liquidation report
-          </p>
+    <div className="space-y-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent-light text-accent">
+            <Archive className="h-5 w-5" />
+          </span>
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">
+              Close event
+            </p>
+            <h2 className="text-lg font-semibold text-text-primary">Archive event</h2>
+            <p className="mt-0.5 text-sm text-text-muted">
+              Upload all signed report pages.
+            </p>
+          </div>
         </div>
         <button
           type="button"
@@ -250,57 +288,50 @@ export function ArchiveEventModal({ open, onClose, eventId }: ArchiveEventModalP
         </button>
       </div>
 
-      {/* Notice */}
-      <div className="flex gap-3 rounded-xl border border-warning bg-warning-lightest p-3">
-        <ShieldAlert className="h-5 w-5 shrink-0 text-warning" />
+      <div className="flex gap-3 rounded-2xl border border-warning bg-warning-lightest p-3.5">
+        <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
         <div>
-          <p className="text-sm font-medium text-warning-foreground">
-            Upload every page of the fully signed report
-          </p>
-          <p className="mt-0.5 text-xs text-text-secondary">
-            Not just the signature page. The system checks that the document
-            number, each signatory&apos;s signature, and the page count all
-            match the generated report before archiving.
-          </p>
+          <p className="text-sm font-semibold text-warning-foreground">Final check before archiving</p>
+          <ul className="mt-1 space-y-1 text-xs text-text-secondary">
+            <li>• Document number must match</li>
+            <li>• Each signatory must be signed</li>
+            <li>• Page count must match</li>
+          </ul>
         </div>
       </div>
 
-      {/* File picker */}
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
         disabled={busy}
-        className="hidden w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border-strong px-4 py-8 text-sm text-text-muted transition-colors hover:border-accent hover:bg-accent-muted disabled:opacity-50 md:flex"
+        className="hidden min-h-32 w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border-strong bg-surface px-4 py-6 text-sm font-medium text-text-secondary transition-colors hover:border-accent hover:bg-accent-muted hover:text-text-primary disabled:opacity-50 md:flex"
       >
         <Upload className="h-6 w-6" />
-        Tap to select signed pages
-        <span className="text-xs text-text-muted">Multiple images, in page order</span>
+        {files.length > 0 ? `Add more pages (${files.length})` : "Select signed pages"}
+        <span className="text-xs font-normal text-text-muted">Multiple images, in page order</span>
       </button>
 
-      {/* Mobile — camera + library pair, same as entry capture */}
-      <div className="flex gap-2 md:hidden">
+      <div className="grid grid-cols-2 gap-2 md:hidden">
         <button
           type="button"
           onClick={() => setShowCamera(true)}
           disabled={busy}
-          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-accent px-3 py-2.5 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent-hover disabled:opacity-50"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98] disabled:opacity-50"
         >
-          <Camera className="h-3.5 w-3.5" />
-          Take Photo
+          <Camera className="h-4 w-4" />
+          Take photo
         </button>
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={busy}
-          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-border px-3 py-2.5 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary disabled:opacity-50"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-border bg-surface px-4 py-2.5 text-sm font-medium text-text-primary transition-colors hover:border-border-strong hover:bg-surface-secondary disabled:opacity-50"
         >
-          <ImageIcon className="h-3.5 w-3.5" />
-          Choose from Library
+          <ImageIcon className="h-4 w-4" />
+          Library
         </button>
       </div>
-      <p className="text-center text-xs text-text-muted md:hidden">
-        Add each signed page in order — you can take or pick more than one.
-      </p>
+      <p className="text-center text-xs text-text-muted md:hidden">Add pages in order.</p>
 
       <input
         ref={inputRef}
@@ -311,44 +342,59 @@ export function ArchiveEventModal({ open, onClose, eventId }: ArchiveEventModalP
         onChange={handleLibrarySelect}
       />
 
-      {/* Selected files */}
       {files.length > 0 && (
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
           {files.map((file, index) => (
             <div
               key={`${file.name}-${index}`}
-              className="relative aspect-[3/4] overflow-hidden rounded-lg border border-border bg-surface-secondary"
+              className="relative aspect-[3/4] overflow-hidden rounded-xl border border-border bg-surface-secondary"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={previews[index]}
                 alt={`Signed page ${index + 1}`}
-                className="h-full w-full object-cover"
+                className="h-full w-full object-contain"
               />
-              <span className="absolute bottom-0 left-0 right-0 bg-surface-inverse/70 px-1 py-0.5 text-center text-[10px] font-medium text-text-inverse">
+              <span className="absolute bottom-1.5 left-1.5 rounded-full bg-surface px-2 py-0.5 text-[10px] font-medium text-text-primary shadow-card">
                 Page {index + 1}
               </span>
+              <button
+                type="button"
+                onClick={() => removePage(index)}
+                disabled={busy}
+                className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-surface/95 text-text-muted shadow-card transition-colors hover:text-error disabled:opacity-50"
+                aria-label={`Remove page ${index + 1}`}
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
             </div>
           ))}
         </div>
       )}
 
-      {error && <p className="text-xs font-medium text-destructive">{error}</p>}
+      {error && (
+        <p className="rounded-xl border border-error bg-error-lightest px-3 py-2 text-sm font-medium text-error-foreground" role="alert">
+          {error}
+        </p>
+      )}
 
       <button
         type="button"
         onClick={submit}
         disabled={busy || files.length === 0}
-        className="w-full rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent-hover disabled:opacity-50"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98] disabled:opacity-50"
       >
-        Upload &amp; Verify
+        <FileCheck2 className="h-4 w-4" />
+        Upload &amp; verify
       </button>
     </div>
   );
 
   const uploadingContent = () => (
-    <div className="flex flex-col items-center gap-4 py-10">
-      <Loader2 className="h-8 w-8 animate-spin text-accent" />
+    <div className="flex flex-col items-center gap-4 py-10 text-center">
+      <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent-light">
+        <Loader2 className="h-7 w-7 animate-spin text-accent" />
+      </span>
       <p className="text-sm font-medium text-text-primary">
         Verifying signed report…
       </p>
@@ -363,10 +409,19 @@ export function ArchiveEventModal({ open, onClose, eventId }: ArchiveEventModalP
       ? Object.values(checks).every((c) => c.passed)
       : false;
     return (
-      <div className="space-y-4">
-        {/* Header */}
-        <div className="flex items-start justify-between">
-          <div>
+      <div className="space-y-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <span className={cn(
+              "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl",
+              allPassed ? "bg-success-lightest text-success" : "bg-error-lightest text-error",
+            )}>
+              {allPassed ? <CircleCheckBig className="h-5 w-5" /> : <CircleX className="h-5 w-5" />}
+            </span>
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">
+                Verification
+              </p>
             <h2 className="text-lg font-semibold text-text-primary">
               {allPassed ? "Verification passed" : "Verification failed"}
             </h2>
@@ -375,6 +430,7 @@ export function ArchiveEventModal({ open, onClose, eventId }: ArchiveEventModalP
                 ? "The signed report matches the generated report."
                 : "Fix the issues below and try again."}
             </p>
+            </div>
           </div>
           <button
             type="button"
@@ -387,7 +443,7 @@ export function ArchiveEventModal({ open, onClose, eventId }: ArchiveEventModalP
 
         {/* Per-check results */}
         {checks && (
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             {[
               { key: "document_number", label: "Document number" },
               { key: "signatures", label: "Signatory signatures" },
@@ -398,7 +454,7 @@ export function ArchiveEventModal({ open, onClose, eventId }: ArchiveEventModalP
                 <div
                   key={key}
                   className={cn(
-                    "flex items-start gap-3 rounded-lg border p-3",
+                    "flex items-start gap-3 rounded-2xl border p-3.5",
                     check.passed
                       ? "border-success/40 bg-success-lightest"
                       : "border-error/30 bg-error-lightest",
@@ -485,7 +541,7 @@ export function ArchiveEventModal({ open, onClose, eventId }: ArchiveEventModalP
             exit="exit"
             className="fixed inset-0 z-50 hidden overflow-y-auto p-4 sm:flex sm:items-center sm:justify-center"
           >
-            <div className="w-full max-w-md rounded-xl border border-border bg-surface p-6 shadow-card">
+            <div className="w-full max-w-xl overflow-hidden rounded-2xl border border-border bg-surface p-6 shadow-card sm:p-7">
               {phase === "upload" && uploadContent()}
               {phase === "uploading" && uploadingContent()}
               {phase === "result" && resultContent()}
@@ -499,7 +555,7 @@ export function ArchiveEventModal({ open, onClose, eventId }: ArchiveEventModalP
       <CssBottomSheet open={open} onClose={() => { if (!busy) onClose(); }}>
         <div className="flex max-h-[85dvh] flex-col rounded-t-2xl border-t border-border bg-surface shadow-card">
           <div className="mx-auto mt-3 h-1 w-10 shrink-0 rounded-full bg-border-strong" />
-          <div className="min-h-0 overflow-y-auto p-6 pb-4">
+          <div className="min-h-0 overflow-y-auto px-5 pb-4 pt-5 sm:px-6">
             {phase === "upload" && uploadContent()}
             {phase === "uploading" && uploadingContent()}
             {phase === "result" && resultContent()}
@@ -523,7 +579,10 @@ export function ArchiveEventModal({ open, onClose, eventId }: ArchiveEventModalP
       <CameraViewfinder
         onCapture={handleCameraCapture}
         onClose={() => setShowCamera(false)}
-        onUseLibrary={() => inputRef.current?.click()}
+        onUseLibrary={() => {
+          setShowCamera(false);
+          inputRef.current?.click();
+        }}
       />
     )}
     </>

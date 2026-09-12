@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X } from "lucide-react";
+import { CalendarPlus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { dialogOverlay, dialogContent } from "@/lib/motion-variants";
 import { CssBottomSheet } from "@/components/ui/CssBottomSheet";
@@ -87,14 +87,39 @@ export function NewEventModal({ open, onClose }: NewEventModalProps) {
   };
 
   const formContent = (
-    <div className="flex flex-col gap-4">
-      <div>
-        <h2 className="text-base font-semibold text-text-primary">
-          New Event
-        </h2>
-        <p className="mt-0.5 text-xs text-text-muted">
-          Set up a new event budget to start tracking expenses.
-        </p>
+    <div className="flex flex-col gap-5">
+      <div className="space-y-4">
+        <div className="flex items-start gap-3 pr-8">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent-light text-accent">
+            <CalendarPlus className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">
+              Create
+            </p>
+            <h2 className="text-lg font-semibold text-text-primary">
+              New event
+            </h2>
+            <p className="mt-0.5 text-sm text-text-muted">
+              Name it, set budget, attach proof.
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {["Details", "Budget", "Proof"].map((step, index) => (
+            <div
+              key={step}
+              className="rounded-xl border border-border bg-surface-secondary px-2.5 py-2"
+            >
+              <span className="text-[10px] font-semibold text-text-muted">
+                0{index + 1}
+              </span>
+              <p className="truncate text-[11px] font-medium text-text-primary">
+                {step}
+              </p>
+            </div>
+          ))}
+        </div>
       </div>
       <EventForm onSubmit={handleSubmit} />
     </div>
@@ -125,7 +150,7 @@ export function NewEventModal({ open, onClose }: NewEventModalProps) {
             exit="exit"
             className="fixed inset-0 z-50 hidden overflow-y-auto p-4 sm:flex sm:items-center sm:justify-center"
           >
-            <div className="relative w-full max-w-lg rounded-xl border border-border bg-surface p-6 shadow-card">
+            <div className="relative w-full max-w-xl overflow-hidden rounded-2xl border border-border bg-surface p-6 shadow-card sm:p-7">
               <button
                 type="button"
                 onClick={closeSheet}
@@ -147,7 +172,7 @@ export function NewEventModal({ open, onClose }: NewEventModalProps) {
           <div className="flex shrink-0 flex-col items-center py-3">
             <div className="h-1 w-10 rounded-full bg-border-strong" />
           </div>
-          <div className="min-h-0 overflow-y-auto p-6 pb-4">{formContent}</div>
+          <div className="min-h-0 overflow-y-auto px-5 pb-4 pt-2 sm:px-6">{formContent}</div>
           <div className="border-t border-border px-6 py-3">
             <button
               type="button"
