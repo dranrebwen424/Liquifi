@@ -77,6 +77,15 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Decisions Made During Build
 
+### 2026-09-12 - Budget History read path (BudgetProof feature, UI slice)
+
+- **Figma-directed UI slice:** added a full-width white **Budget History** card below the two CTAs on the treasurer event dashboard (Figma 171:212; `EventDashboardActions.tsx`, mobile-only - the desktop CTA frame is `lg:hidden` on that route). Nothing else on the event page changed.
+- **New route:** `app/treasurer/events/[eventId]/budget-history/page.tsx` (Figma 142:199) - back arrow, centered History title, proof cards grouped by month, `formatPHP` amount + "Submitted on ...". Server component: `requireRole("treasurer")` + explicit cross-department `notFound()` guard (belt-and-suspenders on top of RLS).
+- **New table `budget_proofs`** (`scripts/sql/budget-proofs.sql`, applied via MCP raw SQL): `event_id` FK CASCADE, `department_id`, `uploaded_by -> auth.users`, `uploaded_at`, `type` CHECK `initial|increase`, `claimed_amount`, `proof_url` (JSON-array storage keys, nullable), `ai_extracted_amount`, `verification_status` CHECK `pending|matched|mismatch`, `resulting_budget_total` with CHECK (matched implies non-null total). RLS mirrors every dept-scoped table: `get_user_role()/get_user_department_id()` helpers, dept policy for adviser+treasurer, admin-unrestricted policy.
+- **Query:** `lib/queries/budget-proofs.ts` - `getBudgetProofsByEvent(eventId, departmentId)`, React-cached like `lib/queries/events.ts`, newest first. No uploader-name join (UI doesn't show it); add only if cards need attribution.
+- **Deferred (separate write path, not in this slice):** Gemini verification POST API + `agent/budget-proof-parser.ts`, `budget-proofs` storage bucket + image proxy, adviser-page equivalent button, desktop Budget History entry (desktop CTA lives in `BudgetSummary` - left untouched per "don't change the event page UI"). Table is additive/empty until the write path lands; UI renders seed rows if any.
+- **Verification:** `npx tsc --noEmit` green.
+
 *Condensed 2026-09-07 on request — full verbatim history preserved in git. Newest first. Superseded entries are marked [SUPERSEDED] with the replacement named.*
 
 ### 2026-09-10 - Treasurer event-report guided workspace

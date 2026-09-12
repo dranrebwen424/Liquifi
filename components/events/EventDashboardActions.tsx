@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Plus, ArrowUpRight } from "lucide-react";
+import { Plus, ArrowUpRight, History, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LogEntryModal } from "@/components/entries/LogEntryModal";
 
@@ -122,6 +122,21 @@ export function EventDashboardActions({
           </Link>
         )}
       </div>
+
+      {/* Budget History — full-width card below the 2 CTAs (Figma 171:212) */}
+      <Link
+        href={`/treasurer/events/${eventId}/budget-history`}
+        className="mt-3 flex items-center justify-between gap-3 rounded-[5px] bg-surface px-4 py-3.5 transition-[transform,shadow] hover:scale-[1.01] active:scale-[0.99]"
+        style={{ boxShadow: "0 2px 10px rgba(0,0,0,0.02)" }}
+      >
+        <span className="flex min-w-0 items-center gap-2.5">
+          <History className="h-4 w-4 shrink-0 text-text-primary" />
+          <span className="truncate text-[13px] font-medium text-text-primary">
+            Budget History
+          </span>
+        </span>
+        <ChevronRight className="h-4 w-4 shrink-0 text-text-muted" aria-hidden />
+      </Link>
 
       <LogEntryModal
         open={logEntryOpen}
