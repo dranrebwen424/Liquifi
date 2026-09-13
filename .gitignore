@@ -43,7 +43,13 @@ next-env.d.ts
 .vercel
 .env*
 
-# local dev logs / tooling artifacts.dev-err.log.dev-out.log
+# local dev logs
+.dev-err.log
+.dev-out.log
+.devout.txt
+dev-server.log
+
+# tooling artifacts
 .playwright-mcp/
 
 # temp artifacts
