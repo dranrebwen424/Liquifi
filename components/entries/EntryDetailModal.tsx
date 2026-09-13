@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, FileText, ZoomIn, CircleMinus, CircleX } from "lucide-react";
@@ -95,6 +95,12 @@ type EntryDetailModalProps = {
   canMutate?: boolean;
   /** Opens the void confirmation modal for this entry. */
   onVoid?: () => void;
+  reviewContext?: {
+    eventName: string;
+    treasurerName?: string | null;
+    ageLabel?: string;
+  };
+  reviewActions?: ReactNode;
 };
 
 function formatDate(dateStr: string | null | undefined): string {
@@ -360,12 +366,16 @@ function EntryDetailContent({
   onVoid,
   onViewImage,
   onWithdrawn,
+  reviewContext,
+  reviewActions,
 }: {
   entry: EntryDetail;
   canMutate?: boolean;
   onVoid?: () => void;
   onViewImage?: (index: number) => void;
   onWithdrawn?: () => void;
+  reviewContext?: EntryDetailModalProps["reviewContext"];
+  reviewActions?: ReactNode;
 }) {
   const isVoided = entry.status === "voided";
   const displayName = entryTitle(entry);
@@ -424,6 +434,25 @@ function EntryDetailContent({
           <p className="mt-0.5 text-sm text-text-muted">{title}</p>
         )}
       </div>
+
+      {reviewContext && (
+        <div className="rounded-lg border border-border bg-surface-secondary/50 p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-text-muted">
+            Event
+          </p>
+          <p className="mt-1 text-sm font-semibold text-text-primary">
+            {reviewContext.eventName}
+          </p>
+          <div className="mt-3 divide-y divide-border">
+            {reviewContext.treasurerName && (
+              <DetailRow label="Treasurer" value={reviewContext.treasurerName} />
+            )}
+            {reviewContext.ageLabel && (
+              <DetailRow label="Queue age" value={reviewContext.ageLabel} />
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Amount + Status */}
       <div className="flex items-center justify-between">
@@ -598,13 +627,23 @@ function EntryDetailContent({
           Void entry
         </Button>
       )}
+
+      {reviewActions && <div className="pt-2">{reviewActions}</div>}
     </div>
   );
 }
 
 /** Full-screen image viewer lives in components/ui/ImageViewer.tsx (shared
  *  with budget proofs). */
-export function EntryDetailModal({ open, onClose, entry, canMutate, onVoid }: EntryDetailModalProps) {
+export function EntryDetailModal({
+  open,
+  onClose,
+  entry,
+  canMutate,
+  onVoid,
+  reviewContext,
+  reviewActions,
+}: EntryDetailModalProps) {
   const [imageOpen, setImageOpen] = useState(false);
   const [imageIndex, setImageIndex] = useState(0);
 
@@ -684,10 +723,12 @@ export function EntryDetailModal({ open, onClose, entry, canMutate, onVoid }: En
                     entry={contentEntry}
                     canMutate={canMutate}
                     onVoid={onVoid}
+                    reviewContext={reviewContext}
+                    reviewActions={reviewActions}
                     onViewImage={(index) => {
-  setImageIndex(index ?? 0);
-  setImageOpen(true);
-}}
+                      setImageIndex(index ?? 0);
+                      setImageOpen(true);
+                    }}
                     onWithdrawn={onClose}
                   />
                 </div>
@@ -703,11 +744,13 @@ export function EntryDetailModal({ open, onClose, entry, canMutate, onVoid }: En
           <div className="mx-auto mb-5 mt-3 h-1 w-10 rounded-full bg-border-strong" />
 
           <div className="p-6 pb-8 pt-0">
-            <EntryDetailContent
-              entry={contentEntry}
-              canMutate={canMutate}
-              onVoid={onVoid}
-              onViewImage={(index) => {
+              <EntryDetailContent
+                entry={contentEntry}
+                canMutate={canMutate}
+                onVoid={onVoid}
+                reviewContext={reviewContext}
+                reviewActions={reviewActions}
+                onViewImage={(index) => {
                 setImageIndex(index ?? 0);
                 setImageOpen(true);
               }}
