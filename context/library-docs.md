@@ -310,94 +310,45 @@ const parsed = JSON.parse(text);
 
 **Check first:** Check AGENTS.md for an installed react-pdf skill. PDF generation APIs can differ from general training knowledge.
 
-### Financial Report PDF (`components/reports/ReportPdf.tsx`)
+### Financial Report PDF (`components/reports/FinancialReportPDF.tsx`)
 
-Single fixed template — not per-department customizable.
+DOCX-templated (public/FS-TEMPLATE/Financial_Report.docx), single fixed template — not per-department customizable. Data-driven: one `FinancialReportData` prop; all display strings pre-formatted by the caller.
 
 ```typescript
 import { renderToBuffer } from "@react-pdf/renderer";
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import FinancialReportPDF, {
+  type FinancialReportData,
+  type ExpenseEntry,
+  type Signatory,
+} from "@/components/reports/FinancialReportPDF";
 
-const styles = StyleSheet.create({
-  page: { padding: 40, fontFamily: "Helvetica" },
-  header: { marginBottom: 20 },
-  table: { marginBottom: 10 },
-  row: { flexDirection: "row", marginBottom: 4 },
-  cell: { fontSize: 10, flex: 1 },
-  totals: { marginTop: 10, borderTopWidth: 1, paddingTop: 6 },
-  signatory: { marginTop: 20 },
-});
-
-const ReportPDF = ({
-  departmentName,
-  eventName,
-  fsDocumentNumber,
-  dateRange,
-  entries,
-  budgetTotal,
-  totalSpent,
-  signatories,
-}: ReportPDFProps) => (
-  <Document>
-    <Page size="A4" style={styles.page}>
-      {/* Mabini Colleges letterhead */}
-      <View style={styles.header}>
-        <Text style={{ fontSize: 16, fontWeight: "bold" }}>
-          Mabini Colleges
-        </Text>
-        <Text style={{ fontSize: 10 }}>
-          {departmentName} - {eventName}
-        </Text>
-      </View>
-
-      {/* fs_document_number top-right */}
-      <Text style={{ position: "absolute", top: 40, right: 40, fontSize: 8 }}>
-        {fsDocumentNumber}
-      </Text>
-
-      {/* Itemized entry table */}
-      {/* Date | Description/Category | Document Type | Document # | Amount */}
-
-      {/* Totals block */}
-      <View style={styles.totals}>
-        <Text>Budget: ₱{budgetTotal.toLocaleString()}</Text>
-        <Text>Total Spent: ₱{totalSpent.toLocaleString()}</Text>
-        <Text>Remaining: ₱{(budgetTotal - totalSpent).toLocaleString()}</Text>
-      </View>
-
-      {/* Signatory block — ordered by sort_order */}
-      {signatories.map((s) => (
-        <View key={s.id} style={styles.signatory}>
-          <Text style={{ fontSize: 10 }}>{s.position}</Text>
-          <Text style={{ fontSize: 12, fontWeight: "bold" }}>{s.fullName}</Text>
-        </View>
-      ))}
-    </Page>
-  </Document>
-);
-
-// Generate buffer
 const buffer = await renderToBuffer(
-  <ReportPDF
-    departmentName="..."
-    eventName="..."
-    fsDocumentNumber={report.fs_document_number}
-    dateRange={dateRange}
-    entries={entries}
-    budgetTotal={budgetTotal}
-    totalSpent={totalSpent}
-    signatories={signatories}
+  <FinancialReportPDF
+    data={{
+      departmentName: "COLLEGE OF COMPUTER STUDIES STUDENT COUNCIL (CCS)", // {DEPT.NAME} STUDENT COUNCIL ({CODE}), uppercase
+      eventName: event.name,
+      schoolYearStart: 2026,                     // from currentSchoolYear(new Date())
+      schoolYearEnd: 2027,                       // Jun–Dec → start=Y, end=Y+1, semester="1st Semester"; Jan–May → start=Y-1, end=Y, "2nd Semester"
+      semester: "1st Semester",
+      fsDocumentNumber: report.fs_document_number, // "FS-CCS-2026-00001"
+      headerImageSrc,                            // data:image/png;base64,… or {data: Buffer, format}
+      beginningBalance,                          // first matched budget_proofs (type=initial) resulting_budget_total; legacy fallback event.budget_total
+      totalCollection,                           // event.budget_total
+      totalExpenses,                             // sum of deducted entry amounts
+      cashOnHand,                                // totalCollection - totalExpenses
+      entries,                                   // ExpenseEntry[] — strings pre-formatted (date already date-blanked by caller)
+      signatories,                               // Signatory[] — {name: full_name, position, sortOrder}, sorted by sort_order
+    }}
   />,
 );
-
-// Upload directly to InsForge Storage
-await insforge.storage
-  .from("departments")
-  .upload(`${departmentId}/events/${eventId}/reports/${reportId}.pdf`, buffer, {
-    contentType: "application/pdf",
-    upsert: false,
-  });
 ```
+
+- **Header** = `<View fixed>` → `headerImageSrc` image (~113pt) + FINANCIAL REPORT OF `{departmentName}` (13pt bold, center, navy) + meta line (eventName / `SY YYYY–YYYY — {Semester}` / fsDocumentNumber) + rule. `fixed` repeats it on every page. `LETTER` page, Helvetica, `padding: 48, fontSize: 8.6`.
+- **Table (6 cols, flex row)**: DATE 1.1 | ITEM 3 | QUANTITY 0.9 | UNIT PRICE 1.2 | TOTAL AMOUNT 1.3 | OR NUMBER 1.4; header cells 8pt bold; every row `wrap={false}` (entry never splits across pages). ITEM = caller newline-joined breakdown lines (or supplier/doc-type fallback). Qty/unitPrice = caller newline-stacked strings, `—` when absent (template prints them verbatim). DATE prints verbatim — **caller blanks it on same-date continuation rows** (route loop post-sort). OR = `document_number` → witness → `---`. Overspend rows get a muted-blue fill, voided rows strikethrough.
+- **TOTAL EXPENSES** bold row (label flex 6.2, amount flex 1.3, `Php`-formatted). **Balance lines**: Beginning Balance / Total Collection / Cash On-hand — sourced by the generate route (see data above).
+- **Signatories**: "Prepared and certified correct by:" + 4 columns (signature line + bold name + muted position, 25% width, wrap).
+- **Footer note**: document is electronically generated by Liquifi; signatures are handwritten.
+- The route builds `entries` from **deducted** entries only: line items from `item_breakdown` (receipt = camelCase `{description,qty,unitPrice,lineAmount}`; manual = snake_case `{line_amount}` or null in flat mode → synthesize one item from `CATEGORY_LABELS[category]` + `occasion|recipient|route` from `form_payload_json`); date = `formatReportDate(issue_date ?? created_at)`; `orNumber = entry.document_number ?? (manual ? witness : "---")`; sort by date string, then blank repeated dates; `totalAmount = formatAmount(entry.amount)` (en-PH, 2 decimals); `isOverspend = Boolean(causes_overspend)`.
 
 **Supported CSS properties** (only these — others are silently ignored):
 `padding, margin, fontSize, color, fontFamily, flexDirection, alignItems, justifyContent, borderRadius, width, height, fontWeight, textAlign, lineHeight, borderTopWidth, paddingTop, position, absolute, top, right`
@@ -410,7 +361,7 @@ await insforge.storage
 - Generated buffer uploaded directly to InsForge Storage — never written to disk
 - Always save public URL to `Report.pdf_url` after upload
 - `revision_count` is system/audit-only — never render it on the PDF
-- Overspend disclosure on the PDF: the TOTAL row's Variance renders red `₱ (x)` when actual spend exceeds budget (per-row tint not used — no per-category budget exists; see ui-registry ReportPdf)
+- See ui-registry `FinancialReportPDF` for the current DOCX-matching layout (6-col table, header per page, balance lines).
 
 ---
 

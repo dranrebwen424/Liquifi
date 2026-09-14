@@ -343,7 +343,7 @@ Build the complete report generation UI with mock data.
 - Precondition: no existing `Report` for this event currently `pending_adviser_approval` or `approved` — "Generate Report" disabled client-side and rejected server-side otherwise
 - `fs_document_number` assigned via `DepartmentReportCounter` (read-then-increment, format `FS-{DEPTCODE}-{YYYY}-{00001}`, resets per department per calendar year) — assigned once, persists across regeneration
 - `ReportSignatory` rows saved (position, full_name, sort_order)
-- `@react-pdf/renderer` builds the PDF (`components/reports/ReportPdf.tsx`) — letterhead, dept/event/`fs_document_number`, itemized table, totals block, dynamic signatory block
+- `@react-pdf/renderer` builds the PDF (`components/reports/FinancialReportPDF.tsx`) — letterhead, dept/event/`fs_document_number`, itemized table, totals block, dynamic signatory block
 - `Report.status = pending_adviser_approval`; `Event.is_locked` becomes true as a derived side effect — event dashboard immediately reflects the lock (no new entries, voids, or budget edits)
 - Push notification to the department's active adviser
 

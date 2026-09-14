@@ -1,3 +1,5 @@
+import { readFileSync } from "fs";
+import path from "path";
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -7,7 +9,7 @@ import { requireRole } from "@/lib/auth-guard";
 import { uploadReportPdf } from "@/lib/storage";
 import { formatFsNumber } from "@/lib/report-number";
 import { createNotification } from "@/lib/notifications";
-import { ReportPdf } from "@/components/reports/ReportPdf";
+import FinancialReportPDF from "@/components/reports/FinancialReportPDF";
 
 // Step 20 — real report generation. Creates the Report row at
 // pending_adviser_approval (which derives the event lock), assigns the FS
@@ -26,6 +28,58 @@ const GenerateBodySchema = z.object({
 });
 
 const LOCKED_STATUSES = ["pending_adviser_approval", "approved"];
+
+// ponytail: header.png lives in public/ (deployed with the function); read once
+// at module load, embed as a data URI — no storage round-trip, no signed URLs.
+const HEADER_IMAGE_SRC = `data:image/png;base64,${readFileSync(
+  path.join(process.cwd(), "public", "FS-TEMPLATE", "header.png"),
+).toString("base64")}`;
+
+// Manual entries carry no issue_date — DATE falls back to created_at. Parse the
+// "YYYY-MM-DD" prefix directly to dodge timezone shifts on full timestamps.
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+function formatReportDate(value?: string | null): string | null {
+  if (!value) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (!match) return null;
+  return `${MONTHS[Number(match[2]) - 1]} ${Number(match[3])}, ${match[1]}`;
+}
+
+// SY/semester derived from the generation date:
+// Jun–Dec = 1st semester of that year; Jan–May = 2nd semester of the prior year.
+function currentSchoolYear(date: Date): { start: number; end: number; semester: string } {
+  const year = date.getFullYear();
+  return date.getMonth() >= 5
+    ? { start: year, end: year + 1, semester: "1st Semester" }
+    : { start: year - 1, end: year, semester: "2nd Semester" };
+}
+
+function formatAmount(value: number): string {
+  return value.toLocaleString("en-PH", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function formatQty(value: number | null): string {
+  if (value === null || value === undefined) return "—";
+  return value % 1 === 0 ? String(value) : value.toFixed(2);
+}
+
+// ponytail: mirror of CATEGORIES labels without dragging lucide-react into the
+// route bundle; add keys only if a new manual category ships.
+const CATEGORY_LABELS: Record<string, string> = {
+  transportation: "Transportation",
+  meals: "Meals",
+  honorarium: "Honorarium",
+  supplies: "Supplies",
+  printing: "Printing",
+  rental: "Rental",
+  others: "Other",
+};
 
 function errorResponse(message: string, status: number) {
   return NextResponse.json({ success: false, error: message }, { status });
@@ -140,46 +194,129 @@ export async function POST(request: NextRequest) {
     // ── Deducted entries are the report content ──
     const { data: rawEntries } = await insforge.database
       .from("entries")
-      .select("id, document_type_raw, document_number, issue_date, supplier_name, amount, causes_overspend")
+      .select(
+        "id, type, category, document_type_raw, document_number, issue_date, supplier_name, amount, item_breakdown, form_payload_json, causes_overspend, created_at",
+      )
       .eq("event_id", eventId)
       .eq("status", "deducted")
       .order("issue_date", { ascending: true }) // Postgres ascending = NULLs last
       .order("created_at", { ascending: true });
 
-    // Liquidation report rows: one per deducted entry. Per-entry Approved
-    // Budget is not tracked — only event.budget_total — so the template
-    // renders "—" for per-row budget/variance; the TOTAL row carries the
-    // real numbers.
-    const entries = (rawEntries ?? []).map((entry) => ({
-      description: entry.supplier_name ?? entry.document_type_raw ?? "Expense",
-      date: entry.issue_date,
-      documentType: entry.document_type_raw,
-      documentNumber: entry.document_number,
-      amount: Number(entry.amount),
-    }));
-    const totalSpent = entries.reduce((sum, entry) => sum + entry.amount, 0);
+    // Report rows follow the DOCX template: one row per deducted entry, DATE |
+    // ITEM | QUANTITY | UNIT PRICE | TOTAL AMOUNT | OR NUMBER. Receipts carry a
+    // camelCase item_breakdown; manual entries carry snake_case or none (flat
+    // mode) plus a witness (required at submit) that doubles as the OR column
+    // since manual entries have no OR number. Manual entries have no
+    // issue_date, so DATE falls back to created_at.
+    type BreakdownItem = { description?: string; qty?: number; unitPrice?: number; unit_price?: number };
+    type FormPayload = { witness?: string; route?: string; occasion?: string; recipient?: string };
+
+    const entries = (rawEntries ?? [])
+      .map((entry) => {
+        const isManual = entry.type === "manual";
+        const breakdown = (entry.item_breakdown ?? []) as BreakdownItem[];
+        const payload = (entry.form_payload_json ?? {}) as FormPayload;
+        const items = breakdown.map((item) => ({
+          description: String(item.description ?? ""),
+          qty: typeof item.qty === "number" ? item.qty : null,
+          unitPrice: isManual
+            ? typeof item.unit_price === "number"
+              ? item.unit_price
+              : null
+            : typeof item.unitPrice === "number"
+              ? item.unitPrice
+              : null,
+        }));
+        // Manual flat/other-mode entries have no breakdown — synthesize a
+        // single descriptive line from the category label + context.
+        const itemsOrFlat = items.length > 0
+          ? items
+          : isManual
+            ? [
+                {
+                  description: [
+                    CATEGORY_LABELS[entry.category ?? ""] ?? "Expense",
+                    payload.occasion ?? payload.recipient ?? payload.route,
+                  ]
+                    .filter(Boolean)
+                    .join(" — "),
+                  qty: null,
+                  unitPrice: null,
+                },
+              ]
+            : [];
+        return {
+          date: formatReportDate(entry.issue_date ?? entry.created_at) ?? "",
+          item: itemsOrFlat.length > 0
+            ? itemsOrFlat.map((item) => item.description).join("\n")
+            : (entry.supplier_name ?? entry.document_type_raw ?? "Expense"),
+          quantity: itemsOrFlat.length > 0
+            ? itemsOrFlat.map((item) => formatQty(item.qty)).join("\n")
+            : undefined,
+          unitPrice: itemsOrFlat.length > 0
+            ? itemsOrFlat.map((item) => formatAmount(item.unitPrice ?? 0)).join("\n")
+            : undefined,
+          totalAmount: formatAmount(Number(entry.amount)),
+          orNumber: entry.document_number ?? (isManual ? (payload.witness ?? "---") : "---"),
+          isOverspend: Boolean(entry.causes_overspend),
+        };
+      })
+      .sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""));
+    // ponytail: subtract committed voided-entry amounts? voided rows are
+    // excluded by the "deducted" filter, so sum is the report total.
+    const totalSpent = (rawEntries ?? []).reduce((sum, entry) => sum + Number(entry.amount), 0);
+
+    // Source-document convention: the date prints only on the row where it
+    // changes; same-date runs leave it blank (template renders it verbatim).
+    let lastDate = "";
+    for (const entry of entries) {
+      const current = entry.date;
+      entry.date = current === lastDate ? "" : current;
+      if (current) lastDate = current;
+    }
 
     // ── Build + store the PDF before any DB write ──
+    // Beginning Balance = the event's initial budget (first matched proof);
+    // Total Collection = the overall budget (initial + verified increases).
+    const { data: initialProof } = await insforge.database
+      .from("budget_proofs")
+      .select("resulting_budget_total")
+      .eq("event_id", eventId)
+      .eq("type", "initial")
+      .eq("verification_status", "matched")
+      .order("uploaded_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    const beginningBalance = initialProof
+      ? Number(initialProof.resulting_budget_total)
+      : Number(event.budget_total); // legacy events without a proof row
+    const totalCollection = Number(event.budget_total);
+    const cashOnHand = totalCollection - totalSpent;
+    const { start, end, semester } = currentSchoolYear(new Date());
+
     const reportId = crypto.randomUUID();
     const buffer = await renderToBuffer(
-      <ReportPdf
-        departmentName={dept.name}
-        departmentCode={dept.code}
-        eventName={event.name}
-        fsDocumentNumber={fsDocumentNumber}
-        generatedDate={new Date().toLocaleDateString("en-PH", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        })}
-        entries={entries}
-        budgetTotal={Number(event.budget_total)}
-        totalSpent={totalSpent}
-        signatories={signatories.map((signatory, index) => ({
-          position: signatory.position,
-          fullName: signatory.full_name,
-          sortOrder: index,
-        }))}
+      <FinancialReportPDF
+        data={{
+          departmentName: `${dept.name.toUpperCase()} STUDENT COUNCIL (${dept.code})`,
+          eventName: event.name,
+          schoolYearStart: start,
+          schoolYearEnd: end,
+          semester,
+          fsDocumentNumber,
+          headerImageSrc: HEADER_IMAGE_SRC,
+          beginningBalance,
+          totalCollection,
+          totalExpenses: totalSpent,
+          cashOnHand,
+          entries,
+          signatories: signatories.map((signatory, index) => ({
+            name: signatory.full_name,
+            position: signatory.position,
+            sortOrder: index,
+          })),
+        }}
       />,
     );
     // ponytail: key is not browser-loadable; the pdf proxy route streams it

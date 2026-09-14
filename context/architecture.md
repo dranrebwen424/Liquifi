@@ -136,7 +136,7 @@
 │   │   └── VoidEntryModal.tsx
 │   ├── reports/
 │   │   ├── SignatorySetup.tsx
-│   │   ├── ReportPdf.tsx                               → @react-pdf/renderer template
+│   │   ├── FinancialReportPDF.tsx (was ReportPdf.tsx)      → @react-pdf/renderer template
 │   │   ├── ReportReview.tsx
 │   │   ├── OverspendPanel.tsx
 │   │   └── SignedUploadModal.tsx
@@ -531,7 +531,7 @@ A failed or malformed parse **never creates an Entry row** — the image stays c
 ## Report PDF Pattern
 
 ```typescript
-// components/reports/ReportPdf.tsx
+// components/reports/FinancialReportPDF.tsx (was ReportPdf.tsx)
 // Single fixed template — not per-department customizable
 // Mabini Colleges letterhead → Department + Event name + fs_document_number (top-right) →
 // date range → itemized entry table (Date, Description/Category, Document Type, Document #, Amount) →
