@@ -1,9 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { ChevronRight, ChevronUp, Inbox, TriangleAlert, UserCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { CssBottomSheet } from "@/components/ui/CssBottomSheet";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FadeIn } from "@/components/ui/FadeIn";
 import { EntryDetailModal } from "@/components/entries/EntryDetailModal";
@@ -19,7 +22,6 @@ import { CATEGORIES, type ExpenseType } from "@/components/entries/manual-catego
 import { entryTitle } from "@/components/entries/entry-title";
 import { formatOriginalSubmissionAge } from "@/lib/adviser-approval-inbox";
 import { cn } from "@/lib/utils";
-import { Inbox, TriangleAlert, UserCheck, X } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────
 
@@ -78,6 +80,19 @@ function categoryLabel(category: string | null): string {
   return CATEGORIES[category as ExpenseType]?.label ?? category;
 }
 
+function categoryIcon(category: string | null) {
+  return CATEGORIES[(category ?? "others") as ExpenseType]?.icon ?? CATEGORIES.others.icon;
+}
+
+function entryName(entry: PendingEntry): string {
+  return entryTitle({
+    supplierName: entry.supplierName,
+    category: entry.category,
+    formPayload: entry.formPayload,
+    itemBreakdown: entry.itemBreakdown,
+  });
+}
+
 /** Compact row-age label ("3d ago"); the full wording lives in the detail. */
 function dayAgeLabel(createdAt: string): string {
   const time = Date.parse(createdAt);
@@ -107,6 +122,20 @@ function toEntryDetail(e: PendingEntry) {
   };
 }
 
+function groupByEvent(entries: PendingEntry[]): Array<{ eventId: string; eventName: string; entries: PendingEntry[] }> {
+  const groups = new Map<string, { eventId: string; eventName: string; entries: PendingEntry[] }>();
+  for (const entry of entries) {
+    const existing = groups.get(entry.event_id);
+    if (existing) existing.entries.push(entry);
+    else groups.set(entry.event_id, { eventId: entry.event_id, eventName: entry.event_name, entries: [entry] });
+  }
+  return Array.from(groups.values());
+}
+
+function eventsLabel(count: number): string {
+  return `${count} Event${count === 1 ? "" : "s"}`;
+}
+
 // ─── Queue error state ────────────────────────────────────────────────
 
 function QueueError({ message, onRetry }: { message: string; onRetry: () => void }) {
@@ -131,6 +160,7 @@ export function AdviserApprovalsClient({ pendingUsers: initialUsers, pendingEntr
   const [tab, setTab] = useState<Tab>("expenses");
   const [pendingUsers, setPendingUsers] = useState(initialUsers);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectionSheetOpen, setSelectionSheetOpen] = useState(false);
   const [detailEntry, setDetailEntry] = useState<PendingEntry | null>(null);
   const [dialog, setDialog] = useState<DialogState>(null);
   const [rejectReason, setRejectReason] = useState("");
@@ -140,6 +170,15 @@ export function AdviserApprovalsClient({ pendingUsers: initialUsers, pendingEntr
   const expensesError = queueErrors.expenses;
   const usersError = queueErrors.users;
   const allSelected = pendingEntries.length > 0 && selectedIds.size === pendingEntries.length;
+  const eventGroups = useMemo(() => groupByEvent(pendingEntries), [pendingEntries]);
+  const selectedEntries = useMemo(
+    () => pendingEntries.filter((entry) => selectedIds.has(entry.id)),
+    [pendingEntries, selectedIds],
+  );
+  const selectedEventCount = useMemo(
+    () => new Set(selectedEntries.map((entry) => entry.event_id)).size,
+    [selectedEntries],
+  );
 
   // ─── Selection ──────────────────────────────────────────────────────
 
@@ -169,6 +208,12 @@ export function AdviserApprovalsClient({ pendingUsers: initialUsers, pendingEntr
     setDialog(null);
   };
 
+  const openBatchApproveDialog = () => {
+    if (selectedIds.size === 0) return;
+    setSelectionSheetOpen(false);
+    openDialog({ kind: "approve-batch", count: selectedIds.size });
+  };
+
   const finishAction = (result: { success: boolean; error?: string }) => {
     if (!result.success) {
       setError(result.error ?? "Something went wrong. Please try again.");
@@ -176,6 +221,7 @@ export function AdviserApprovalsClient({ pendingUsers: initialUsers, pendingEntr
       return false;
     }
     setSelectedIds(new Set());
+    setSelectionSheetOpen(false);
     setDetailEntry(null);
     setDialog(null);
     setBusy(false);
@@ -241,73 +287,76 @@ export function AdviserApprovalsClient({ pendingUsers: initialUsers, pendingEntr
 
   // ─── Entry row ──────────────────────────────────────────────────────
 
-  const renderExpenseRow = (entry: PendingEntry) => (
-    <div
-      key={entry.id}
-      className="rounded-xl border border-border bg-surface transition-colors hover:border-border-strong"
-    >
-      <div className="flex items-start gap-3 p-4">
-        <Checkbox
-          checked={selectedIds.has(entry.id)}
-          onCheckedChange={() => toggleSelection(entry.id)}
-          className="mt-1"
-          aria-label={`Select ${entryTitle({ supplierName: entry.supplierName, category: entry.category, formPayload: entry.formPayload, itemBreakdown: entry.itemBreakdown })}`}
-        />
-        <button
-          type="button"
-          onClick={() => setDetailEntry(entry)}
-          className="min-w-0 flex-1 text-left"
-        >
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="truncate text-sm font-semibold text-text-primary">{entry.event_name}</p>
-            {entry.status === "resubmitted" && (
-              <span className="shrink-0 rounded-full bg-warning-light px-2 py-0.5 text-[11px] font-medium text-warning-foreground">
-                Resubmitted
-              </span>
-            )}
-          </div>
-          <p className="mt-0.5 truncate text-sm text-text-secondary">
-            {entryTitle({ supplierName: entry.supplierName, category: entry.category, formPayload: entry.formPayload, itemBreakdown: entry.itemBreakdown })}
-          </p>
-          <p className="mt-1 text-xs text-text-muted">
-            {categoryLabel(entry.category)} · {entry.created_by_name ?? "Treasurer"} · {dayAgeLabel(entry.created_at)}
-          </p>
-          {entry.resubmission_explanation && (
-            <p className="mt-1 line-clamp-2 text-xs text-warning-foreground">
-              Resubmission: {entry.resubmission_explanation}
-            </p>
-          )}
-        </button>
-        <div className="flex shrink-0 flex-col items-end gap-2">
-          <p className="text-sm font-semibold text-text-primary">{formatPHP(entry.amount)}</p>
-          <Button
-            variant="outline"
-            size="sm"
-            className="border-border text-error hover:bg-error-lightest hover:text-error-foreground"
-            onClick={() => openDialog({ kind: "reject-entry", entry })}
+  const renderExpenseRow = (entry: PendingEntry) => {
+    const Icon = categoryIcon(entry.category);
+    const title = entryName(entry);
+
+    return (
+      <div
+        key={entry.id}
+        className="rounded-[10px] border border-border-light bg-surface shadow-card transition-[border-color,transform] duration-200 hover:-translate-y-0.5 hover:border-border-strong"
+      >
+        <div className="flex min-h-[84px] items-center gap-3 px-3 py-3 sm:px-4">
+          <Checkbox
+            checked={selectedIds.has(entry.id)}
+            onCheckedChange={() => toggleSelection(entry.id)}
+            aria-label={`Select ${title}`}
+          />
+          <button
+            type="button"
+            onClick={() => setDetailEntry(entry)}
+            className="flex min-w-0 flex-1 items-center gap-3 text-left"
           >
-            Reject
-          </Button>
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent-light text-accent">
+              <Icon className="h-5 w-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="flex items-start justify-between gap-2">
+                <span className="truncate text-sm font-semibold leading-5 text-text-primary">{title}</span>
+                <span className="shrink-0 text-[10px] leading-4 text-text-muted">{dayAgeLabel(entry.created_at)}</span>
+              </span>
+              <span className="mt-0.5 block text-sm font-semibold tabular-nums leading-5 text-text-primary">
+                {formatPHP(entry.amount)}
+              </span>
+              <span className="mt-1 block truncate text-[11px] leading-4 text-text-muted">
+                {categoryLabel(entry.category)}
+              </span>
+              <span className="block truncate text-[11px] leading-4 text-text-muted">
+                {entry.created_by_name ?? "Treasurer"}
+              </span>
+              {entry.status === "resubmitted" && (
+                <span className="mt-1 inline-flex rounded-full bg-warning-light px-2 py-0.5 text-[10px] font-medium leading-4 text-warning-foreground">
+                  Resubmitted
+                </span>
+              )}
+            </span>
+            <ChevronRight className="h-4 w-4 shrink-0 text-text-muted" />
+          </button>
         </div>
+        {entry.resubmission_explanation && (
+          <p className="border-t border-border-light px-4 py-2 text-xs text-warning-foreground">
+            {entry.resubmission_explanation}
+          </p>
+        )}
       </div>
-    </div>
-  );
+    );
+  };
 
   // ─── Tabs ───────────────────────────────────────────────────────────
 
-  const segmentClass = (t: Tab) =>
+  const tabClass = (t: Tab) =>
     cn(
-      "flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors",
+      "border-b-2 px-1 pb-2 text-[15px] font-medium transition-colors sm:px-3",
       tab === t
-        ? "bg-surface text-text-primary shadow-card"
-        : "text-text-muted hover:text-text-primary",
+        ? "border-accent text-text-primary"
+        : "border-transparent text-text-muted hover:text-text-primary",
     );
 
   const countPill = (count: number, active: boolean) =>
     count > 0 ? (
       <span
         className={cn(
-          "rounded-full px-1.5 py-0.5 text-[11px] font-semibold",
+          "ml-1 rounded-full px-1.5 py-0.5 text-[11px] font-semibold",
           active ? "bg-accent text-accent-foreground" : "bg-surface-tertiary text-text-secondary",
         )}
       >
@@ -316,7 +365,7 @@ export function AdviserApprovalsClient({ pendingUsers: initialUsers, pendingEntr
     ) : null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 pb-24 md:pb-0">
       {/* Generic action error banner */}
       {error && (
         <div className="flex items-start justify-between gap-3 rounded-lg border border-error bg-error-lightest px-4 py-3 text-sm text-error-foreground">
@@ -327,14 +376,14 @@ export function AdviserApprovalsClient({ pendingUsers: initialUsers, pendingEntr
         </div>
       )}
 
-      {/* Segmented control */}
-      <div className="flex max-w-md gap-1 rounded-full bg-surface-secondary p-1" role="tablist" aria-label="Approval queues">
-        <button type="button" role="tab" aria-selected={tab === "expenses"} className={segmentClass("expenses")} onClick={() => setTab("expenses")}>
+      {/* Tabs */}
+      <div className="flex gap-6 border-b border-border-light" role="tablist" aria-label="Approval queues">
+        <button type="button" role="tab" aria-selected={tab === "expenses"} className={tabClass("expenses")} onClick={() => setTab("expenses")}>
           Needs Review
           {countPill(pendingEntries.length, tab === "expenses")}
         </button>
-        <button type="button" role="tab" aria-selected={tab === "users"} className={segmentClass("users")} onClick={() => setTab("users")}>
-          Treasurer Requests
+        <button type="button" role="tab" aria-selected={tab === "users"} className={tabClass("users")} onClick={() => setTab("users")}>
+          User Requests
           {countPill(pendingUsers.length, tab === "users")}
         </button>
       </div>
@@ -351,33 +400,117 @@ export function AdviserApprovalsClient({ pendingUsers: initialUsers, pendingEntr
               description="New manual entries will appear here when treasurers submit them."
             />
           ) : (
-            <div className="space-y-4">
-              {/* Batch action bar */}
-              {selectedIds.size > 0 && (
-                <div className="sticky top-2 z-10 flex items-center justify-between gap-3 rounded-xl border border-border bg-surface px-4 py-3 shadow-card">
-                  <p className="text-sm text-text-secondary">
-                    {selectedIds.size} of {pendingEntries.length} selected
-                  </p>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>
-                      Clear
-                    </Button>
-                    <Button size="sm" onClick={() => openDialog({ kind: "approve-batch", count: selectedIds.size })}>
-                      Approve Selected ({selectedIds.size})
-                    </Button>
-                  </div>
+            <div className="space-y-6">
+              <div className="hidden items-center justify-between gap-4 rounded-2xl border border-border bg-surface px-5 py-4 shadow-card md:flex">
+                <label className="flex items-center gap-2 text-sm text-text-secondary">
+                  <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
+                  All
+                </label>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-text-primary">{selectedIds.size} Selected</p>
+                  <p className="text-xs text-text-muted">From {eventsLabel(selectedEventCount)}</p>
                 </div>
-              )}
-
-              {/* Select-all helper row */}
-              <div className="flex items-center gap-2 px-1">
-                <Checkbox checked={allSelected} onCheckedChange={() => toggleAll()} />
-                <button type="button" onClick={toggleAll} className="text-xs font-medium text-text-secondary hover:text-text-primary">
-                  {allSelected ? "Clear all" : "Select all pending"}
-                </button>
+                <Button disabled={selectedIds.size === 0} onClick={openBatchApproveDialog}>
+                  Approve
+                </Button>
               </div>
 
-              <div className="space-y-3">{pendingEntries.map(renderExpenseRow)}</div>
+              <div className="space-y-8">
+                {eventGroups.map((group) => (
+                  <section key={group.eventId} className="space-y-3">
+                    <div className="flex items-end justify-between gap-3 px-1">
+                      <div className="min-w-0">
+                        <h2 className="truncate text-base font-semibold leading-6 text-text-primary">{group.eventName}</h2>
+                        <p className="text-xs leading-4 text-text-muted">
+                          Total of {group.entries.length} Pending entr{group.entries.length === 1 ? "y" : "ies"}
+                        </p>
+                      </div>
+                      <Link
+                        href={`/adviser/events/${group.eventId}`}
+                        className="flex shrink-0 items-center gap-1 text-[11px] font-medium text-text-muted transition-colors hover:text-text-primary"
+                      >
+                        View event
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </Link>
+                    </div>
+                    <div className="space-y-2">{group.entries.map(renderExpenseRow)}</div>
+                  </section>
+                ))}
+              </div>
+
+              <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface px-4 py-3 shadow-card md:hidden">
+                <div className="mx-auto flex max-w-md items-center gap-4">
+                  <label className="flex items-center gap-2 text-xs text-text-muted" onClick={(event) => event.stopPropagation()}>
+                    <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
+                    All
+                  </label>
+                  <button
+                    type="button"
+                    className="min-w-0 flex-1 text-left"
+                    onClick={() => setSelectionSheetOpen(true)}
+                  >
+                    <span className="flex items-center gap-1 text-sm font-semibold text-text-primary">
+                      {selectedIds.size} Selected
+                      <ChevronUp className="h-3.5 w-3.5" />
+                    </span>
+                    <span className="block text-[10px] leading-4 text-text-muted">From {eventsLabel(selectedEventCount)}</span>
+                  </button>
+                  <Button disabled={selectedIds.size === 0} onClick={openBatchApproveDialog}>
+                    Approve
+                  </Button>
+                </div>
+              </div>
+
+              {selectionSheetOpen && (
+                <button
+                  type="button"
+                  aria-label="Close selected expenses sheet"
+                  className="fixed inset-0 z-40 bg-overlay-alpha md:hidden"
+                  onClick={() => setSelectionSheetOpen(false)}
+                />
+              )}
+              <CssBottomSheet open={selectionSheetOpen} hideAt="md" onClose={() => setSelectionSheetOpen(false)}>
+                <div className="max-h-[85dvh] overflow-y-auto rounded-t-2xl border-t border-border bg-surface p-5 pb-8 shadow-card">
+                  <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-border-strong" />
+                  <div className="mb-4 flex items-start justify-between gap-3">
+                    <div>
+                      <h2 className="text-base font-semibold text-text-primary">Selected expenses</h2>
+                      <p className="text-xs text-text-muted">{selectedIds.size} selected from {eventsLabel(selectedEventCount)}</p>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())} disabled={selectedIds.size === 0}>
+                      Clear
+                    </Button>
+                  </div>
+                  {selectedEntries.length === 0 ? (
+                    <p className="rounded-xl bg-surface-secondary px-4 py-5 text-center text-sm text-text-muted">
+                      Select expenses to approve them in one batch.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {selectedEntries.map((entry) => (
+                        <button
+                          type="button"
+                          key={entry.id}
+                          onClick={() => {
+                            setSelectionSheetOpen(false);
+                            setDetailEntry(entry);
+                          }}
+                          className="flex w-full items-center justify-between gap-3 rounded-xl border border-border-light bg-surface px-3 py-3 text-left"
+                        >
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm font-semibold text-text-primary">{entryName(entry)}</span>
+                            <span className="block truncate text-xs text-text-muted">{entry.event_name} · {formatPHP(entry.amount)}</span>
+                          </span>
+                          <ChevronRight className="h-4 w-4 shrink-0 text-text-muted" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <Button className="mt-5 w-full" disabled={selectedIds.size === 0} onClick={openBatchApproveDialog}>
+                    Approve
+                  </Button>
+                </div>
+              </CssBottomSheet>
             </div>
           )}
         </FadeIn>

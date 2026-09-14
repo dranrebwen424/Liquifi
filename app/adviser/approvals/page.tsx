@@ -33,7 +33,7 @@ export default async function AdviserApprovalsPage() {
     queueErrors.users = queueErrors.expenses;
 
     return (
-      <div className="mx-auto flex max-w-7xl flex-col gap-8">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
         <AdviserApprovalsClient pendingUsers={[]} pendingEntries={[]} queueErrors={queueErrors} />
       </div>
     );
@@ -157,17 +157,7 @@ export default async function AdviserApprovalsPage() {
     }));
 
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-xl font-semibold text-text-primary md:text-2xl">
-          Approvals
-        </h1>
-        <p className="mt-1 text-xs text-text-muted">
-          Review pending expenses and user signups
-        </p>
-      </div>
-
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
       <AdviserApprovalsClient
         pendingUsers={pendingUsers}
         pendingEntries={pendingEntries}
