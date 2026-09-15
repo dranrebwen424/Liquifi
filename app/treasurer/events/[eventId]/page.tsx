@@ -125,7 +125,7 @@ export default async function EventDashboardPage({ params }: Props) {
         {/* Locked / Archived banner */}
         {(event.is_locked || isArchived) && (
           <div className="mt-4">
-            <LockedBanner isLocked={event.is_locked} isArchived={isArchived} />
+            <LockedBanner isLocked={event.is_locked} isArchived={isArchived} reportStatus={latestReport?.status} />
           </div>
         )}
 
@@ -201,7 +201,7 @@ export default async function EventDashboardPage({ params }: Props) {
         {/* Locked / Archived banner */}
         {(event.is_locked || isArchived) && (
           <div className="mt-5">
-            <LockedBanner isLocked={event.is_locked} isArchived={isArchived} />
+            <LockedBanner isLocked={event.is_locked} isArchived={isArchived} reportStatus={latestReport?.status} />
           </div>
         )}
 

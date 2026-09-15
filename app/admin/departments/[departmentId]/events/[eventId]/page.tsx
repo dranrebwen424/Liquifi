@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { requireRole } from "@/lib/auth-guard";
 import { getEventDashboard } from "@/lib/queries/events";
+import { getLatestReportByEvent } from "@/lib/queries/reports";
 import { computeSpendingBreakdown } from "@/lib/spending-breakdown";
 import { LockedBanner } from "@/components/events/LockedBanner";
 import { BudgetSummary } from "@/components/events/BudgetSummary";
@@ -23,7 +24,10 @@ export default async function AdminEventPage({ params }: Props) {
   const { departmentId, eventId } = await params;
   await requireRole("admin");
 
-  const event = await getEventDashboard(eventId);
+  const [event, latestReport] = await Promise.all([
+    getEventDashboard(eventId),
+    getLatestReportByEvent(eventId),
+  ]);
   if (!event) notFound();
 
   // URL consistency guard: the event must belong to the department in the path
@@ -73,7 +77,7 @@ export default async function AdminEventPage({ params }: Props) {
       {/* Locked / Archived banner */}
       {(event.is_locked || isArchived) && (
         <div className="mt-5">
-          <LockedBanner isLocked={event.is_locked} isArchived={isArchived} />
+          <LockedBanner isLocked={event.is_locked} isArchived={isArchived} reportStatus={latestReport?.status} />
         </div>
       )}
 

@@ -111,7 +111,7 @@ export default async function AdviserEventPage({ params }: Props) {
         {(event.is_locked || isArchived) && (
           <FadeIn delay={300}>
           <div className="mt-4">
-            <LockedBanner isLocked={event.is_locked} isArchived={isArchived} />
+            <LockedBanner isLocked={event.is_locked} isArchived={isArchived} reportStatus={latestReport?.status} />
           </div>
           </FadeIn>
         )}
@@ -191,7 +191,7 @@ export default async function AdviserEventPage({ params }: Props) {
         {(event.is_locked || isArchived) && (
           <FadeIn delay={200}>
           <div className="mt-5">
-            <LockedBanner isLocked={event.is_locked} isArchived={isArchived} />
+            <LockedBanner isLocked={event.is_locked} isArchived={isArchived} reportStatus={latestReport?.status} />
           </div>
           </FadeIn>
         )}
