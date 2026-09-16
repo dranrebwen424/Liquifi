@@ -22,6 +22,8 @@ import { cn } from "@/lib/utils";
 type Props = {
   role: ReportOverviewRole;
   items: ReportOverviewItem[];
+  basePath?: string;
+  embedded?: boolean;
 };
 
 const FILTERS: { value: ReportOverviewFilter; label: string }[] = [
@@ -72,7 +74,7 @@ function ReportRow({ item, href }: { item: ReportOverviewItem; href: string }) {
   );
 }
 
-export function ReportsOverview({ role, items }: Props) {
+export function ReportsOverview({ role, items, basePath, embedded }: Props) {
   const [filter, setFilter] = useState<ReportOverviewFilter>("all");
   // ponytail: query comes from the mobile top bar via ?q= (debounced URL sync)
   const searchParams = useSearchParams();
@@ -93,8 +95,9 @@ export function ReportsOverview({ role, items }: Props) {
         ),
     [items],
   );
-  const detailHref = (eventId: string) => `/${role}/reports/${eventId}`;
-  const featuredTitle = role === "adviser" ? "Pending Reports" : "Ready for Signing";
+  const detailHref = (eventId: string) => `${basePath ?? `/${role}/reports`}/${eventId}`;
+  const isReviewer = role === "adviser" || role === "admin";
+  const featuredTitle = isReviewer ? "Pending Reports" : "Ready for Signing";
 
   // Search mode (mobile top bar): replace the page with prompt/results so other events stay hidden
   if (isSearching) {
@@ -107,7 +110,7 @@ export function ReportsOverview({ role, items }: Props) {
                 Search results
               </h1>
               <p className="text-xs text-text-secondary">
-                {searchResults.length} {searchResults.length === 1 ? "event" : "events"} matching "{query}"
+                {searchResults.length} {searchResults.length === 1 ? "event" : "events"} matching &quot;{query}&quot;
               </p>
               {searchResults.length > 0 ? (
                 <div className="mt-4 flex flex-col gap-2">
@@ -120,7 +123,7 @@ export function ReportsOverview({ role, items }: Props) {
                   <EmptyState
                     icon={<SearchX aria-hidden="true" />}
                     title="No matching reports"
-                    description={`No results for "${query}". Try an event name or control number.`}
+                    description={`No results for &quot;${query}&quot;. Try an event name or control number.`}
                   />
                 </div>
               )}
@@ -139,19 +142,21 @@ export function ReportsOverview({ role, items }: Props) {
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-7 pb-10">
-      <FadeIn delay={0}>
-        <header>
-          <p className="hidden text-xs font-medium uppercase tracking-[0.12em] text-text-secondary md:block">
-            Financial documents
-          </p>
-          <h1 className="sr-only font-semibold text-text-primary md:not-sr-only md:mt-1 md:text-[28px] md:leading-9">Reports</h1>
-          <p className="mt-1 hidden text-sm text-text-secondary md:block">
-            {role === "adviser"
-              ? "Review pending reports and revisit your department's report history."
-              : "Track approvals, prepare signed documents, and revisit archived reports."}
-          </p>
-        </header>
-      </FadeIn>
+      {!embedded && (
+        <FadeIn delay={0}>
+          <header>
+            <p className="hidden text-xs font-medium uppercase tracking-[0.12em] text-text-secondary md:block">
+              Financial documents
+            </p>
+            <h1 className="sr-only font-semibold text-text-primary md:not-sr-only md:mt-1 md:text-[28px] md:leading-9">Reports</h1>
+            <p className="mt-1 hidden text-sm text-text-secondary md:block">
+              {isReviewer
+                ? "Review pending reports and revisit your department's report history."
+                : "Track approvals, prepare signed documents, and revisit archived reports."}
+            </p>
+          </header>
+        </FadeIn>
+      )}
 
       {actionRequired?.report && (
         <FadeIn delay={30}>
@@ -209,10 +214,10 @@ export function ReportsOverview({ role, items }: Props) {
             </div>
           ) : (
             <EmptyState
-              icon={role === "adviser" ? <Inbox aria-hidden="true" /> : <FileSignature aria-hidden="true" />}
-              title={role === "adviser" ? "No reports waiting for review" : "Nothing waiting to be signed"}
+              icon={isReviewer ? <Inbox aria-hidden="true" /> : <FileSignature aria-hidden="true" />}
+              title={isReviewer ? "No reports waiting for review" : "Nothing waiting to be signed"}
               description={
-                role === "adviser"
+                isReviewer
                   ? "Reports your treasurer generates will land here for review."
                   : "Once your adviser approves a report, it will appear here for signing."
               }
@@ -251,7 +256,7 @@ export function ReportsOverview({ role, items }: Props) {
 
           <p className="mt-2 text-xs text-text-secondary">
             {filtered.length} {filtered.length === 1 ? "event" : "events"}
-            {query && <> matching "{query}"</>}
+            {query && <> matching &quot;{query}&quot;</>}
           </p>
 
           {filtered.length > 0 ? (
@@ -266,7 +271,7 @@ export function ReportsOverview({ role, items }: Props) {
               title="No matching reports"
               description={
                 query
-                  ? `No results for "${query}". Try a different search.`
+                  ? `No results for &quot;${query}&quot;. Try a different search.`
                   : filter !== "all"
                     ? "Try another status filter."
                     : "Reports generated for your events will appear here."

@@ -1,12 +1,12 @@
 "use client";
 
-import { LayoutGrid, CircleCheckBig } from "lucide-react";
+import { ClipboardCheck, LayoutGrid } from "lucide-react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import type { NavItemConfig } from "@/components/layout/NavItem";
 
 const navItems: NavItemConfig[] = [
   { label: "Departments", href: "/admin/departments", icon: LayoutGrid },
-  { label: "Approvals", href: "/admin/approvals", icon: CircleCheckBig },
+  { label: "Approvals", href: "/admin/approvals", icon: ClipboardCheck },
 ];
 
 export function AdminSidebar() {

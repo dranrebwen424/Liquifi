@@ -1,6 +1,6 @@
 import type { EventStatus, ReportStatus, Role } from "@/types";
 
-export type ReportOverviewRole = Extract<Role, "treasurer" | "adviser">;
+export type ReportOverviewRole = Extract<Role, "treasurer" | "adviser" | "admin">;
 export type ReportOverviewFilter = "all" | "pending" | "approved" | "rejected";
 
 export type ReportOverviewItem = {
@@ -25,7 +25,8 @@ export function getFeaturedReportItems(
   items: ReportOverviewItem[],
   role: ReportOverviewRole,
 ): ReportOverviewItem[] {
-  const status = role === "adviser" ? "pending_adviser_approval" : "approved";
+  const pendingReviewer = role === "adviser" || role === "admin";
+  const status = pendingReviewer ? "pending_adviser_approval" : "approved";
   return items
     .filter(
       (item) => item.eventStatus === "open" && item.report?.status === status,

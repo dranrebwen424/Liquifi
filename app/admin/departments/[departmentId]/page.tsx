@@ -2,6 +2,9 @@ import { notFound } from "next/navigation";
 import { createInsforgeServer } from "@/lib/insforge-server";
 import { getDepartmentEvents } from "@/lib/queries/events";
 import { getLatestReportsByEvent } from "@/lib/queries/reports";
+import type { ReportOverviewItem } from "@/lib/report-overview";
+import type { DepartmentMemberSummary } from "@/components/admin/DepartmentUsersTab";
+import type { DepartmentAuditLog } from "@/components/admin/DepartmentAuditTab";
 import { DepartmentDetailClient } from "@/components/admin/DepartmentDetailClient";
 
 export type AuditLogRow = {
@@ -95,18 +98,26 @@ export default async function DepartmentDetailPage({
     created_by_name: event.created_by_name,
     created_at: event.created_at,
   }));
-  const reportRows = events
-    .filter((event) => reportsByEvent.has(event.id))
-    .map((event) => {
-      const report = reportsByEvent.get(event.id)!;
-      return {
-        id: report.id,
-        event_id: event.id,
-        fs_document_number: report.fs_document_number,
-        status: report.status,
-        event_name: event.name,
-      };
-    });
+  // Reports tab — latest report per event as ReportOverviewItem[].
+  // Events whose newest report is cancelled map to nothing (getLatestReportsByEvent)
+  const reportRows: ReportOverviewItem[] = events.flatMap((event) => {
+    const report = reportsByEvent.get(event.id);
+    if (!report) return [];
+    return [
+      {
+        eventId: event.id,
+        eventName: event.name,
+        eventStatus: event.status,
+        createdAt: event.created_at,
+        report: {
+          id: report.id,
+          fsDocumentNumber: report.fs_document_number,
+          status: report.status,
+          generatedAt: report.generated_at,
+        },
+      },
+    ];
+  });
 
   // Distinct actors for the audit-log "who" filter
   const auditActors = Array.from(
@@ -118,11 +129,11 @@ export default async function DepartmentDetailPage({
   return (
     <DepartmentDetailClient
       department={department}
-      initialUsers={users ?? []}
-      auditLogs={auditLogs}
-      auditActors={auditActors}
       events={eventRows}
       reports={reportRows}
+      users={users as DepartmentMemberSummary[]}
+      auditLogs={auditLogs as DepartmentAuditLog[]}
+      auditActors={auditActors}
     />
   );
 }
