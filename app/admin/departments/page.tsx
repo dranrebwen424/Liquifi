@@ -1,20 +1,27 @@
 import { createInsforgeServer } from "@/lib/insforge-server";
-import { DepartmentsListClient, type DepartmentWithUsers } from "@/components/admin/DepartmentsListClient";
+import { DepartmentsListClient } from "@/components/admin/DepartmentsListClient";
+import type { DepartmentSummary } from "@/lib/admin-departments";
 
 export default async function DepartmentsPage() {
   const insforge = await createInsforgeServer();
 
-  const { data: departments } = await insforge.database
-    .from("departments")
-    .select("id, name, code, is_active, created_at")
-    .order("name", { ascending: true });
+  const [{ data: departments, error: deptError }, { data: activeUsers, error: usersError }] = await Promise.all([
+    insforge.database
+      .from("departments")
+      .select("id, name, code, is_active, created_at")
+      .order("name", { ascending: true }),
+    insforge.database
+      .from("users")
+      .select("id, first_name, last_name, role, department_id")
+      .eq("account_status", "active")
+      .in("role", ["adviser", "treasurer"]),
+  ]);
 
-  // Fetch active adviser/treasurer users per department (derived, not stored)
-  const { data: activeUsers } = await insforge.database
-    .from("users")
-    .select("id, first_name, last_name, role, department_id")
-    .eq("account_status", "active")
-    .in("role", ["adviser", "treasurer"]);
+  const loadError = deptError
+    ? "Failed to load departments. Please try again."
+    : usersError
+      ? "Departments loaded but staff data may be incomplete."
+      : undefined;
 
   // Map users to departments
   const deptUsers = new Map<string, { adviser: string | null; treasurer: string | null }>();
@@ -28,10 +35,10 @@ export default async function DepartmentsPage() {
     if (user.role === "treasurer") entry.treasurer = fullName;
   }
 
-  const departmentsWithUsers: DepartmentWithUsers[] = (departments ?? []).map((dept) => {
+  const departmentSummaries: DepartmentSummary[] = (departments ?? []).map((dept) => {
     const users = deptUsers.get(dept.id) ?? { adviser: null, treasurer: null };
     return { ...dept, ...users };
   });
 
-  return <DepartmentsListClient initialDepartments={departmentsWithUsers} />;
+  return <DepartmentsListClient initialDepartments={departmentSummaries} loadError={loadError} />;
 }

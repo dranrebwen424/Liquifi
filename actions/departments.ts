@@ -112,12 +112,12 @@ export async function setUserAccountStatus(
 
     const { data: targetUser, error: fetchErr } = await insforge.database
       .from("users")
-      .select("account_status, role")
+      .select("account_status, role, department_id")
       .eq("id", userId)
       .maybeSingle();
 
-    if (fetchErr || !targetUser) {
-      return { success: false as const, error: "User not found." };
+    if (fetchErr || !targetUser || targetUser.department_id !== departmentId) {
+      return { success: false as const, error: "User not found in this department." };
     }
 
     // Only allow: active ↔ deactivated
@@ -136,7 +136,8 @@ export async function setUserAccountStatus(
     const { error: updateErr } = await insforge.database
       .from("users")
       .update({ account_status: newStatus })
-      .eq("id", userId);
+      .eq("id", userId)
+      .eq("department_id", departmentId);
 
     if (updateErr) {
       console.error("[actions/departments] user status update failed:", updateErr);
@@ -153,6 +154,7 @@ export async function setUserAccountStatus(
     }]);
 
     revalidatePath(`/admin/departments/${departmentId}`);
+    revalidatePath(`/admin/departments/${departmentId}/users/${userId}`);
     return { success: true as const };
   } catch (error) {
     if (error instanceof Error && "code" in error) {

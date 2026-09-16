@@ -16,8 +16,10 @@ const items: ReportOverviewItem[] = [
 
 assert.deepEqual(getFeaturedReportItems(items, "treasurer").map((item) => item.eventId), ["approved"]);
 assert.deepEqual(getFeaturedReportItems(items, "adviser").map((item) => item.eventId), ["pending"]);
+assert.deepEqual(getFeaturedReportItems(items, "admin").map((item) => item.eventId), ["pending"]);
 assert.equal(getActionRequiredReport(items, "treasurer")?.eventId, "rejected");
 assert.equal(getActionRequiredReport(items, "adviser"), null);
+assert.equal(getActionRequiredReport(items, "admin"), null);
 assert.deepEqual(filterReportItems(items, "all").map((item) => item.eventId), ["rejected", "pending", "approved", "none"]);
 assert.deepEqual(filterReportItems(items, "pending").map((item) => item.eventId), ["pending"]);
 assert.deepEqual(filterReportItems(items, "approved").map((item) => item.eventId), ["approved"]);
