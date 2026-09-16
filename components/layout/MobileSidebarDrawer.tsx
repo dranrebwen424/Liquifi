@@ -4,8 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { LogOut, User } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { LogOut } from "lucide-react";
 import { NavItem, type NavItemConfig } from "@/components/layout/NavItem";
 
 type Props = {
@@ -28,7 +27,7 @@ export function MobileSidebarDrawer({ open, onClose, navItems, role }: Props) {
   // Close on route change
   useEffect(() => {
     onClose();
-  }, [pathname, onClose]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pathname, onClose]);
 
   // Close on Escape
   useEffect(() => {
@@ -58,7 +57,7 @@ export function MobileSidebarDrawer({ open, onClose, navItems, role }: Props) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+            className="fixed inset-0 z-40 bg-overlay-alpha lg:hidden"
             onClick={onClose}
             aria-hidden="true"
           />
@@ -76,7 +75,7 @@ export function MobileSidebarDrawer({ open, onClose, navItems, role }: Props) {
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-text-inverse font-bold text-sm text-nav">
                 M
               </div>
-              <span className="text-lg font-bold text-white">Liquifi</span>
+              <span className="text-lg font-bold text-text-inverse">Liquifi</span>
             </div>
 
             {/* Nav items */}

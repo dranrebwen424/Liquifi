@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Search, Plus, Folder, Loader2, FolderPlus, Check } from "lucide-react";
 import { motion } from "framer-motion";
 import { createDepartment } from "@/actions/departments";
-import { AdminMobileBottomNav } from "@/components/admin/MobileBottomNav";
 import { CssBottomSheet } from "@/components/ui/CssBottomSheet";
 
 // ─── Animation variants ───────────────────────────────────────────────
@@ -42,8 +41,11 @@ type Props = {
 
 export function DepartmentsListClient({ initialDepartments }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [departments, setDepartments] = useState(initialDepartments);
-  const [search, setSearch] = useState("");
+  const [localSearch, setLocalSearch] = useState("");
+  const isUrlSearch = searchParams.get("search") === "1";
+  const search = isUrlSearch ? searchParams.get("q") ?? "" : localSearch;
   const [createView, setCreateView] = useState<null | "modal" | "sheet">(null);
   const [newName, setNewName] = useState("");
   const [newCode, setNewCode] = useState("");
@@ -128,7 +130,17 @@ export function DepartmentsListClient({ initialDepartments }: Props) {
             <input
               type="text"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(event) => {
+                const value = event.target.value;
+                if (!isUrlSearch) {
+                  setLocalSearch(value);
+                  return;
+                }
+
+                const params = new URLSearchParams({ search: "1" });
+                if (value) params.set("q", value);
+                router.replace(`/admin/departments?${params.toString()}`, { scroll: false });
+              }}
               placeholder="Search Department...."
               className="w-full rounded-full bg-surface-secondary py-3.5 pl-11 pr-4 text-sm text-text-primary placeholder:text-text-muted transition-all focus:ring-2 focus:ring-accent/10 focus:shadow-[0_0_0_4px_rgba(17,17,20,0.04)]"
             />
@@ -280,8 +292,6 @@ export function DepartmentsListClient({ initialDepartments }: Props) {
           <Plus className="h-6 w-6" />
         </button>
       )}
-
-      <AdminMobileBottomNav />
     </div>
   );
 }
