@@ -1,5 +1,7 @@
 import { createInsforgeServer } from "@/lib/insforge-server";
 import { requireRole } from "@/lib/auth-guard";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { AdminApprovalsClient } from "@/components/admin/AdminApprovalsClient";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +33,16 @@ export default async function AdminApprovalsPage() {
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-8">
+      {/* Mobile back button */}
+      <Link
+        href="/admin/departments"
+        className="mt-6 flex w-fit items-center gap-1.5 text-sm font-medium text-text-muted transition-colors hover:text-text-primary md:hidden"
+        aria-label="Back to departments"
+      >
+        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+        Pending
+      </Link>
+
       {/* Header */}
       <div>
         <h1 className="text-xl font-semibold text-text-primary md:text-2xl">

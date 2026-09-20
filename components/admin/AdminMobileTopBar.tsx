@@ -22,7 +22,7 @@ export function AdminMobileTopBar({ adminInitial, pendingApprovalsCount }: Props
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const topBarVisible = useAutoHideTopBar();
   const isSearching = searchParams.get("search") === "1";
-  const hidden = isImmersivePage(pathname) || isAdminDepartmentWorkspace(pathname);
+  const hidden = isImmersivePage(pathname) || isAdminDepartmentWorkspace(pathname) || pathname === "/admin/approvals";
 
   useEffect(() => {
     if (!isSearching) return;
