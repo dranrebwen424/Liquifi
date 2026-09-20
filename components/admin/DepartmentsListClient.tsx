@@ -115,8 +115,11 @@ export function DepartmentsListClient({ initialDepartments, loadError }: Props) 
     </div>
   );
 
+  const isSearching = searchParams.get("search") === "1";
+
   return (
     <div className="flex flex-1 flex-col">
+      {!isSearching && (
       <div className="relative pt-1 md:pt-3">
         <h1 className="text-center text-base font-bold uppercase text-text-primary md:text-xl">
           Welcome Back!
@@ -137,6 +140,7 @@ export function DepartmentsListClient({ initialDepartments, loadError }: Props) 
           </button>
         </div>
       </div>
+      )}
 
       {/* ── Query failure banner ─────────────────────────────────── */}
       {loadError && (
