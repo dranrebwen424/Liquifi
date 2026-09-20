@@ -14,7 +14,11 @@ const ADMIN_NAV_ITEMS: NavItemConfig[] = [
   { label: "Approvals", href: "/admin/approvals", icon: ClipboardCheck },
 ];
 
-export function AdminMobileTopBar() {
+type Props = {
+  pendingApprovalsCount: number;
+};
+
+export function AdminMobileTopBar({ pendingApprovalsCount }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -86,10 +90,13 @@ export function AdminMobileTopBar() {
         </button>
         <Link
           href="/admin/approvals"
-          aria-label="Open approvals"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-text-secondary hover:bg-surface-secondary"
+          aria-label={pendingApprovalsCount > 0 ? `${pendingApprovalsCount} pending approvals` : "Open approvals"}
+          className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-text-secondary hover:bg-surface-secondary"
         >
           <ClipboardCheck className="h-6 w-6" />
+          {pendingApprovalsCount > 0 && (
+            <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-error ring-2 ring-background" />
+          )}
         </Link>
       </header>
       <MobileSidebarDrawer

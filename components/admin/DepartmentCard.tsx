@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Building2, BookOpen, Landmark, ChevronRight } from "lucide-react";
+import { Folder, Check } from "lucide-react";
 import type { DepartmentSummary } from "@/lib/admin-departments";
 
 type Props = {
@@ -13,29 +13,44 @@ export function DepartmentCard({ department }: Props) {
     <Link
       href={`/admin/departments/${department.id}`}
       prefetch
-      className="group flex min-h-[150px] flex-col rounded-2xl border border-border bg-surface p-5 shadow-card transition-[transform,border-color,background-color,color] duration-200 hover:-translate-y-0.5 hover:border-border-strong active:scale-[0.99] active:bg-surface-inverse md:min-h-[220px]"
+      className="group flex h-full min-h-[220px] w-full flex-col rounded-[24px] border border-border bg-surface p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-[0_8px_30px_-8px_rgba(17,17,20,0.12)]"
     >
-      <div className="flex items-start gap-3">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface-secondary text-text-primary group-active:bg-nav-active group-active:text-text-inverse">
-          <Building2 className="h-5 w-5" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block line-clamp-2 text-base font-semibold text-text-primary group-active:text-text-inverse">
-            {department.name}
-          </span>
-          <span className="mt-1 flex items-center gap-2 text-[11px] uppercase tracking-wide text-text-muted">
-            {department.code} · {department.is_active ? "Active" : "Inactive"}
-          </span>
-        </span>
-        <ChevronRight className="h-4 w-4 text-text-muted md:hidden" />
+      {/* Top row: folder icon + active mark */}
+      <div className="flex items-start justify-between">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-surface-secondary text-text-muted transition-colors duration-200 group-hover:bg-accent group-hover:text-accent-foreground">
+          <Folder className="h-4 w-4" />
+        </div>
+        {department.is_active && (
+          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-accent text-accent-foreground">
+            <Check className="h-3 w-3" strokeWidth={3} />
+          </div>
+        )}
       </div>
-      <div className="mt-auto grid gap-2 border-t border-border-light pt-3 text-xs group-active:border-nav-border">
-        <span className="flex items-center gap-2 text-text-secondary group-active:text-text-inverse">
-          <BookOpen className="h-4 w-4" /> Adviser: {department.adviser ?? "Not assigned"}
-        </span>
-        <span className="flex items-center gap-2 text-text-secondary group-active:text-text-inverse">
-          <Landmark className="h-4 w-4" /> Treasurer: {department.treasurer ?? "Not assigned"}
-        </span>
+
+      {/* Department name + code */}
+      <div className="mt-5">
+        <h3 className="line-clamp-2 text-base font-semibold leading-snug text-text-primary">
+          {department.name}
+        </h3>
+        <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-text-muted">
+          {department.code}
+        </p>
+      </div>
+
+      {/* Adviser / Treasurer */}
+      <div className="mt-auto flex flex-col gap-2 pt-6">
+        <div>
+          <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-text-muted">Adviser</p>
+          <p className="mt-0.5 truncate text-[11px] font-medium text-text-secondary">
+            {department.adviser ?? "—"}
+          </p>
+        </div>
+        <div>
+          <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-text-muted">Treasurer</p>
+          <p className="mt-0.5 truncate text-[11px] font-medium text-text-secondary">
+            {department.treasurer ?? "—"}
+          </p>
+        </div>
       </div>
     </Link>
   );

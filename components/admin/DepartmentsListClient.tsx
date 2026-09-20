@@ -2,19 +2,13 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, Plus, SearchX, Building2, FolderPlus, Loader2, SlidersHorizontal } from "lucide-react";
+import { Plus, Building2, SearchX, FolderPlus, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { createDepartment } from "@/actions/departments";
 import { CssBottomSheet } from "@/components/ui/CssBottomSheet";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DepartmentCard } from "@/components/admin/DepartmentCard";
-import {
-  filterDepartments,
-  type DepartmentSummary,
-  type DepartmentStatusFilter,
-  type DepartmentStaffingFilter,
-  type DepartmentSort,
-} from "@/lib/admin-departments";
+import { filterDepartments, type DepartmentSummary } from "@/lib/admin-departments";
 
 // ─── Animation variants ───────────────────────────────────────────────
 const staggerContainer = {
@@ -42,36 +36,21 @@ export function DepartmentsListClient({ initialDepartments, loadError }: Props) 
   const router = useRouter();
   const searchParams = useSearchParams();
   const [departments, setDepartments] = useState(initialDepartments);
-  const [localSearch, setLocalSearch] = useState("");
-  const isUrlSearch = searchParams.get("search") === "1";
-  const search = isUrlSearch ? searchParams.get("q") ?? "" : localSearch;
-
-  const [statusFilter, setStatusFilter] = useState<DepartmentStatusFilter>("all");
-  const [staffingFilter, setStaffingFilter] = useState<DepartmentStaffingFilter>("all");
-  const [sort, setSort] = useState<DepartmentSort>("name");
-  const [filterOpen, setFilterOpen] = useState(false);
-
   const [createView, setCreateView] = useState<null | "modal" | "sheet">(null);
   const [newName, setNewName] = useState("");
   const [newCode, setNewCode] = useState("");
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
 
+  // Search lives in the top bars (desktop AdminTopBar / mobile AdminMobileTopBar), both write ?q=.
+  const search = searchParams.get("q") ?? "";
+
   const filtered = useMemo(
-    () => filterDepartments(departments, { query: search, status: statusFilter, staffing: staffingFilter, sort }),
-    [departments, search, statusFilter, staffingFilter, sort],
+    () => filterDepartments(departments, { query: search, status: "all", staffing: "all", sort: "name" }),
+    [departments, search],
   );
 
-  const clearFilters = () => {
-    if (isUrlSearch) {
-      const params = new URLSearchParams({ search: "1" });
-      router.replace(`/admin/departments?${params.toString()}`, { scroll: false });
-    }
-    setLocalSearch("");
-    setStatusFilter("all");
-    setStaffingFilter("all");
-    setSort("name");
-  };
+  const clearSearch = () => router.replace("/admin/departments", { scroll: false });
 
   const closeCreate = () => {
     setCreateView(null);
@@ -99,115 +78,54 @@ export function DepartmentsListClient({ initialDepartments, loadError }: Props) 
   }, [newName, newCode, router]);
 
   const newDepartmentForm = (
-    <div className="flex flex-col gap-4 sm:flex-row">
-      <div className="flex-1">
-        <label htmlFor="dept-name" className="mb-1.5 block text-xs font-medium text-text-muted">
-          Department Name
-        </label>
+    <div className="flex flex-col gap-3">
+      <div className="relative">
         <input
           id="dept-name"
           type="text"
           value={newName}
           onChange={(e) => { setNewName(e.target.value); setCreateError(""); }}
-          placeholder="e.g. College of Engineering"
-          className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text-primary placeholder:text-text-muted transition-colors focus:border-accent focus:ring-2 focus:ring-accent/10"
+          placeholder=" "
+          className="peer w-full rounded-lg border border-border-strong bg-surface pb-2 pl-4 pr-4 pt-6 text-sm text-text-primary outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent"
         />
-      </div>
-      <div className="w-full sm:w-32">
-        <label htmlFor="dept-code" className="mb-1.5 block text-xs font-medium text-text-muted">
-          Code
+        <label
+          htmlFor="dept-name"
+          className="pointer-events-none absolute left-4 top-1/2 z-10 origin-left -translate-y-1/2 text-sm text-text-muted transition-all duration-150 peer-focus:top-2 peer-focus:translate-y-0 peer-focus:scale-90 peer-focus:text-xs peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:translate-y-0 peer-[:not(:placeholder-shown)]:scale-90 peer-[:not(:placeholder-shown)]:text-xs"
+        >
+          Department Name
         </label>
+      </div>
+      <div className="relative">
         <input
           id="dept-code"
           type="text"
           value={newCode}
           onChange={(e) => { setNewCode(e.target.value); setCreateError(""); }}
-          placeholder="e.g. COE"
+          placeholder=" "
           maxLength={10}
-          className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm uppercase text-text-primary placeholder:text-text-muted transition-colors focus:border-accent focus:ring-2 focus:ring-accent/10"
+          className="peer w-full rounded-lg border border-border-strong bg-surface pb-2 pl-4 pr-4 pt-6 text-sm uppercase text-text-primary outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent"
         />
+        <label
+          htmlFor="dept-code"
+          className="pointer-events-none absolute left-4 top-1/2 z-10 origin-left -translate-y-1/2 text-sm text-text-muted transition-all duration-150 peer-focus:top-2 peer-focus:translate-y-0 peer-focus:scale-90 peer-focus:text-xs peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:translate-y-0 peer-[:not(:placeholder-shown)]:scale-90 peer-[:not(:placeholder-shown)]:text-xs"
+        >
+          Code
+        </label>
       </div>
-    </div>
-  );
-
-  const filterContent = (
-    <div className="flex flex-col gap-3">
-      <label className="flex flex-col gap-1">
-        <span className="text-xs font-medium text-text-muted">Status</span>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as DepartmentStatusFilter)}
-          className="rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-text-primary"
-        >
-          <option value="all">All</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-        </select>
-      </label>
-      <label className="flex flex-col gap-1">
-        <span className="text-xs font-medium text-text-muted">Staffing</span>
-        <select
-          value={staffingFilter}
-          onChange={(e) => setStaffingFilter(e.target.value as DepartmentStaffingFilter)}
-          className="rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-text-primary"
-        >
-          <option value="all">All</option>
-          <option value="fully_staffed">Fully staffed</option>
-          <option value="needs_adviser">Needs adviser</option>
-          <option value="needs_treasurer">Needs treasurer</option>
-        </select>
-      </label>
-      <label className="flex flex-col gap-1">
-        <span className="text-xs font-medium text-text-muted">Sort</span>
-        <select
-          value={sort}
-          onChange={(e) => setSort(e.target.value as DepartmentSort)}
-          className="rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-text-primary"
-        >
-          <option value="name">Name</option>
-          <option value="newest">Newest</option>
-          <option value="oldest">Oldest</option>
-        </select>
-      </label>
     </div>
   );
 
   return (
     <div className="flex flex-1 flex-col">
       {/* ── Welcome header ───────────────────────────────────────── */}
-      <div className="flex flex-col items-center gap-5 pb-8 pt-10 md:pt-14">
-        <h1 className="text-3xl font-bold tracking-tight text-text-primary md:text-[42px]">
-          Welcome Back!
-        </h1>
-
-        {/* Search + actions */}
-        <div className="flex w-full max-w-lg items-center gap-3">
-          <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-            <input
-              type="text"
-              value={search}
-              onChange={(event) => {
-                const value = event.target.value;
-                if (!isUrlSearch) {
-                  setLocalSearch(value);
-                  return;
-                }
-                const params = new URLSearchParams({ search: "1" });
-                if (value) params.set("q", value);
-                router.replace(`/admin/departments?${params.toString()}`, { scroll: false });
-              }}
-              placeholder="Search Department...."
-              className="w-full rounded-full bg-surface-secondary py-3.5 pl-11 pr-4 text-sm text-text-primary placeholder:text-text-muted transition-all focus:ring-2 focus:ring-accent/10 focus:shadow-[0_0_0_4px_rgba(17,17,20,0.04)]"
-            />
+      <div className="flex flex-col gap-2 pb-6 pt-3 md:pt-5">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.08em] text-text-muted">Admin Console</p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-text-primary md:text-[28px]">
+              Welcome Back!
+            </h1>
           </div>
-          <button
-            onClick={() => setFilterOpen(true)}
-            className="flex shrink-0 items-center gap-2 rounded-full border border-border bg-surface px-4 py-3 text-sm font-medium text-text-primary transition-colors hover:bg-surface-secondary md:hidden"
-            aria-label="Open filters"
-          >
-            <SlidersHorizontal className="h-4 w-4" />
-          </button>
           <button
             onClick={() => setCreateView("modal")}
             className="hidden shrink-0 items-center gap-2 rounded-full bg-accent px-5 py-3 text-sm font-medium text-accent-foreground transition-all duration-200 hover:bg-accent-hover active:scale-[0.98] md:inline-flex"
@@ -216,38 +134,9 @@ export function DepartmentsListClient({ initialDepartments, loadError }: Props) 
             New Department
           </button>
         </div>
-
-        {/* Desktop inline filters */}
-        <div className="hidden w-full max-w-lg items-center gap-3 md:flex">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as DepartmentStatusFilter)}
-            className="rounded-xl border border-border bg-surface px-3 py-2 text-xs text-text-primary"
-          >
-            <option value="all">All statuses</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
-          <select
-            value={staffingFilter}
-            onChange={(e) => setStaffingFilter(e.target.value as DepartmentStaffingFilter)}
-            className="rounded-xl border border-border bg-surface px-3 py-2 text-xs text-text-primary"
-          >
-            <option value="all">All staffing</option>
-            <option value="fully_staffed">Fully staffed</option>
-            <option value="needs_adviser">Needs adviser</option>
-            <option value="needs_treasurer">Needs treasurer</option>
-          </select>
-          <select
-            value={sort}
-            onChange={(e) => setSort(e.target.value as DepartmentSort)}
-            className="rounded-xl border border-border bg-surface px-3 py-2 text-xs text-text-primary"
-          >
-            <option value="name">Sort: Name</option>
-            <option value="newest">Sort: Newest</option>
-            <option value="oldest">Sort: Oldest</option>
-          </select>
-        </div>
+        {search && (
+          <p className="text-xs text-text-muted">Showing departments matching “{search}”.</p>
+        )}
       </div>
 
       {/* ── Query failure banner ─────────────────────────────────── */}
@@ -276,10 +165,10 @@ export function DepartmentsListClient({ initialDepartments, loadError }: Props) 
         <EmptyState
           icon={<SearchX />}
           title="No matching departments"
-          description="Try another search or clear the current filters."
+          description="Try another search or clear the current search."
           action={
             <button
-              onClick={clearFilters}
+              onClick={clearSearch}
               className="rounded-full border border-border bg-surface px-5 py-2.5 text-sm font-medium text-text-primary transition-colors hover:bg-surface-secondary"
             >
               Clear search
@@ -311,7 +200,12 @@ export function DepartmentsListClient({ initialDepartments, loadError }: Props) 
             transition={{ type: "spring", stiffness: 300, damping: 26 }}
             className="relative w-full max-w-md rounded-2xl border border-border bg-surface p-8 shadow-card"
           >
-            <h2 className="mb-6 text-base font-semibold text-text-primary">New Department</h2>
+            <div className="mb-6 flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent-light text-accent">
+                <FolderPlus className="h-5 w-5" />
+              </div>
+              <h2 className="text-base font-semibold text-text-primary">New Department</h2>
+            </div>
             {newDepartmentForm}
             {createError && (
               <p className="mt-3 text-sm text-error">{createError}</p>
@@ -348,7 +242,12 @@ export function DepartmentsListClient({ initialDepartments, loadError }: Props) 
           aria-modal="true"
         >
           <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-border-strong" />
-          <h2 className="mb-5 text-base font-semibold text-text-primary">New Department</h2>
+          <div className="mb-5 flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent-light text-accent">
+              <FolderPlus className="h-5 w-5" />
+            </div>
+            <h2 className="text-base font-semibold text-text-primary">New Department</h2>
+          </div>
           {newDepartmentForm}
           {createError && (
             <p className="mt-3 text-sm text-error">{createError}</p>
@@ -373,37 +272,11 @@ export function DepartmentsListClient({ initialDepartments, loadError }: Props) 
         </div>
       </CssBottomSheet>
 
-      {/* ── Mobile filter bottom sheet ───────────────────────────── */}
-      {filterOpen && (
-        <div className="fixed inset-0 z-50 bg-overlay-alpha backdrop-blur-sm md:hidden" onClick={() => setFilterOpen(false)} />
-      )}
-      <CssBottomSheet open={filterOpen} hideAt="md" onClose={() => setFilterOpen(false)}>
-        <div className="rounded-t-3xl border-t border-border bg-surface p-6 pb-8 shadow-card">
-          <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-border-strong" />
-          <h2 className="mb-5 text-base font-semibold text-text-primary">Filters</h2>
-          {filterContent}
-          <div className="mt-6 flex gap-2">
-            <button
-              onClick={() => setFilterOpen(false)}
-              className="flex flex-1 items-center justify-center rounded-full bg-accent px-5 py-3 text-sm font-medium text-accent-foreground transition-all hover:bg-accent-hover active:scale-[0.98]"
-            >
-              Apply
-            </button>
-            <button
-              onClick={() => { clearFilters(); setFilterOpen(false); }}
-              className="flex-1 rounded-full border border-border bg-surface px-5 py-3 text-sm font-medium text-text-primary transition-colors hover:bg-surface-secondary"
-            >
-              Clear
-            </button>
-          </div>
-        </div>
-      </CssBottomSheet>
-
       {/* ── Mobile FAB ───────────────────────────────────────────── */}
-      {!createView && !filterOpen && (
+      {!createView && (
         <button
           onClick={() => setCreateView("sheet")}
-          className="fixed bottom-24 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-2xl bg-accent text-accent-foreground shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 md:hidden"
+          className="fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 md:hidden"
           aria-label="New department"
         >
           <Plus className="h-6 w-6" />
