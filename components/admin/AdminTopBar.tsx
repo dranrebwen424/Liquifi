@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { UserRoundCheck } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft, UserRoundCheck } from "lucide-react";
 import { useAutoHideTopBar } from "@/hooks/useAutoHideTopBar";
 import { isImmersivePage } from "@/lib/event-route";
 import { cn } from "@/lib/utils";
@@ -18,17 +19,48 @@ export function AdminTopBar({ adminInitial, pendingApprovalsCount }: Props) {
   const searchParams = useSearchParams();
   const topBarVisible = useAutoHideTopBar();
   const hidden = isImmersivePage(pathname);
-  const currentQuery = searchParams.get("q") ?? "";
+  const isSearching = searchParams.get("search") === "1";
+  const [query, setQuery] = useState(searchParams.get("q") ?? "");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const onSearch = (value: string) => {
-    const params = new URLSearchParams();
-    const trimmed = value.trim();
-    if (trimmed) params.set("q", trimmed);
-    const next = params.toString();
-    router.replace(`/admin/departments${next ? `?${next}` : ""}`, { scroll: false });
-  };
+  // ponytail: debounce URL sync so router.replace doesn't fire on every keystroke
+  useEffect(() => {
+    if (!isSearching) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      const params = new URLSearchParams({ search: "1" });
+      if (query) params.set("q", query);
+      router.replace(`/admin/departments?${params.toString()}`, { scroll: false });
+    }, 150);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [isSearching, query, router]);
 
   if (hidden) return null;
+
+  if (isSearching) {
+    return (
+      <header className="sticky top-0 z-40 hidden h-16 items-center gap-2 bg-background px-4 md:px-8 lg:flex">
+        <button
+          type="button"
+          aria-label="Exit search"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-text-secondary hover:bg-surface-secondary"
+          onClick={() => router.replace("/admin/departments")}
+        >
+          <ArrowLeft className="h-6 w-6" />
+        </button>
+        <input
+          type="search"
+          autoFocus
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search departments"
+          className="min-w-0 flex-1 rounded-full border border-border bg-surface px-4 py-2.5 text-base text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+        />
+      </header>
+    );
+  }
 
   return (
     <header
@@ -47,17 +79,13 @@ export function AdminTopBar({ adminInitial, pendingApprovalsCount }: Props) {
         </span>
       </Link>
 
-      <div className="min-w-0 flex-1">
-        <input
-          type="search"
-          key={currentQuery}
-          defaultValue={currentQuery}
-          onChange={(event) => onSearch(event.target.value)}
-          placeholder="Search Department"
-          aria-label="Search departments"
-          className="h-11 w-full rounded-full border border-accent bg-background px-4 text-center text-sm text-text-primary placeholder:text-text-primary transition-colors focus:outline-none focus:ring-1 focus:ring-accent"
-        />
-      </div>
+      <button
+        type="button"
+        className="flex h-11 min-w-0 flex-1 items-center justify-center rounded-full border border-accent bg-background px-4 text-sm text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        onClick={() => router.push("/admin/departments?search=1")}
+      >
+        Search Department
+      </button>
 
       <Link
         href="/admin/approvals"
