@@ -117,14 +117,16 @@ export function DepartmentsListClient({ initialDepartments, loadError }: Props) 
 
   return (
     <div className="flex flex-1 flex-col">
-      {/* ── Welcome header ───────────────────────────────────────── */}
-      <div className="flex flex-col gap-2 pb-6 pt-3 md:pt-5">
-        <div className="flex items-center justify-between gap-3">
+      <div className="relative pt-1 md:pt-3">
+        <h1 className="text-center text-base font-bold uppercase text-text-primary md:text-xl">
+          Welcome Back!
+        </h1>
+        <div className="mt-10 flex items-end justify-between gap-3 md:mt-14">
           <div>
-            <p className="text-xs font-medium uppercase tracking-[0.08em] text-text-muted">Admin Console</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-text-primary md:text-[28px]">
-              Welcome Back!
-            </h1>
+            <h2 className="text-base font-medium text-text-primary md:text-xl">Departments</h2>
+            <p className="text-xs text-text-muted">
+              Total of {filtered.length} {filtered.length === 1 ? "Department" : "Departments"}
+            </p>
           </div>
           <button
             onClick={() => setCreateView("modal")}
@@ -134,61 +136,59 @@ export function DepartmentsListClient({ initialDepartments, loadError }: Props) 
             New Department
           </button>
         </div>
-        {search && (
-          <p className="text-xs text-text-muted">Showing departments matching “{search}”.</p>
-        )}
       </div>
 
       {/* ── Query failure banner ─────────────────────────────────── */}
       {loadError && (
-        <div className="mx-auto mb-6 w-full max-w-lg rounded-xl border border-error/20 bg-error/5 px-4 py-3 text-sm text-error">
+        <div className="mx-auto mt-5 w-full max-w-lg rounded-xl border border-error/20 bg-error/5 px-4 py-3 text-sm text-error">
           {loadError}
         </div>
       )}
 
-      {/* ── Department grid ──────────────────────────────────────── */}
-      {departments.length === 0 && !loadError ? (
-        <EmptyState
-          icon={<Building2 />}
-          title="No departments yet"
-          description="Create a department to start organizing events, reports, and accounts."
-          action={
-            <button
-              onClick={() => setCreateView("modal")}
-              className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-foreground transition-all hover:bg-accent-hover active:scale-[0.98]"
-            >
-              Create Department
-            </button>
-          }
-        />
-      ) : filtered.length === 0 ? (
-        <EmptyState
-          icon={<SearchX />}
-          title="No matching departments"
-          description="Try another search or clear the current search."
-          action={
-            <button
-              onClick={clearSearch}
-              className="rounded-full border border-border bg-surface px-5 py-2.5 text-sm font-medium text-text-primary transition-colors hover:bg-surface-secondary"
-            >
-              Clear search
-            </button>
-          }
-        />
-      ) : (
-        <motion.div
-          variants={staggerContainer}
-          initial="hidden"
-          animate="show"
-          className="grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-5 lg:grid-cols-4 xl:grid-cols-5"
-        >
-          {filtered.map((dept) => (
-            <motion.div key={dept.id} variants={fadeUpItem}>
-              <DepartmentCard department={dept} />
-            </motion.div>
-          ))}
-        </motion.div>
-      )}
+      <div className="mt-4 px-1.5 md:mt-8 md:px-0">
+        {departments.length === 0 && !loadError ? (
+          <EmptyState
+            icon={<Building2 />}
+            title="No departments yet"
+            description="Create a department to start organizing events, reports, and accounts."
+            action={
+              <button
+                onClick={() => setCreateView("modal")}
+                className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-foreground transition-all hover:bg-accent-hover active:scale-[0.98]"
+              >
+                Create Department
+              </button>
+            }
+          />
+        ) : filtered.length === 0 ? (
+          <EmptyState
+            icon={<SearchX />}
+            title="No matching departments"
+            description="Try another search or clear the current search."
+            action={
+              <button
+                onClick={clearSearch}
+                className="rounded-full border border-border bg-surface px-5 py-2.5 text-sm font-medium text-text-primary transition-colors hover:bg-surface-secondary"
+              >
+                Clear search
+              </button>
+            }
+          />
+        ) : (
+          <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            animate="show"
+            className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-5 xl:grid-cols-3"
+          >
+            {filtered.map((dept) => (
+              <motion.div key={dept.id} variants={fadeUpItem}>
+                <DepartmentCard department={dept} />
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+      </div>
 
       {/* ── New Department — Desktop Modal ────────────────────────── */}
       {createView === "modal" && (
@@ -276,10 +276,10 @@ export function DepartmentsListClient({ initialDepartments, loadError }: Props) 
       {!createView && (
         <button
           onClick={() => setCreateView("sheet")}
-          className="fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 md:hidden"
+          className="fixed bottom-5 right-5 z-50 flex h-16 w-16 items-center justify-center rounded-xl bg-accent text-accent-foreground shadow-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] md:hidden"
           aria-label="New department"
         >
-          <Plus className="h-6 w-6" />
+          <Plus className="h-8 w-8" strokeWidth={2.5} />
         </button>
       )}
     </div>

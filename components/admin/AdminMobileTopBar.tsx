@@ -1,33 +1,28 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, ClipboardCheck, LayoutGrid, Menu, Search } from "lucide-react";
-import { MobileSidebarDrawer } from "@/components/layout/MobileSidebarDrawer";
-import type { NavItemConfig } from "@/components/layout/NavItem";
+import { ArrowLeft, UserRoundCheck } from "lucide-react";
+import { useAutoHideTopBar } from "@/hooks/useAutoHideTopBar";
 import { isAdminDepartmentWorkspace } from "@/lib/admin-routes";
 import { isImmersivePage } from "@/lib/event-route";
-
-const ADMIN_NAV_ITEMS: NavItemConfig[] = [
-  { label: "Departments", href: "/admin/departments", icon: LayoutGrid },
-  { label: "Approvals", href: "/admin/approvals", icon: ClipboardCheck },
-];
+import { cn } from "@/lib/utils";
 
 type Props = {
+  adminInitial: string;
   pendingApprovalsCount: number;
 };
 
-export function AdminMobileTopBar({ pendingApprovalsCount }: Props) {
+export function AdminMobileTopBar({ adminInitial, pendingApprovalsCount }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const topBarVisible = useAutoHideTopBar();
   const isSearching = searchParams.get("search") === "1";
   const hidden = isImmersivePage(pathname) || isAdminDepartmentWorkspace(pathname);
-  const closeDrawer = useCallback(() => setDrawerOpen(false), []);
 
   useEffect(() => {
     if (!isSearching) return;
@@ -70,41 +65,38 @@ export function AdminMobileTopBar({ pendingApprovalsCount }: Props) {
   }
 
   return (
-    <>
-      <header className="sticky top-0 z-40 flex h-16 items-center gap-3 bg-background px-4 lg:hidden">
-        <button
-          type="button"
-          aria-label="Open menu"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-text-secondary hover:bg-surface-secondary"
-          onClick={() => setDrawerOpen(true)}
+    <header
+      className={cn(
+        "sticky top-0 z-40 flex h-16 items-center gap-3 bg-background px-2 transition-transform duration-200 motion-reduce:transition-none lg:hidden",
+        topBarVisible ? "translate-y-0" : "-translate-y-full",
+      )}
+    >
+        <Link
+          href="/admin/profile"
+          aria-label="Open profile"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
-          <Menu className="h-6 w-6" />
-        </button>
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-border-strong text-base font-bold text-text-primary">
+            {adminInitial}
+          </span>
+        </Link>
         <button
           type="button"
-          className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full border border-border bg-surface px-4 py-2.5 text-sm text-text-muted"
+          className="flex h-11 min-w-0 flex-1 items-center justify-center rounded-full border border-accent bg-background px-4 text-sm text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           onClick={() => router.push("/admin/departments?search=1")}
         >
-          <Search className="h-4 w-4" />
-          Search departments
+          Search Department
         </button>
         <Link
           href="/admin/approvals"
           aria-label={pendingApprovalsCount > 0 ? `${pendingApprovalsCount} pending approvals` : "Open approvals"}
-          className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-text-secondary hover:bg-surface-secondary"
+          className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-accent hover:bg-accent-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
-          <ClipboardCheck className="h-6 w-6" />
+          <UserRoundCheck className="h-6 w-6" />
           {pendingApprovalsCount > 0 && (
-            <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-error ring-2 ring-background" />
+            <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-error ring-2 ring-background" />
           )}
         </Link>
-      </header>
-      <MobileSidebarDrawer
-        open={drawerOpen}
-        onClose={closeDrawer}
-        navItems={ADMIN_NAV_ITEMS}
-        role="admin"
-      />
-    </>
+    </header>
   );
 }

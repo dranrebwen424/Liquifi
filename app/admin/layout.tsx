@@ -11,7 +11,7 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  await requireLayoutRole("admin");
+  const user = await requireLayoutRole("admin");
   const insforge = await createInsforgeServer();
   const { data: pendingApprovals } = await insforge.database
     .from("users")
@@ -19,6 +19,7 @@ export default async function AdminLayout({
     .eq("role", "adviser")
     .eq("account_status", "pending_approval");
   const pendingApprovalsCount = pendingApprovals?.length ?? 0;
+  const adminInitial = user.email.slice(0, 1).toUpperCase() || "A";
 
   return (
     <div className="min-h-screen bg-background">
@@ -26,11 +27,17 @@ export default async function AdminLayout({
 
       <AdminSidebar />
 
-      <AdminMobileTopBar pendingApprovalsCount={pendingApprovalsCount} />
+      <AdminMobileTopBar
+        adminInitial={adminInitial}
+        pendingApprovalsCount={pendingApprovalsCount}
+      />
 
       {/* Main content */}
       <SidebarShell mobileBottomNav={false}>
-        <AdminTopBar pendingApprovalsCount={pendingApprovalsCount} />
+        <AdminTopBar
+          adminInitial={adminInitial}
+          pendingApprovalsCount={pendingApprovalsCount}
+        />
         {children}
       </SidebarShell>
     </div>
