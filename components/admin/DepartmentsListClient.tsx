@@ -145,7 +145,7 @@ export function DepartmentsListClient({ initialDepartments, loadError }: Props) 
         </div>
       )}
 
-      <div className="mt-4 px-1.5 md:mt-8 md:px-0">
+      <div className="mb-24 mt-4 px-1.5 md:mb-12 md:mt-8 md:px-0">
         {departments.length === 0 && !loadError ? (
           <EmptyState
             icon={<Building2 />}
