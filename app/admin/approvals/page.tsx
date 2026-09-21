@@ -32,24 +32,18 @@ export default async function AdminApprovalsPage() {
     })) ?? [];
 
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-8">
-      {/* Mobile back button */}
-      <Link
-        href="/admin/departments"
-        className="mt-6 flex w-fit items-center gap-1.5 text-sm font-medium text-text-muted transition-colors hover:text-text-primary md:hidden"
-        aria-label="Back to departments"
-      >
-        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        Pending
-      </Link>
-
-      {/* Header */}
-      <div>
-        <h1 className="text-xl font-semibold text-text-primary md:text-2xl">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-10 pt-3">
+      <div className="flex flex-col gap-1">
+        <Link
+          href="/admin/departments"
+          className="inline-flex min-h-11 w-fit items-center gap-2 text-lg font-medium text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          aria-label="Back to departments"
+        >
+          <ArrowLeft className="h-5 w-5" aria-hidden="true" />
           Approvals
-        </h1>
-        <p className="mt-1 text-xs text-text-muted">
-          Review pending adviser signups
+        </Link>
+        <p className="text-xs text-text-muted">
+          Total of {pending.length} Pending user{pending.length === 1 ? "" : "s"}
         </p>
       </div>
 
