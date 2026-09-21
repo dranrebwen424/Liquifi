@@ -233,11 +233,10 @@ export function DepartmentAuditTab({
             aria-label="Filter audit logs"
             aria-expanded={filtersOpen}
             aria-controls="audit-mobile-filters"
-            className={`relative inline-flex h-11 w-11 items-center justify-center rounded-full border transition-colors ${
-              hasActiveFilters
-                ? "border-accent bg-accent text-accent-foreground"
-                : "border-border bg-surface text-text-secondary hover:bg-surface-tertiary hover:text-text-primary"
-            }`}
+            className={cn(
+              "relative inline-flex h-11 w-11 items-center justify-center rounded-lg text-text-primary transition-colors hover:text-accent focus:outline-none focus:ring-1 focus:ring-accent",
+              hasActiveFilters && "text-accent",
+            )}
           >
             <ListFilter className="h-5 w-5" />
             {hasActiveFilters && (
@@ -280,64 +279,63 @@ export function DepartmentAuditTab({
               const hasDetails = view.details.length > 0;
               const isExpanded = expandedId === log.id;
               return (
-                <div key={log.id} className="flex items-start gap-3">
-                  <span className={`mt-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl md:h-9 md:w-9 ${toneIcon(view.tone)}`}>
-                    <Icon className="h-4 w-4" />
-                  </span>
-                  <div
-                    role={hasDetails ? "button" : undefined}
-                    tabIndex={hasDetails ? 0 : undefined}
-                    aria-expanded={hasDetails ? isExpanded : undefined}
-                    aria-label={hasDetails ? `${isExpanded ? "Hide" : "Show"} details for ${view.label}` : undefined}
-                    onClick={() => toggleLog(log.id, hasDetails)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        toggleLog(log.id, hasDetails);
-                      }
-                    }}
-                    className={cn(
-                      "group min-w-0 flex-1 rounded-2xl border border-border bg-surface p-4 shadow-card transition-[transform,border-color] hover:border-border-strong active:scale-[0.99] md:rounded-xl",
-                      hasDetails && "cursor-pointer focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent",
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-text-primary">{view.label}</p>
-                        <p className="truncate text-xs text-text-muted md:hidden">
+                <div
+                  key={log.id}
+                  role={hasDetails ? "button" : undefined}
+                  tabIndex={hasDetails ? 0 : undefined}
+                  aria-expanded={hasDetails ? isExpanded : undefined}
+                  aria-label={hasDetails ? `${isExpanded ? "Hide" : "Show"} details for ${view.label}` : undefined}
+                  onClick={() => toggleLog(log.id, hasDetails)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      toggleLog(log.id, hasDetails);
+                    }
+                  }}
+                  className={cn(
+                    "group rounded-2xl border border-border bg-surface p-4 shadow-card transition-[transform,border-color] hover:border-border-strong active:scale-[0.99] md:rounded-xl",
+                    hasDetails && "cursor-pointer focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent",
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${toneIcon(view.tone)}`}>
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-text-primary">{view.label}</p>
+                      <p className="truncate text-xs text-text-muted md:hidden">
+                        {log.actor}
+                        {log.actor_role && <span className="capitalize"> · {log.actor_role}</span>}
+                      </p>
+                      <p className="mt-1 text-xs text-text-muted md:mt-0 md:truncate">
+                        <span className="md:hidden">{fmtDate(log.created_at)}</span>
+                        <span className="hidden md:inline">
                           {log.actor}
                           {log.actor_role && <span className="capitalize"> · {log.actor_role}</span>}
-                        </p>
-                        <p className="mt-1 text-xs text-text-muted md:mt-0 md:truncate">
-                          <span className="md:hidden">{fmtDate(log.created_at)}</span>
-                          <span className="hidden md:inline">
-                            {log.actor}
-                            {log.actor_role && <span className="capitalize"> · {log.actor_role}</span>}
-                            <span className="mx-1.5">·</span>
-                            {fmtDate(log.created_at)}
-                          </span>
-                        </p>
-                      </div>
-                      {hasDetails && (
-                        <span className="shrink-0 rounded-md p-1 text-text-muted transition-colors group-hover:text-text-primary md:p-1.5" aria-hidden="true">
-                          {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          <span className="mx-1.5">·</span>
+                          {fmtDate(log.created_at)}
                         </span>
-                      )}
+                      </p>
                     </div>
-                    {isExpanded && (
-                      <div className="mt-4 border-t border-border pt-4">
-                        <p className="text-sm text-text-secondary">{view.summary}</p>
-                        <dl className="mt-2 space-y-1.5">
-                          {view.details.map((d) => (
-                            <div key={d.label} className="flex flex-col">
-                              <dt className="text-xs font-medium uppercase tracking-wide text-text-muted">{d.label}</dt>
-                              <dd className="text-sm text-text-primary">{d.value}</dd>
-                            </div>
-                          ))}
-                        </dl>
-                      </div>
+                    {hasDetails && (
+                      <span className="shrink-0 rounded-md p-1 text-text-muted transition-colors group-hover:text-text-primary md:p-1.5" aria-hidden="true">
+                        {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                      </span>
                     )}
                   </div>
+                  {isExpanded && (
+                    <div className="mt-4 border-t border-border pt-4">
+                      <p className="text-sm text-text-secondary">{view.summary}</p>
+                      <dl className="mt-2 space-y-1.5">
+                        {view.details.map((d) => (
+                          <div key={d.label} className="flex flex-col">
+                            <dt className="text-xs font-medium uppercase tracking-wide text-text-muted">{d.label}</dt>
+                            <dd className="text-sm text-text-primary">{d.value}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </div>
+                  )}
                 </div>
               );
             })}

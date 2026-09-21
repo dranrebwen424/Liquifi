@@ -16,8 +16,12 @@ assert.match(source, /filteredLogs\.slice\(0, visibleCount\)/);
 assert.match(source, /setVisibleCount\(\(count\) => count \+ PAGE_SIZE\)/);
 assert.match(source, />See more</);
 assert.match(source, /absolute right-0 top-full/);
+assert.match(source, /hover:text-accent/);
+assert.doesNotMatch(source, /rounded-full border transition-colors/);
 assert.match(source, /role=\{hasDetails \? "button" : undefined\}/);
 assert.match(source, /onKeyDown=\{\(e\) =>/);
 assert.match(source, /toggleLog\(log\.id, hasDetails\)/);
+assert.match(source, /<span className=\{`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl/);
+assert.doesNotMatch(source, /flex items-start gap-3/);
 
 console.log("admin audit mobile check: all assertions passed");
