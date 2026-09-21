@@ -46,7 +46,7 @@ export async function DepartmentRoleUsersPage({
   const roleName = title.toLowerCase();
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-10 pt-4">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-10 pt-3">
       <Link
         href={`/admin/departments/${departmentId}?tab=users`}
         className="inline-flex min-h-11 w-fit items-center gap-2 text-lg font-medium text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
