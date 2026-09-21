@@ -36,4 +36,14 @@ assert.match(cardSource, /Pending approval/);
 assert.match(cardSource, /Deactivated/);
 assert.match(cardSource, /ChevronRight/);
 
+const rolePageSource = readFileSync("components/admin/DepartmentRoleUsersPage.tsx", "utf8");
+const treasurerPageSource = readFileSync("app/admin/departments/[departmentId]/users/treasurers/page.tsx", "utf8");
+const adviserPageSource = readFileSync("app/admin/departments/[departmentId]/users/advisers/page.tsx", "utf8");
+assert.match(rolePageSource, /eq\("department_id", departmentId\)/);
+assert.match(rolePageSource, /eq\("role", role\)/);
+assert.match(rolePageSource, /\?tab=users/);
+assert.match(rolePageSource, /pt-6/);
+assert.match(treasurerPageSource, /role="treasurer"/);
+assert.match(adviserPageSource, /role="adviser"/);
+
 console.log("admin department users check: all assertions passed");
