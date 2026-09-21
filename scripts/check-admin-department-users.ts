@@ -42,7 +42,7 @@ const adviserPageSource = readFileSync("app/admin/departments/[departmentId]/use
 assert.match(rolePageSource, /eq\("department_id", departmentId\)/);
 assert.match(rolePageSource, /eq\("role", role\)/);
 assert.match(rolePageSource, /\?tab=users/);
-assert.match(rolePageSource, /pt-6/);
+assert.match(rolePageSource, /pt-4/);
 assert.match(treasurerPageSource, /role="treasurer"/);
 assert.match(adviserPageSource, /role="adviser"/);
 
