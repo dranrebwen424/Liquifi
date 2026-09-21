@@ -1,4 +1,5 @@
 import assert from "node:assert";
+import { readFileSync } from "node:fs";
 import {
   getDepartmentUserSections,
   searchDepartmentMembers,
@@ -22,5 +23,17 @@ assert.deepEqual(searchDepartmentMembers(users, "current").map((user) => user.id
 assert.deepEqual(searchDepartmentMembers(users, "ANA@EXAMPLE.COM").map((user) => user.id), ["a-new"]);
 assert.deepEqual(searchDepartmentMembers(users, "   "), []);
 assert.equal(users[0].id, "t-old");
+
+const tabSource = readFileSync("components/admin/DepartmentUsersTab.tsx", "utf8");
+const detailSource = readFileSync("components/admin/DepartmentDetailClient.tsx", "utf8");
+const cardSource = readFileSync("components/admin/DepartmentMemberCard.tsx", "utf8");
+assert.match(tabSource, /slice\(0, 3\)/);
+assert.match(tabSource, /View all/);
+assert.match(tabSource, /query\.trim\(\)/);
+assert.match(detailSource, /placeholder="Search users"/);
+assert.match(detailSource, /activeTab === "Users"/);
+assert.match(cardSource, /Pending approval/);
+assert.match(cardSource, /Deactivated/);
+assert.match(cardSource, /ChevronRight/);
 
 console.log("admin department users check: all assertions passed");

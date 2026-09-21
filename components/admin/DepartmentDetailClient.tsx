@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, CalendarDays, FileText, ScrollText, Users } from "lucide-react";
+import { ArrowLeft, CalendarDays, FileText, Search, ScrollText, Users } from "lucide-react";
 import LottiePlayer from "@/components/LottiePlayer";
 import { DepartmentEventsTab } from "@/components/admin/DepartmentEventsTab";
 import { ReportsOverview } from "@/components/reports/ReportsOverview";
@@ -19,7 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const TABS = ["Events", "Reports", "Users", "Audit Logs"] as const;
-type Tab = (typeof TABS)[number];
+export type DepartmentTab = (typeof TABS)[number];
 const TAB_ICONS = {
   Events: CalendarDays,
   Reports: FileText,
@@ -45,6 +45,7 @@ type Props = {
   users: DepartmentMemberSummary[];
   auditLogs: DepartmentAuditLog[];
   auditActors: DepartmentAuditActor[];
+  initialTab?: DepartmentTab;
 };
 
 export function DepartmentDetailClient({
@@ -54,22 +55,24 @@ export function DepartmentDetailClient({
   users,
   auditLogs,
   auditActors,
+  initialTab = "Events",
 }: Props) {
-  const [activeTab, setActiveTab] = useState<Tab>("Events");
-  const desktopTabRefs = useRef<Record<Tab, HTMLButtonElement | null>>({
+  const [activeTab, setActiveTab] = useState<DepartmentTab>(initialTab);
+  const [userQuery, setUserQuery] = useState("");
+  const desktopTabRefs = useRef<Record<DepartmentTab, HTMLButtonElement | null>>({
     Events: null,
     Reports: null,
     Users: null,
     "Audit Logs": null,
   });
-  const mobileTabRefs = useRef<Record<Tab, HTMLButtonElement | null>>({
+  const mobileTabRefs = useRef<Record<DepartmentTab, HTMLButtonElement | null>>({
     Events: null,
     Reports: null,
     Users: null,
     "Audit Logs": null,
   });
 
-  const counts: Record<Tab, number> = {
+  const counts: Record<DepartmentTab, number> = {
     Events: events.length,
     Reports: reports.length,
     Users: users.length,
@@ -77,9 +80,9 @@ export function DepartmentDetailClient({
   };
 
   const handleTabKeyDown = (
-    tab: Tab,
+    tab: DepartmentTab,
     e: React.KeyboardEvent,
-    refs: React.RefObject<Record<Tab, HTMLButtonElement | null>>,
+    refs: React.RefObject<Record<DepartmentTab, HTMLButtonElement | null>>,
   ) => {
     const keys = ["ArrowLeft", "ArrowRight", "Home", "End"];
     if (!keys.includes(e.key)) return;
@@ -131,6 +134,25 @@ export function DepartmentDetailClient({
           className="absolute right-0 top-1/2 h-28 w-36 -translate-y-1/2 md:right-4 md:h-32 md:w-40"
         />
       </div>
+
+      {activeTab === "Users" && (
+        <label className="relative block">
+          <span className="sr-only">Search users</span>
+          <Search
+            className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted"
+            aria-hidden="true"
+          />
+          <input
+            id="department-user-search"
+            name="department-user-search"
+            type="search"
+            value={userQuery}
+            onChange={(event) => setUserQuery(event.target.value)}
+            placeholder="Search users"
+            className="h-11 w-full rounded-full border border-border-strong bg-surface pl-11 pr-4 text-sm text-text-primary outline-none placeholder:text-text-muted focus:border-accent focus:ring-1 focus:ring-accent"
+          />
+        </label>
+      )}
 
       <div
         role="tablist"
@@ -195,7 +217,7 @@ export function DepartmentDetailClient({
           />
         )}
         {activeTab === "Users" && (
-          <DepartmentUsersTab departmentId={department.id} users={users} />
+          <DepartmentUsersTab departmentId={department.id} users={users} query={userQuery} />
         )}
         {activeTab === "Audit Logs" && (
           <DepartmentAuditTab logs={auditLogs} actors={auditActors} />

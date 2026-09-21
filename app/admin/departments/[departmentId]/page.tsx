@@ -3,7 +3,7 @@ import { createInsforgeServer } from "@/lib/insforge-server";
 import { getDepartmentEvents } from "@/lib/queries/events";
 import { getLatestReportsByEvent } from "@/lib/queries/reports";
 import type { ReportOverviewItem } from "@/lib/report-overview";
-import type { DepartmentMemberSummary } from "@/components/admin/DepartmentUsersTab";
+import type { DepartmentMemberSummary } from "@/lib/admin-department-users";
 import type { DepartmentAuditLog } from "@/components/admin/DepartmentAuditTab";
 import { DepartmentDetailClient } from "@/components/admin/DepartmentDetailClient";
 
@@ -23,10 +23,13 @@ export type AuditActor = { id: string; name: string };
 
 export default async function DepartmentDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ departmentId: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
   const { departmentId } = await params;
+  const { tab } = await searchParams;
   const insforge = await createInsforgeServer();
 
   // Fetch department
@@ -39,11 +42,18 @@ export default async function DepartmentDetailPage({
   if (!department) notFound();
 
   // Fetch users for this department
-  const { data: users } = await insforge.database
+  const { data: users, error: usersError } = await insforge.database
     .from("users")
-    .select("id, first_name, last_name, email, role, account_status")
+    .select("id, first_name, last_name, email, role, account_status, created_at")
     .eq("department_id", departmentId)
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: false });
+
+  if (usersError) throw usersError;
+
+  const memberRows: DepartmentMemberSummary[] = (users ?? []).flatMap((user) => {
+    if (user.role !== "treasurer" && user.role !== "adviser") return [];
+    return [{ ...user, role: user.role }];
+  });
 
   // Audit logs — scoped to this department, newest first (Step 28)
   const { data: logs } = await insforge.database
@@ -131,9 +141,10 @@ export default async function DepartmentDetailPage({
       department={department}
       events={eventRows}
       reports={reportRows}
-      users={users as DepartmentMemberSummary[]}
+      users={memberRows}
       auditLogs={auditLogs as DepartmentAuditLog[]}
       auditActors={auditActors}
+      initialTab={tab === "users" ? "Users" : "Events"}
     />
   );
 }
