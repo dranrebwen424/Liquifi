@@ -227,8 +227,8 @@ export function ReportsOverview({ role, items, basePath, embedded }: Props) {
         </section>
       </FadeIn>
 
-      {/* ponytail: no FadeIn — transform breaks position: sticky */}
-      <div className="sticky top-16 z-30 -mx-4 border-y border-border bg-background/95 px-4 py-3 shadow-sm backdrop-blur md:mx-0 md:rounded-xl md:border lg:top-0">
+      <FadeIn delay={actionRequired?.report ? 90 : 60}>
+        <div className="border-y border-border px-4 py-3 md:mx-0 md:rounded-xl md:border">
         <div className="flex gap-2 overflow-x-auto scrollbar-hide" role="group" aria-label="Filter reports by status">
           {FILTERS.map((option) => (
             <button
@@ -247,7 +247,8 @@ export function ReportsOverview({ role, items, basePath, embedded }: Props) {
             </button>
           ))}
         </div>
-      </div>
+        </div>
+      </FadeIn>
 
       <FadeIn delay={actionRequired?.report ? 120 : 90}>
         <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.5fr)_minmax(280px,0.8fr)]">
