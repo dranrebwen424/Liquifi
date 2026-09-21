@@ -2,9 +2,10 @@
 
 import { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Loader2, XCircle } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { FadeIn } from "@/components/ui/FadeIn";
 import { approveAdviserSignup, rejectAdviserSignup } from "@/actions/approvals";
 
 // ─── Types ───────────────────────────────────────────────────────────
@@ -23,23 +24,13 @@ type Props = {
   applicants: PendingApplicant[];
 };
 
-// ─── Animation variants ──────────────────────────────────────────────
-
-const staggerContainer = {
-  hidden: {},
-  show: {
-    transition: { staggerChildren: 0.04, delayChildren: 0.05 },
-  },
-};
-
-const fadeUpItem = {
-  hidden: { opacity: 0, y: 12 },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: { type: "spring" as const, stiffness: 100, damping: 20, duration: 0.2 },
-  },
-};
+/** Compact row-age label ("3d ago"); mirrors the adviser approval inbox. */
+function dayAgeLabel(createdAt: string): string {
+  const time = Date.parse(createdAt);
+  if (!Number.isFinite(time)) return "";
+  const days = Math.max(0, Math.floor((Date.now() - time) / 86_400_000));
+  return days === 0 ? "today" : `${days}d ago`;
+}
 
 // ─── Component ───────────────────────────────────────────────────────
 
@@ -54,9 +45,7 @@ export function AdminApprovalsClient({ applicants }: Props) {
   const pendingRef = useRef<Set<string>>(new Set());
 
   const runOptimistic = useCallback(
-    async (userId: string, action: (uid: string) => Promise<{ success: boolean; error?: string }>, isReject: boolean) => {
-      // If reject, take the same instant path — the confirm was removed so the
-      // row disappears on click; the server purge runs in the background.
+    async (userId: string, action: (uid: string) => Promise<{ success: boolean; error?: string }>) => {
       if (pendingRef.current.has(userId)) return;
       pendingRef.current.add(userId);
       setActionError("");
@@ -84,14 +73,14 @@ export function AdminApprovalsClient({ applicants }: Props) {
 
   const handleApprove = useCallback(
     (userId: string) => {
-      void runOptimistic(userId, (uid) => approveAdviserSignup(uid), false);
+      void runOptimistic(userId, (uid) => approveAdviserSignup(uid));
     },
     [runOptimistic],
   );
 
   const handleReject = useCallback(
     (userId: string) => {
-      void runOptimistic(userId, (uid) => rejectAdviserSignup(uid), true);
+      void runOptimistic(userId, (uid) => rejectAdviserSignup(uid));
     },
     [runOptimistic],
   );
@@ -108,150 +97,49 @@ export function AdminApprovalsClient({ applicants }: Props) {
   return (
     <>
       {/* Error banner */}
-      <AnimatePresence>
-        {actionError && (
-          <motion.p
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            className="rounded-lg border border-error-light bg-error-lightest px-4 py-2 text-sm text-error"
-          >
-            {actionError}
-          </motion.p>
-        )}
-      </AnimatePresence>
+      {actionError && (
+        <div className="rounded-lg border border-error bg-error-lightest px-4 py-3 text-sm text-error-foreground">
+          {actionError}
+        </div>
+      )}
 
-      {/* Desktop: table */}
-      <motion.div
-        variants={staggerContainer}
-        initial="hidden"
-        animate="show"
-        className="hidden overflow-x-auto rounded-xl border border-border-strong bg-surface md:block"
-      >
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-border text-xs font-medium uppercase tracking-wide text-text-muted">
-              <th className="px-6 py-3 font-medium">Name</th>
-              <th className="px-6 py-3 font-medium">Email</th>
-              <th className="px-6 py-3 font-medium">Department</th>
-              <th className="px-6 py-3 font-medium">Applied</th>
-              <th className="px-6 py-3 text-right font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {localApplicants.map((a) => (
-              <tr
-                key={a.id}
-                className="border-b border-border transition-colors last:border-0 hover:bg-surface-secondary"
-              >
-                <td className="px-6 py-3 font-medium text-text-primary">
-                  {a.first_name} {a.last_name}
-                </td>
-                <td className="px-6 py-3 text-text-secondary">{a.email}</td>
-                <td className="px-6 py-3 text-text-secondary">
-                  {a.department_name ?? "—"}
-                </td>
-                <td className="px-6 py-3 text-text-muted">
-                  {new Date(a.created_at).toLocaleDateString("en-PH", {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </td>
-                <td className="px-6 py-3 text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <button
-                      onClick={() => handleApprove(a.id)}
-                      disabled={togglingId === a.id}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-xs font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {togglingId === a.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                      )}
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => handleReject(a.id)}
-                      disabled={togglingId === a.id}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-error bg-surface px-3 py-1.5 text-xs font-medium text-error transition-colors hover:bg-error-lightest disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {togglingId === a.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <XCircle className="h-3.5 w-3.5" />
-                      )}
-                      Reject
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </motion.div>
-
-      {/* Mobile: stacked cards */}
-      <motion.div
-        variants={staggerContainer}
-        initial="hidden"
-        animate="show"
-        className="flex flex-col gap-4 md:hidden"
-      >
-        {localApplicants.map((a) => (
-          <motion.div
-            key={a.id}
-            variants={fadeUpItem}
-            className="rounded-xl border border-border-strong bg-surface p-4"
-          >
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-text-primary">
-                {a.first_name} {a.last_name}
-              </p>
-              <p className="mt-0.5 text-xs text-text-muted">{a.email}</p>
-              <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-text-secondary">
-                <span>
-                  Dept: {a.department_name ?? "—"}
-                </span>
-                <span>
-                  {new Date(a.created_at).toLocaleDateString("en-PH", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </span>
+      {/* Card list — mirrors the adviser User Requests queue */}
+      <FadeIn>
+        <div className="space-y-3">
+          {localApplicants.map((a) => (
+            <div key={a.id} className="rounded-xl border border-border bg-surface p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-text-primary">
+                    {a.first_name} {a.last_name}
+                  </p>
+                  <p className="mt-0.5 truncate text-xs text-text-muted">{a.email}</p>
+                  <p className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-text-muted">
+                    <span>Registered {dayAgeLabel(a.created_at)}</span>
+                    {a.department_name && <span>Dept: {a.department_name}</span>}
+                  </p>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-border text-error hover:bg-error-lightest hover:text-error-foreground"
+                    onClick={() => handleReject(a.id)}
+                    disabled={togglingId === a.id}
+                  >
+                    {togglingId === a.id && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    Reject
+                  </Button>
+                  <Button size="sm" onClick={() => handleApprove(a.id)} disabled={togglingId === a.id}>
+                    {togglingId === a.id && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    Approve
+                  </Button>
+                </div>
               </div>
             </div>
-            <div className="mt-4 flex gap-2">
-              <button
-                onClick={() => handleApprove(a.id)}
-                disabled={togglingId === a.id}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-accent px-3 py-2 text-xs font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {togglingId === a.id ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                )}
-                Approve
-              </button>
-              <button
-                onClick={() => handleReject(a.id)}
-                disabled={togglingId === a.id}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-full border border-error bg-surface px-3 py-2 text-xs font-medium text-error transition-colors hover:bg-error-lightest disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {togglingId === a.id ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <XCircle className="h-3.5 w-3.5" />
-                )}
-                Reject
-              </button>
-            </div>
-          </motion.div>
-        ))}
-      </motion.div>
+          ))}
+        </div>
+      </FadeIn>
     </>
   );
 }
