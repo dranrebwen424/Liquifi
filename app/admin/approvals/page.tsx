@@ -35,20 +35,19 @@ export default async function AdminApprovalsPage() {
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-10 pt-2">
       <Link
         href="/admin/departments"
-        className="inline-flex min-h-11 w-fit items-center gap-2 text-lg font-medium text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        className="flex w-fit items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         aria-label="Back to departments"
       >
-        <ArrowLeft className="h-5 w-5" aria-hidden="true" />
-        Approvals
+        <ArrowLeft className="h-5 w-5 shrink-0" aria-hidden="true" />
+        <span className="flex flex-col justify-center leading-tight">
+          <span className="text-lg font-medium text-text-primary">Pending Users</span>
+          <span className="text-xs text-text-muted">
+            Total of {pending.length} Pending user{pending.length === 1 ? "" : "s"}
+          </span>
+        </span>
       </Link>
 
       <AdminApprovalsClient applicants={pending} />
-
-      {pending.length > 0 && (
-        <p className="text-xs text-text-muted">
-          Total of {pending.length} Pending user{pending.length === 1 ? "" : "s"}
-        </p>
-      )}
     </div>
   );
 }

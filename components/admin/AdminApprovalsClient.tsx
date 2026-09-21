@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Loader2, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FadeIn } from "@/components/ui/FadeIn";
@@ -88,6 +88,7 @@ export function AdminApprovalsClient({ applicants }: Props) {
   if (localApplicants.length === 0) {
     return (
       <EmptyState
+        icon={<UserCheck aria-hidden="true" />}
         title="No pending approvals"
         description="All adviser signup requests have been reviewed."
       />
