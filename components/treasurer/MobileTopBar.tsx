@@ -26,7 +26,9 @@ export function MobileTopBar({
   const isSearching = searchParams.get("search") === "1";
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const hidden = isImmersivePage(pathname);
+  const profilePage =
+    pathname === "/treasurer/profile" || pathname === "/adviser/profile";
+  const hidden = isImmersivePage(pathname) || profilePage;
   const keepVisible = pathname === "/treasurer/reports" || pathname === "/adviser/reports";
   const isReportsPage = keepVisible;
 
