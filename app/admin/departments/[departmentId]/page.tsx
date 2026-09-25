@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { createInsforgeServer } from "@/lib/insforge-server";
 import { getDepartmentEvents } from "@/lib/queries/events";
 import { getLatestReportsByEvent } from "@/lib/queries/reports";
+import { getAvatarUrl } from "@/lib/storage";
 import type { ReportOverviewItem } from "@/lib/report-overview";
 import type { DepartmentMemberSummary } from "@/lib/admin-department-users";
 import type { DepartmentAuditLog } from "@/components/admin/DepartmentAuditTab";
@@ -44,7 +45,7 @@ export default async function DepartmentDetailPage({
   // Fetch users for this department
   const { data: users, error: usersError } = await insforge.database
     .from("users")
-    .select("id, first_name, last_name, email, role, account_status, created_at")
+    .select("id, first_name, last_name, email, role, account_status, avatar_key, created_at")
     .eq("department_id", departmentId)
     .order("created_at", { ascending: false });
 
@@ -52,7 +53,9 @@ export default async function DepartmentDetailPage({
 
   const memberRows: DepartmentMemberSummary[] = (users ?? []).flatMap((user) => {
     if (user.role !== "treasurer" && user.role !== "adviser") return [];
-    return [{ ...user, role: user.role }];
+    return [
+      { ...user, role: user.role, avatar_url: getAvatarUrl(user.avatar_key, insforge) },
+    ];
   });
 
   // Audit logs — scoped to this department, newest first (Step 28)

@@ -78,7 +78,7 @@ export async function ProfileView({ role }: { role: Role }) {
   if (error || !data) notFound();
 
   const profile = data as unknown as DbProfile;
-  const avatarUrl = profile.avatar_key ? await getAvatarUrl(profile.avatar_key) : null;
+  const avatarUrl = getAvatarUrl(profile.avatar_key, insforge);
   const homeHref = ROLE_HOME[role];
   const roleLabel = profile.role[0].toUpperCase() + profile.role.slice(1);
   const statusLabel = profile.account_status.replace(/_/g, " ");

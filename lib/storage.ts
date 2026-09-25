@@ -370,9 +370,12 @@ export async function uploadAvatar(
 }
 
 /** Resolve a public avatar URL from its stored storage key. */
-export async function getAvatarUrl(key: string): Promise<string | null> {
+export function getAvatarUrl(
+  key: string | null | undefined,
+  insforge: Awaited<ReturnType<typeof createInsforgeServer>>,
+): string | null {
+  if (!key) return null;
   try {
-    const insforge = await createInsforgeServer();
     const { data, error } = insforge.storage.from(AVATAR_BUCKET).getPublicUrl(key);
     if (error || !data) return null;
     return data.publicUrl;

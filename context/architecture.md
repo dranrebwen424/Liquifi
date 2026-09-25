@@ -486,6 +486,10 @@ storage/
 
 Avatar uploads use a fresh versioned key, then delete the previous blob after the `users.avatar_key` update succeeds. The public avatar bucket is intentionally non-sensitive; every mutation is still session-scoped to the current user.
 
+`getAvatarUrl(key, insforge)` is a pure, synchronous wrapper over `storage.from("avatars").getPublicUrl(key)` — no network call, no auth. Server components reuse their own `createInsforgeServer()` client to resolve public avatar URLs for read surfaces (own Profile, admin department Users tab, role user lists, admin member profile, admin top bars); a `null` key yields `null` and each surface falls back to initials.
+
+`AuthUser.avatarKey` (from `getCurrentUser`) carries the signed-in user's own avatar key to route-group layouts, so chrome can render it without a second query. `AvatarUploader` is the only interactive avatar control and is mounted solely on the caller's own Profile; every other avatar surface is a read-only image.
+
 ---
 
 ## Authentication & Authorization

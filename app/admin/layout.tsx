@@ -1,5 +1,6 @@
 import { requireLayoutRole } from "@/lib/layout-guard";
 import { createInsforgeServer } from "@/lib/insforge-server";
+import { getAvatarUrl } from "@/lib/storage";
 import { PushSubscriber } from "@/components/notifications/PushSubscriber";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminMobileTopBar } from "@/components/admin/AdminMobileTopBar";
@@ -20,6 +21,7 @@ export default async function AdminLayout({
     .eq("account_status", "pending_approval");
   const pendingApprovalsCount = pendingApprovals?.length ?? 0;
   const adminInitial = user.email.slice(0, 1).toUpperCase() || "A";
+  const adminAvatarUrl = getAvatarUrl(user.avatarKey, insforge);
 
   return (
     <div className="min-h-screen bg-background">
@@ -29,6 +31,7 @@ export default async function AdminLayout({
 
       <AdminMobileTopBar
         adminInitial={adminInitial}
+        adminAvatarUrl={adminAvatarUrl}
         pendingApprovalsCount={pendingApprovalsCount}
       />
 
@@ -36,6 +39,7 @@ export default async function AdminLayout({
       <SidebarShell mobileBottomNav={false}>
         <AdminTopBar
           adminInitial={adminInitial}
+          adminAvatarUrl={adminAvatarUrl}
           pendingApprovalsCount={pendingApprovalsCount}
         />
         {children}

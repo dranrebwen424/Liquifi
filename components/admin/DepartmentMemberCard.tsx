@@ -40,8 +40,13 @@ export function DepartmentMemberCard({
       href={`/admin/departments/${departmentId}/users/${user.id}`}
       className="group flex items-center gap-3 rounded-2xl border border-border bg-surface p-4 shadow-card transition-[transform,border-color] hover:-translate-y-0.5 hover:border-border-strong active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
     >
-      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent-light text-sm font-semibold text-accent">
-        {initials}
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-accent-light text-sm font-semibold text-accent">
+        {user.avatar_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={user.avatar_url} alt="" className="h-full w-full object-cover" />
+        ) : (
+          initials
+        )}
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-semibold text-text-primary">

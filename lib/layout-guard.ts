@@ -18,5 +18,10 @@ export async function requireLayoutRole(requiredRole: Role) {
   if (!user || user.accountStatus !== "active") redirect("/login");
   if (user.role !== requiredRole) redirect("/login");
 
-  return { id: user.id, email: user.email ?? "", role: user.role };
+  return {
+    id: user.id,
+    email: user.email ?? "",
+    role: user.role,
+    avatarKey: user.avatarKey,
+  };
 }

@@ -10,10 +10,11 @@ import { cn } from "@/lib/utils";
 
 type Props = {
   adminInitial: string;
+  adminAvatarUrl: string | null;
   pendingApprovalsCount: number;
 };
 
-export function AdminTopBar({ adminInitial, pendingApprovalsCount }: Props) {
+export function AdminTopBar({ adminInitial, adminAvatarUrl, pendingApprovalsCount }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -74,8 +75,13 @@ export function AdminTopBar({ adminInitial, pendingApprovalsCount }: Props) {
         aria-label="Open profile"
         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-border-strong text-base font-bold text-text-primary">
-          {adminInitial}
+        <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-border-strong text-base font-bold text-text-primary">
+          {adminAvatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={adminAvatarUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+            adminInitial
+          )}
         </span>
       </Link>
 

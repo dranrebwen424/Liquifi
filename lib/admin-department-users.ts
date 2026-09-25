@@ -8,6 +8,7 @@ export type DepartmentMemberSummary = {
   role: DepartmentMemberRole;
   account_status: string;
   created_at: string;
+  avatar_url?: string | null;
 };
 
 export function sortDepartmentMembers(

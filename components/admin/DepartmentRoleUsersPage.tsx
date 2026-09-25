@@ -4,6 +4,7 @@ import { ArrowLeft, UsersRound } from "lucide-react";
 import { DepartmentMemberCard } from "@/components/admin/DepartmentMemberCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { createInsforgeServer } from "@/lib/insforge-server";
+import { getAvatarUrl } from "@/lib/storage";
 import {
   sortDepartmentMembers,
   type DepartmentMemberRole,
@@ -28,7 +29,7 @@ export async function DepartmentRoleUsersPage({
       .maybeSingle(),
     insforge.database
       .from("users")
-      .select("id, first_name, last_name, email, role, account_status, created_at")
+      .select("id, first_name, last_name, email, role, account_status, avatar_key, created_at")
       .eq("department_id", departmentId)
       .eq("role", role)
       .order("created_at", { ascending: false }),
@@ -41,6 +42,7 @@ export async function DepartmentRoleUsersPage({
   const members: DepartmentMemberSummary[] = (membersResult.data ?? []).map((member) => ({
     ...member,
     role,
+    avatar_url: getAvatarUrl(member.avatar_key, insforge),
   }));
   const sortedMembers = sortDepartmentMembers(members);
   const roleName = title.toLowerCase();

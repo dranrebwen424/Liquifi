@@ -24,15 +24,18 @@ export type AdminMember = {
   role: string;
   account_status: string;
   department_id: string;
+  avatar_key?: string | null;
   approved_at: string | null;
 };
 
 export function AdminMemberProfile({
   department,
   member,
+  avatarUrl,
 }: {
   department: AdminDepartment;
   member: AdminMember;
+  avatarUrl: string | null;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -89,8 +92,13 @@ export function AdminMemberProfile({
 
       <div className="mx-auto w-full max-w-3xl">
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-border bg-surface p-6 shadow-card md:flex-row md:items-start">
-          <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-accent-light text-xl font-semibold text-accent">
-            {initials}
+          <span className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-accent-light text-xl font-semibold text-accent">
+            {avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              initials
+            )}
           </span>
           <div className="flex flex-1 flex-col items-center gap-1 text-center md:items-start md:text-left">
             <h1 className="text-xl font-semibold leading-7 text-text-primary md:text-2xl">

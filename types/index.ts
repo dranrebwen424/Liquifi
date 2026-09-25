@@ -182,6 +182,7 @@ export type AuthUser = {
   role: Role;
   departmentId: string | null;
   accountStatus: AccountStatus;
+  avatarKey: string | null;
 };
 
 export type GuardContext = {
