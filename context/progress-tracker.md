@@ -278,6 +278,7 @@ Update this file after every completed feature. Any AI agent reading this should
 - **Verification patterns that work:** real touch = CDP `Emulation.setTouchEmulationEnabled` + `Input.dispatchTouchEvent` only; synthetic PointerEvents can't reproduce gesture bugs. `tsc --noEmit` + `next build` green is the bar; scoped eslint for touched files. Deterministic check scripts live in `scripts/` (`check-bottom-sheet-drag.ts`, `check-overspend-gate.ts`).
 - **`users`-table lookup in `getCurrentUser()`** (auth-guard) requires the Phase-1 `users` table to exist before runtime auth works — structurally correct, live once schema + signup land (historical note).
 - **Notification edge:** `report_rejected` fires only when the dept has an `active` treasurer — dev data may have none (and `users` reads are RLS-hidden to advisers) so it skips; guard clause, not a bug.
+- **Change-password flow** (`verify/route.ts`, `ChangePasswordButton.tsx`, `ProfileView.tsx`) → DONE.
 
 ---
 

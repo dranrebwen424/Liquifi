@@ -1,13 +1,9 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Shield,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ChevronLeft } from "lucide-react";
 import { LogoutButton } from "@/components/profile/LogoutButton";
+import ChangePasswordButton from "@/components/profile/ChangePasswordButton";
 import { requireRole } from "@/lib/auth-guard";
 import { createInsforgeServer } from "@/lib/insforge-server";
 import type { AccountStatus, Role } from "@/types";
@@ -143,17 +139,7 @@ export async function ProfileView({ role }: { role: Role }) {
           Preferences
         </h2>
         <div className="flex flex-col gap-3">
-          <Button
-            type="button"
-            variant="ghost"
-            className="h-auto min-h-16 w-full justify-start gap-3 rounded-2xl bg-surface px-4 py-3 text-sm font-medium text-text-primary hover:bg-surface-secondary focus-visible:ring-accent sm:px-5"
-          >
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-secondary text-text-secondary">
-              <Shield aria-hidden="true" />
-            </span>
-            Change password
-            <ChevronRight className="ml-auto text-text-secondary" aria-hidden="true" />
-          </Button>
+          <ChangePasswordButton profileHref={backHref} />
           {role === "admin" && (
             <div className="lg:hidden">
               <LogoutButton />
