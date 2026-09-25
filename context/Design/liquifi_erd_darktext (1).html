@@ -1,0 +1,161 @@
+<style>
+#erd-wrap { background: #f5f4ef; border-radius: 12px; padding: 20px; }
+#erd svg.erDiagram .divider path { stroke-opacity: 0.5; }
+#erd svg.erDiagram .row-rect-odd path,
+#erd svg.erDiagram .row-rect-odd rect,
+#erd svg.erDiagram .row-rect-even path,
+#erd svg.erDiagram .row-rect-even rect { stroke: none !important; }
+</style>
+<h2 class="sr-only">Entity relationship diagram of the Liquifi liquidation-management database schema, light background, dark text</h2>
+<div id="erd-wrap"><div id="erd"></div></div>
+<script type="module">
+import mermaid from 'https://esm.sh/mermaid@11/dist/mermaid.esm.min.mjs';
+await document.fonts.ready;
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  fontFamily: '"anthropic-sans", sans-serif',
+  themeVariables: {
+    darkMode: false,
+    fontSize: '13px',
+    fontFamily: '"anthropic-sans", sans-serif',
+    lineColor: '#5f5e5a',
+    textColor: '#1c1c1a',
+    primaryColor: '#e8e6dc',
+    primaryBorderColor: '#8a8880',
+    primaryTextColor: '#1c1c1a',
+    tertiaryColor: '#f5f4ef',
+  },
+});
+const src = `erDiagram
+  DEPARTMENTS ||--o{ USERS : employs
+  DEPARTMENTS ||--o{ EVENTS : owns
+  DEPARTMENTS ||--o{ AUDIT_LOGS : scopes
+  USERS ||--o{ EVENTS : creates
+  USERS ||--o{ ENTRIES : creates
+  USERS ||--o{ BUDGET_PROOFS : uploads
+  USERS ||--o{ NOTIFICATIONS : receives
+  USERS ||--o{ PUSH_SUBSCRIPTIONS : registers
+  USERS ||--o{ AUDIT_LOGS : performs
+  EVENTS ||--o{ ENTRIES : contains
+  EVENTS ||--o{ BUDGET_PROOFS : justifies
+  EVENTS ||--o{ REPORTS : generates
+  REPORTS ||--o{ REPORT_SIGNATORIES : lists
+  REPORTS ||--o{ ENTRY_COMMENTS : receives
+  ENTRIES ||--o{ ENTRY_COMMENTS : receives
+  DEPARTMENTS ||--o{ DEPARTMENT_REPORT_COUNTERS : tracks
+
+  DEPARTMENTS {
+    uuid id PK
+    text name
+    text code
+    boolean is_active
+  }
+  USERS {
+    uuid id PK
+    text email
+    text role
+    uuid department_id FK
+    text account_status
+  }
+  EVENTS {
+    uuid id PK
+    uuid department_id FK
+    uuid created_by FK
+    decimal budget_total
+    boolean budget_locked
+    text status
+    boolean is_locked
+  }
+  ENTRIES {
+    uuid id PK
+    uuid event_id FK
+    uuid created_by FK
+    text type
+    text status
+    decimal amount
+    boolean causes_overspend
+  }
+  BUDGET_PROOFS {
+    uuid id PK
+    uuid event_id FK
+    uuid department_id FK
+    uuid uploaded_by FK
+    text type
+    decimal claimed_amount
+    text verification_status
+  }
+  REPORTS {
+    uuid id PK
+    uuid event_id FK
+    uuid generated_by FK
+    text fs_document_number
+    text status
+    integer revision_count
+    text polygon_tx_hash
+  }
+  REPORT_SIGNATORIES {
+    uuid id PK
+    uuid report_id FK
+    text position
+    text full_name
+    integer sort_order
+  }
+  ENTRY_COMMENTS {
+    uuid id PK
+    uuid entry_id FK
+    uuid report_id FK
+    text comment
+    uuid created_by FK
+  }
+  DEPARTMENT_REPORT_COUNTERS {
+    uuid department_id PK
+    integer year PK
+    integer last_sequence_number
+  }
+  NOTIFICATIONS {
+    uuid id PK
+    uuid user_id FK
+    text type
+    boolean read
+  }
+  PUSH_SUBSCRIPTIONS {
+    uuid id PK
+    uuid user_id FK
+    text endpoint
+  }
+  AUDIT_LOGS {
+    uuid id PK
+    uuid actor_id FK
+    uuid department_id FK
+    text action
+    text target_type
+  }
+`;
+const { svg } = await mermaid.render('erd-svg', src);
+document.getElementById('erd').innerHTML = svg;
+
+document.querySelectorAll('#erd svg.erDiagram .node').forEach(node => {
+  const firstPath = node.querySelector('path[d]');
+  if (!firstPath) return;
+  const d = firstPath.getAttribute('d');
+  const nums = d.match(/-?[\d.]+/g)?.map(Number);
+  if (!nums || nums.length < 8) return;
+  const xs = [nums[0], nums[2], nums[4], nums[6]];
+  const ys = [nums[1], nums[3], nums[5], nums[7]];
+  const x = Math.min(...xs), y = Math.min(...ys);
+  const w = Math.max(...xs) - x, h = Math.max(...ys) - y;
+  const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  rect.setAttribute('x', x); rect.setAttribute('y', y);
+  rect.setAttribute('width', w); rect.setAttribute('height', h);
+  rect.setAttribute('rx', '8');
+  for (const a of ['fill', 'stroke', 'stroke-width', 'class', 'style']) {
+    if (firstPath.hasAttribute(a)) rect.setAttribute(a, firstPath.getAttribute(a));
+  }
+  firstPath.replaceWith(rect);
+});
+
+document.querySelectorAll('#erd svg.erDiagram .row-rect-odd path, #erd svg.erDiagram .row-rect-even path').forEach(p => {
+  p.setAttribute('stroke', 'none');
+});
+</script>

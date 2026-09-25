@@ -1,10 +1,12 @@
-﻿# Progress Tracker
+# Progress Tracker
 
 Update this file after every completed feature. Any AI agent reading this should immediately know what is done, what is in progress, and what is next.
 
 ---
 
 ## Current Status
+
+**In progress (2026-09-25):** Profile Change password functionality requested for all roles with current/new/confirm fields and no OTP. `components/profile/ChangePasswordForm.tsx` is prepared using the existing auth design and an injected submit callback, with validation, busy/error/success states. It is not routed or connected to the profile button yet. The installed InsForge SDK and official auth API expose token-based password reset but no current-password change endpoint. This session has no InsForge MCP or backend management configuration, so a secure backend extension cannot yet be implemented and verified. TypeScript, scoped lint, and diff checks pass. Do not claim the password-change feature works until its backend is implemented and applied.
 
 **Phase:** Phase 11 — Audit & Read-Only Views (COMPLETE — all 30 build-plan features done) + post-plan hardening
 **Latest completed:** 2026-09-25 Profile reference redesign across Admin, Adviser, and Treasurer. Shared `ProfileView` now has an open centered avatar/name/email/role identity area, Profile header, separate Department/Joined/Account status cards, and Preferences action rows. Change password remains a mock button. In-page logout is Admin mobile only; desktop has no profile logout or back button. Uses existing theme and role tokens. Profile structural check, TypeScript, scoped lint, diff check, and production build pass. Build required a retry with network access for the existing Poppins font download. Browser QA is unavailable because this session has no connected browser.

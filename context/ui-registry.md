@@ -90,6 +90,10 @@ Files: `components/profile/{ProfileView,LogoutButton}.tsx`, `app/{admin,adviser,
 - **Account details** contains separate Department, Joined, and Account status cards. Cards use `rounded-2xl bg-surface px-4 py-4`, labels `text-xs font-medium uppercase tracking-wide text-text-secondary`, values `text-sm font-medium leading-6 text-text-primary`. Department code sits beside the department name. Account status reflects stored data without an assumed verification claim.
 - **Preferences** uses white rounded action rows with leading icon tiles and a trailing chevron on Change password. Change password remains an enabled mock button with no handler. Logout is rendered only for Admin below `lg`, with `bg-error-light` icon tile and `text-error-dark` text. Desktop profile pages have neither logout nor back controls. The separate department member profile is unchanged.
 
+### Profile change password form (prepared, not wired)
+File: `components/profile/ChangePasswordForm.tsx`, 2026-09-25
+Reuses the existing `AuthShell`, `AuthCard`, `AuthInput`, and `AuthButton` password reset design. Three required password fields: Current password, New password, Confirm password. No OTP or sign-in footer. Receives `profileHref` and a required `changePassword` callback; it has no backend call or route yet. Includes empty-field, minimum-length, mismatch, and unchanged-password checks, a synchronous duplicate-submit guard, disabled fields while submitting, inline errors, and a success state linking back to the profile. Backend integration is blocked on InsForge management access and a supported secure password-change implementation; the installed SDK only exposes token-based reset.
+
 ### Treasurer layout
 Files: components/treasurer/* — TreasurerSidebar mirrors AdminSidebar (Home, Reports, Notifications, Profile); TreasurerMobileBottomNav `fixed inset-x-0 bottom-0 z-40 md:hidden bg-surface border-t border-border`, active `text-accent`, labels `text-[11px]`, route-aware via shared `MobileBottomNav`.
 
