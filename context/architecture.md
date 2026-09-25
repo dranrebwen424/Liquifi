@@ -96,6 +96,8 @@
 │       │   └── [reportId]/cancel/route.ts
 │       ├── events/
 │       │   ├── [eventId]/archive/route.ts             → Signed-document upload + AI completeness check
+│       ├── profile/
+│       │   └── avatar/route.ts                         → Authenticated avatar upload/remove
 │   ├── auth/
 │   │   ├── otp/send/route.ts                          → OTP send (signup + password-reset + authenticated change intents)
 │   │   ├── otp/verify/route.ts                         → OTP verify (signup + password-reset + authenticated change intents)
@@ -334,7 +336,8 @@ Return to role home immediately or automatically after 10 seconds
 | account_status    | text        | pending_approval / active / deactivated / rejected           |
 | approved_by       | uuid        |                                                                |
 | approved_at       | timestamptz |                                                                |
-| otp_verified_at   | timestamptz |                                                                |
+| otp_verified_at   | timestamptz | Optional                                                      |
+| avatar_key        | text        | Versioned public `avatars` storage key; NULL uses initials      |
 
 Partial unique indexes:
 ```sql
@@ -475,14 +478,13 @@ Keyed by ID, not name, so paths stay stable across department/event renames:
 
 ```
 storage/
-  departments/{department_id}/
-    events/{event_id}/
-      receipts/{entry_id}.jpg
-      reports/{report_id}.pdf
-      signed/{report_id}/page-{n}.jpg
+  receipts/{department_id}/events/{event_id}/receipts/{entry_id}.jpg
+  signed-reports/{department_id}/reports/{report_id}/page-{n}.jpg
+  budget-proofs/{department_id}/events/{event_id}/proofs/{proof_id}-{index}.jpg
+  avatars/{user_id}/{version}.jpg
 ```
 
-Signed pages are keyed by `{report_id}`, not a flat per-event folder — a rejected-then-regenerated report is a new `Report` row, so this prevents an upload attempt against one revision from colliding with another. Bucket access policy matches the department-scoped RLS policy below.
+Avatar uploads use a fresh versioned key, then delete the previous blob after the `users.avatar_key` update succeeds. The public avatar bucket is intentionally non-sensitive; every mutation is still session-scoped to the current user.
 
 ---
 

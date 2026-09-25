@@ -141,15 +141,12 @@ const { success, budget_total, verification_status } = await res.json();
 ```typescript
 // Upload file
 const { data, error } = await insforge.storage
-  .from("departments")
-  .upload(`${departmentId}/events/${eventId}/receipts/${entryId}.jpg`, fileBuffer, {
-    contentType: "image/jpeg",
-    upsert: false,
-  });
+  .from("receipts")
+  .upload(`${departmentId}/events/${eventId}/receipts/${entryId}.jpg`, fileBuffer);
 
 // Get public URL
 const { data } = insforge.storage
-  .from("departments")
+  .from("receipts")
   .getPublicUrl(`${departmentId}/events/${eventId}/receipts/${entryId}.jpg`);
 ```
 
@@ -157,19 +154,18 @@ const { data } = insforge.storage
 
 ```
 storage/
-  departments/{department_id}/
-    events/{event_id}/
-      receipts/{entry_id}.jpg
-      reports/{report_id}.pdf
-      signed/{report_id}/page-{n}.jpg
+  receipts/{department_id}/events/{event_id}/receipts/{entry_id}.jpg
+  signed-reports/{department_id}/reports/{report_id}/page-{n}.jpg
+  budget-proofs/{department_id}/events/{event_id}/proofs/{proof_id}-{index}.jpg
+  avatars/{user_id}/{version}.jpg
 ```
 
 **Rules:**
 
-- Receipts: `upsert: false` — never overwrite a receipt entry image
-- Reports: `upsert: false` — each Report row gets its own PDF path, never overwrite
+- Receipts: never overwrite a receipt entry image; each object key is unique
+- Reports: never overwrite; each Report row gets its own path
 - Signed pages keyed by `{report_id}`, not event — prevents collision across rejection/regeneration cycles
-- Always save the public URL back to the DB after upload
+- Avatars use a fresh versioned key; store the key in the database and derive public URLs with `getPublicUrl`
 - Never write files to disk — always upload buffer directly to storage
 
 ---

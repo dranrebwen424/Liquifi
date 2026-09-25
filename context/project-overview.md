@@ -116,6 +116,13 @@ Sidebar (web) / Bottom nav (mobile) — icons, minimal:
 - Success shows `/profile/change-password/success`, with a Return to Home button and an automatic redirect to the role home after 10 seconds.
 - This is separate from Forgot Password: the profile flow requires an active session and current password; forgot password remains the public email → OTP → reset → login flow.
 
+### Profile Image
+
+- Active users can upload, replace, or remove a profile image from the shared Profile page.
+- Images are stored in the public `avatars` bucket under a versioned user key; `users.avatar_key` stores the key, not a URL.
+- Until an image is set, the Profile initials fallback remains visible.
+- Supported formats: JPG, PNG, WEBP, up to 10 MB. The server owns MIME/size validation and the session user owns the write.
+
 ### Event & Budget
 
 - Treasurer creates an event with a name and total budget (`budget_total`).
@@ -188,6 +195,7 @@ All `Entry`, `Event`, `Report`, and file assets belong to `department_id`, not t
 - Signup/login with email OTP, role + department selection
 - Forgot-password reset flow: email → OTP → set new password (Phase 1)
 - Signed-in profile password change: current + new password → OTP → success
+- Profile image upload, replacement, and removal with initials fallback
 - Admin approval of adviser signups; adviser approval of treasurer signups
 - One active adviser + one active treasurer per department, enforced at the DB level
 - Event creation with immutable-after-spend budget

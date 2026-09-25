@@ -5,6 +5,7 @@ import { parseImageKeys } from "@/lib/image-keys";
 const RECEIPT_BUCKET = "receipts" as const;
 const SIGNED_REPORT_BUCKET = "signed-reports" as const;
 const BUDGET_PROOF_BUCKET = "budget-proofs" as const;
+const AVATAR_BUCKET = "avatars" as const;
 
 async function getUserDeptId(): Promise<string | null> {
   const insforge = await createInsforgeServer();
@@ -342,4 +343,54 @@ export async function getReportPdfBlob(reportId: string): Promise<Blob> {
 
   if (downloadError || !blob) throw new Error("Report PDF not found");
   return blob;
+}
+
+// ─── Profile Avatars ─────────────────────────────────────────────────
+
+export type AvatarExtension = "jpg" | "png" | "webp";
+
+/** Upload a versioned public avatar key; never overwrite the previous object. */
+export async function uploadAvatar(
+  userId: string,
+  file: File | Blob,
+  extension: AvatarExtension,
+): Promise<{ url: string; key: string }> {
+  const insforge = await createInsforgeServer();
+  const key = `avatars/${userId}/${crypto.randomUUID()}.${extension}`;
+  const { error } = await insforge.storage.from(AVATAR_BUCKET).upload(key, file);
+
+  if (error) throw new Error("Avatar upload failed");
+
+  const { data, error: urlError } = insforge.storage
+    .from(AVATAR_BUCKET)
+    .getPublicUrl(key);
+  if (urlError || !data) throw new Error("Avatar URL could not be created");
+
+  return { url: data.publicUrl, key };
+}
+
+/** Resolve a public avatar URL from its stored storage key. */
+export async function getAvatarUrl(key: string): Promise<string | null> {
+  try {
+    const insforge = await createInsforgeServer();
+    const { data, error } = insforge.storage.from(AVATAR_BUCKET).getPublicUrl(key);
+    if (error || !data) return null;
+    return data.publicUrl;
+  } catch (error) {
+    console.error("[storage] getAvatarUrl:", error);
+    return null;
+  }
+}
+
+/** Delete an avatar blob by key. Best-effort: an orphan is safer than a broken key. */
+export async function deleteAvatarBlob(key: string): Promise<void> {
+  try {
+    const insforge = await createInsforgeServer();
+    const { error } = await insforge.storage.from(AVATAR_BUCKET).remove(key);
+    if (error) {
+      console.error("[storage] deleteAvatarBlob: blob delete failed:", key, error);
+    }
+  } catch (error) {
+    console.error("[storage] deleteAvatarBlob:", error);
+  }
 }

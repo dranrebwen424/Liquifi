@@ -97,6 +97,7 @@ Phase 0 authorization foundation. This single artifact drives both the InsForge 
 | `/profile/change-password` | GET | treasurer \| adviser \| admin | n/a | Active session | n/a |
 | `/profile/change-password/otp` | GET | treasurer \| adviser \| admin | n/a | Active session + current-password marker cookie | n/a |
 | `/profile/change-password/success` | GET | treasurer \| adviser \| admin | n/a | Active session | n/a |
+| `/api/profile/avatar` | POST / DELETE | treasurer \| adviser \| admin | n/a | Active session; target is the caller's own `users` row; image MIME/size allowlist | n/a |
 | `/api/auth/change-password/verify` | POST | treasurer \| adviser \| admin | n/a | Active session, current password verified, per-account rate limit | n/a |
 | `/api/auth/otp/send` (`intent = change`) | POST | treasurer \| adviser \| admin | n/a | Active session + current-password marker cookie | n/a |
 | `/api/auth/otp/verify` (`intent = change`) | POST | treasurer \| adviser \| admin | n/a | Active session + marker cookie + valid OTP | n/a |

@@ -290,14 +290,15 @@ See `architecture.md` for full schema: `report_signatories`, `entry_comments`, `
 
 ## Storage
 
-Three buckets: `receipts` (private), `signed-reports` (private), `avatars` (public).
+Four buckets: `receipts` (private), `signed-reports` (private), `budget-proofs` (private), `avatars` (public).
 
 Keyed by ID, not name — stable across renames:
 
 ```
 receipts/{department_id}/events/{event_id}/receipts/{entry_id}.jpg
 signed-reports/{department_id}/reports/{report_id}/page-{n}.jpg
-avatars/{user_id}.jpg
+budget-proofs/{department_id}/events/{event_id}/proofs/{proof_id}-{index}.jpg
+avatars/{user_id}/{version}.jpg
 ```
 
 **All storage access goes through `lib/storage.ts` helpers** — never call SDK storage directly. Helpers handle auth, ownership verification, and blob download.

@@ -4,8 +4,10 @@ import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { LogoutButton } from "@/components/profile/LogoutButton";
 import ChangePasswordButton from "@/components/profile/ChangePasswordButton";
+import AvatarUploader from "@/components/profile/AvatarUploader";
 import { requireRole } from "@/lib/auth-guard";
 import { createInsforgeServer } from "@/lib/insforge-server";
+import { getAvatarUrl } from "@/lib/storage";
 import { ROLE_HOME } from "@/lib/profile-routes";
 import type { AccountStatus, Role } from "@/types";
 
@@ -16,6 +18,7 @@ type DbProfile = {
   email: string;
   role: Role;
   account_status: AccountStatus;
+  avatar_key: string | null;
   created_at: string;
   departments: { name: string; code: string } | null;
 };
@@ -66,7 +69,7 @@ export async function ProfileView({ role }: { role: Role }) {
   const { data, error } = await insforge.database
     .from("users")
     .select(
-      "first_name, middle_name, last_name, email, role, account_status, created_at, departments(name, code)",
+      "first_name, middle_name, last_name, email, role, account_status, avatar_key, created_at, departments(name, code)",
     )
     .eq("id", user.id)
     .maybeSingle();
@@ -75,6 +78,7 @@ export async function ProfileView({ role }: { role: Role }) {
   if (error || !data) notFound();
 
   const profile = data as unknown as DbProfile;
+  const avatarUrl = profile.avatar_key ? await getAvatarUrl(profile.avatar_key) : null;
   const homeHref = ROLE_HOME[role];
   const roleLabel = profile.role[0].toUpperCase() + profile.role.slice(1);
   const statusLabel = profile.account_status.replace(/_/g, " ");
@@ -98,8 +102,13 @@ export async function ProfileView({ role }: { role: Role }) {
       </header>
 
       <section aria-label="Your profile" className="flex flex-col items-center pb-7 pt-5 text-center">
-        <div aria-hidden="true" className="flex h-24 w-24 items-center justify-center rounded-full bg-border text-3xl font-semibold text-text-secondary shadow-sm">
-          {initials(profile)}
+        <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-border text-3xl font-semibold text-text-secondary shadow-sm">
+          {avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <span aria-hidden="true">{initials(profile)}</span>
+          )}
         </div>
         <h2 className="mt-5 max-w-full break-words text-lg font-semibold leading-7 text-text-primary">
           {fullName(profile) || profile.email}
@@ -135,6 +144,7 @@ export async function ProfileView({ role }: { role: Role }) {
           Preferences
         </h2>
         <div className="flex flex-col gap-3">
+          <AvatarUploader hasAvatar={Boolean(avatarUrl)} />
           <ChangePasswordButton />
           {role === "admin" && (
             <div className="lg:hidden">

@@ -53,6 +53,7 @@ export type User = {
   approved_by: string | null;
   approved_at: string | null;
   otp_verified_at: string | null;
+  avatar_key: string | null;
   created_at: string;
 };
 
