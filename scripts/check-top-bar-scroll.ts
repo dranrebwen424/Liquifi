@@ -10,16 +10,24 @@ assert.deepEqual(resolveTopBarScroll(20, 25), { anchorY: 20, visible: null });
 assert.deepEqual(resolveTopBarScroll(20, 40), { anchorY: 40, visible: false });
 assert.deepEqual(resolveTopBarScroll(40, 24), { anchorY: 24, visible: true });
 
-// Bottom-of-scroll jank guards: shells must track the visual viewport, sliding
-// bars must stop animating at the document end, and the fixed mobile tab bar
-// must have matching content padding.
+// Bottom-of-scroll jank guards. Shells MUST use a constant viewport unit
+// (min-h-screen = 100vh = largest viewport). A dynamic unit (dvh/svh/lvh) makes
+// the document height track mobile browser UI, so the instant the URL bar hides
+// and the visual viewport grows past the content, the browser clamps scrollY to
+// 0 — measured on /admin/profile: y 26 -> 0 when the viewport grew 844 -> 980.
+// That reads as "bounces back to top, then back to bottom". Dead space below
+// short content is the cheaper trade.
 for (const layout of [
   "app/admin/layout.tsx",
   "app/adviser/layout.tsx",
   "app/treasurer/layout.tsx",
 ]) {
-  assert.match(read(layout), /min-h-dvh/, `${layout} must size with dvh, not 100vh`);
-  assert.doesNotMatch(read(layout), /min-h-screen/, `${layout} must not use 100vh`);
+  assert.match(read(layout), /min-h-screen/, `${layout} must use a constant viewport unit`);
+  assert.doesNotMatch(
+    read(layout),
+    /min-h-d(vh|svh|lvh)|100d(vh|vh)|100svh|100lvh/,
+    `${layout} must not use a dynamic viewport unit (clamps scrollY when browser UI hides)`,
+  );
 }
 
 assert.match(
