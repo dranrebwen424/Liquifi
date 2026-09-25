@@ -175,6 +175,10 @@
   html {
     margin: 0;
     padding: 0;
+    /* Mobile: keep overscroll (pull-to-refresh / scroll chaining) from feeding
+       back into the page. Native rubber-band is the browser's; this stops the
+       app reacting to it. */
+    overscroll-behavior-y: contain;
   }
   * {
     @apply border-border;

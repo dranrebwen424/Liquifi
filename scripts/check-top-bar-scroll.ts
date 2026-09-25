@@ -10,27 +10,41 @@ assert.deepEqual(resolveTopBarScroll(20, 25), { anchorY: 20, visible: null });
 assert.deepEqual(resolveTopBarScroll(20, 40), { anchorY: 40, visible: false });
 assert.deepEqual(resolveTopBarScroll(40, 24), { anchorY: 24, visible: true });
 
-// Bottom-of-scroll jank guards. Shells must be `min-h-[calc(100dvh+<slack>)]` on
-// mobile: the scroll range must stay positive whether or not mobile browser UI
-// is showing. Content shorter than the LARGEST viewport means the range collapses
-// to 0 the instant the URL bar hides, the browser clamps scrollY to 0, the bar
-// re-shows, and the page oscillates ("bounces back to top, then back to bottom").
-// A constant unit (100vh) does not help — the document is still shorter than the
-// viewport once the UI hides. Dynamic unit + slack keeps the range identical in
-// both UI states, so nothing clamps and the bar stays hidden. Desktop has no
-// dynamic UI, so it stays on min-h-screen.
+// Bottom-of-scroll jank guards. Shells must be `min-h-[calc(100vh+<slack>)]` on
+// mobile — a CONSTANT unit plus slack. Measured discriminator: long pages scroll
+// fine, short pages bounce. On a long page the floor never binds, so the document
+// is content-bound and its height is constant. On a short page the floor binds:
+//   - dynamic unit (100dvh): the document resizes every frame while the browser UI
+//     animates, the browser compensates scrollY, and the page oscillates.
+//   - no slack (100vh alone): the document is shorter than the largest viewport,
+//     so the range collapses to 0 the moment the UI hides and scrollY clamps to 0.
+// Constant + slack: a document that never resizes and a range that never hits 0.
+// 100vh is the largest viewport and is constant on iOS Safari and Chrome Android
+// (the classic iOS "100vh is too tall" behaviour). Desktop: no dynamic UI, no slack.
 for (const layout of [
   "app/admin/layout.tsx",
   "app/adviser/layout.tsx",
   "app/treasurer/layout.tsx",
 ]) {
+  const source = read(layout);
   assert.match(
-    read(layout),
-    /min-h-\[calc\(100dvh\+\d+rem\)\]/,
-    `${layout} must keep a positive scroll range in both mobile UI states`,
+    source,
+    /min-h-\[calc\(100vh\+\d+rem\)\]/,
+    `${layout} must use a constant viewport unit plus slack`,
   );
-  assert.match(read(layout), /md:min-h-screen/, `${layout} must not pad desktop`);
+  assert.doesNotMatch(
+    source,
+    /dvh|svh|lvh/,
+    `${layout} must not tie document height to the dynamic viewport`,
+  );
+  assert.match(source, /md:min-h-screen/, `${layout} must not pad desktop`);
 }
+
+assert.match(
+  read("app/globals.css"),
+  /overscroll-behavior-y: contain/,
+  "mobile overscroll must not feed back into the page",
+);
 
 assert.match(
   read("hooks/useAutoHideTopBar.ts"),
@@ -66,6 +80,26 @@ for (const bar of [
   "components/treasurer/MobileTopBar.tsx",
 ]) {
   assert.doesNotMatch(read(bar), /transform-gpu/, `${bar} must not promote a sticky layer`);
+}
+
+// The desktop admin bar is static by decision: auto-hide is a mobile affordance
+// and every scroll listener on desktop was pure cost. It must not re-introduce
+// a scroll listener, and only the mobile bars may drive auto-hide.
+assert.doesNotMatch(
+  read("components/admin/AdminTopBar.tsx"),
+  /useAutoHideTopBar|addEventListener\("scroll"/,
+  "desktop admin top bar must stay static (no scroll listener)",
+);
+assert.doesNotMatch(
+  read("components/admin/AdminTopBar.tsx"),
+  /transition-transform|translate-y-full/,
+  "desktop admin top bar must not translate",
+);
+for (const mobileBar of [
+  "hooks/useAutoHideTopBar.ts",
+  "components/admin/AdminMobileTopBar.tsx",
+]) {
+  assert.match(read(mobileBar), /useAutoHideTopBar|resolveTopBarScroll/, `${mobileBar} keeps auto-hide`);
 }
 
 console.log("top bar scroll check: all assertions passed");

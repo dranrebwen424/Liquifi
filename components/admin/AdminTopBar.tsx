@@ -4,9 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, UserRoundCheck } from "lucide-react";
-import { useAutoHideTopBar } from "@/hooks/useAutoHideTopBar";
 import { isImmersivePage } from "@/lib/event-route";
-import { cn } from "@/lib/utils";
 
 type Props = {
   adminInitial: string;
@@ -18,7 +16,9 @@ export function AdminTopBar({ adminInitial, adminAvatarUrl, pendingApprovalsCoun
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const topBarVisible = useAutoHideTopBar();
+  // Desktop bar is static: no auto-hide, so no scroll listener runs on desktop.
+  // Auto-hide is a mobile affordance; on desktop it only bought jitter and a
+  // second React state update per reversal.
   const hidden = isImmersivePage(pathname);
   const isSearching = searchParams.get("search") === "1";
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
@@ -64,12 +64,7 @@ export function AdminTopBar({ adminInitial, adminAvatarUrl, pendingApprovalsCoun
   }
 
   return (
-    <header
-      className={cn(
-        "sticky top-0 z-40 hidden h-16 items-center gap-3 bg-background px-4 transition-transform duration-200 motion-reduce:transition-none md:px-8 lg:flex",
-        topBarVisible ? "translate-y-0" : "-translate-y-full",
-      )}
-    >
+    <header className="sticky top-0 z-40 hidden h-16 items-center gap-3 bg-background px-4 md:px-8 lg:flex">
       <Link
         href="/admin/profile"
         aria-label="Open profile"
