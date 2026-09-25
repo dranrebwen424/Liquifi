@@ -7,6 +7,9 @@ import { ArrowLeft, Bell, Search } from "lucide-react";
 import { isImmersivePage } from "@/lib/event-route";
 import { cn } from "@/lib/utils";
 
+/** Per-frame scroll delta (px) treated as a fling rather than a gesture. */
+const FAST_SCROLL_DELTA = 24;
+
 type Props = {
   onOpenSidebar?: () => void;
   unreadCount?: number;
@@ -34,8 +37,8 @@ export function MobileTopBar({
 
   // Hide on scroll down, reappear on scroll up. Translate-only (no height
   // collapse) so it tracks the flow and never causes layout/scroll feedback.
-  // 8px hysteresis + frozen at the document end: without both, overscroll
-  // bounce at the very bottom flip-flops the bar and it feels laggy.
+  // 8px hysteresis, frozen at the document end, and no flips during a fast
+  // fling: without all three the bar strobes and reads as vibration.
   const [scrolledDown, setScrolledDown] = useState(false);
   const lastY = useRef(0);
 
@@ -48,7 +51,8 @@ export function MobileTopBar({
         const y = window.scrollY;
         const moved = y - lastY.current;
         const atEnd = y + window.innerHeight >= document.documentElement.scrollHeight - 1;
-        if (!atEnd && Math.abs(moved) >= 8) {
+        const flinging = Math.abs(moved) >= FAST_SCROLL_DELTA;
+        if (!atEnd && !flinging && Math.abs(moved) >= 8) {
           if (moved < 0) setScrolledDown(false);
           else if (y > 72) setScrolledDown(true);
         }
@@ -93,7 +97,7 @@ const exitSearch = () => {
     return (
       <div className={cn(
         "flex h-16 items-center gap-2 bg-background px-4 lg:hidden",
-        hidden ? "hidden" : cn("sticky top-0 z-40 transform-gpu transition-transform duration-300 ease-out motion-reduce:transition-none", collapsed ? "-translate-y-full" : "translate-y-0"),
+        hidden ? "hidden" : cn("sticky top-0 z-40 transition-transform duration-300 ease-out motion-reduce:transition-none", collapsed ? "-translate-y-full" : "translate-y-0"),
       )}>
         <button
           type="button"
@@ -119,7 +123,7 @@ const exitSearch = () => {
   return (
     <div className={cn(
       "flex h-16 items-center gap-3 bg-background px-4 lg:hidden",
-      hidden ? "hidden" : cn("sticky top-0 z-40 transform-gpu transition-transform duration-300 ease-out motion-reduce:transition-none", collapsed ? "-translate-y-full" : "translate-y-0"),
+      hidden ? "hidden" : cn("sticky top-0 z-40 transition-transform duration-300 ease-out motion-reduce:transition-none", collapsed ? "-translate-y-full" : "translate-y-0"),
     )}>
       {/* Hamburger */}
       {onOpenSidebar && (

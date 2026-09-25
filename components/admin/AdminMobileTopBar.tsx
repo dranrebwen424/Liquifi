@@ -68,7 +68,7 @@ export function AdminMobileTopBar({ adminInitial, adminAvatarUrl, pendingApprova
   return (
     <header
       className={cn(
-        "sticky top-0 z-40 flex h-16 items-center gap-3 bg-background px-2 transform-gpu transition-transform duration-200 motion-reduce:transition-none lg:hidden",
+        "sticky top-0 z-40 flex h-16 items-center gap-3 bg-background px-2 transition-transform duration-200 motion-reduce:transition-none lg:hidden",
         topBarVisible ? "translate-y-0" : "-translate-y-full",
       )}
     >

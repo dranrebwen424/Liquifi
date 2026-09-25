@@ -28,14 +28,34 @@ assert.match(
   "auto-hide hook must freeze the bar at the document end",
 );
 assert.match(
+  read("hooks/useAutoHideTopBar.ts"),
+  /FAST_SCROLL_DELTA/,
+  "auto-hide hook must skip bar flips during a fast fling",
+);
+assert.match(
   read("components/treasurer/MobileTopBar.tsx"),
   /Math\.abs\(moved\) >= 8/,
   "treasurer top bar needs 8px hysteresis to stop flip-flopping",
+);
+assert.match(
+  read("components/treasurer/MobileTopBar.tsx"),
+  /FAST_SCROLL_DELTA/,
+  "treasurer top bar must skip flips during a fast fling",
 );
 assert.match(
   read("components/admin/DepartmentDetailClient.tsx"),
   /pb-\[calc\(4rem\+env\(safe-area-inset-bottom\)\)\]/,
   "department panel must clear the fixed mobile tab bar",
 );
+// Layer promotion on a position:sticky bar is a scroll-time jitter source on
+// Android Chrome; only the fixed bottom nav may keep transform-gpu.
+for (const bar of [
+  "hooks/useAutoHideTopBar.ts",
+  "components/admin/AdminTopBar.tsx",
+  "components/admin/AdminMobileTopBar.tsx",
+  "components/treasurer/MobileTopBar.tsx",
+]) {
+  assert.doesNotMatch(read(bar), /transform-gpu/, `${bar} must not promote a sticky layer`);
+}
 
 console.log("top bar scroll check: all assertions passed");
