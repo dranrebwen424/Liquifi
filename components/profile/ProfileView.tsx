@@ -102,14 +102,11 @@ export async function ProfileView({ role }: { role: Role }) {
       </header>
 
       <section aria-label="Your profile" className="flex flex-col items-center pb-7 pt-5 text-center">
-        <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-border text-3xl font-semibold text-text-secondary shadow-sm">
-          {avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <span aria-hidden="true">{initials(profile)}</span>
-          )}
-        </div>
+        <AvatarUploader
+          avatarUrl={avatarUrl}
+          initials={initials(profile)}
+          hasAvatar={Boolean(avatarUrl)}
+        />
         <h2 className="mt-5 max-w-full break-words text-lg font-semibold leading-7 text-text-primary">
           {fullName(profile) || profile.email}
         </h2>
@@ -144,7 +141,6 @@ export async function ProfileView({ role }: { role: Role }) {
           Preferences
         </h2>
         <div className="flex flex-col gap-3">
-          <AvatarUploader hasAvatar={Boolean(avatarUrl)} />
           <ChangePasswordButton />
           {role === "admin" && (
             <div className="lg:hidden">

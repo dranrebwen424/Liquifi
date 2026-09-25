@@ -24,9 +24,11 @@ assert.doesNotMatch(route, /form\.get\("userId"\)|body\.userId/, "avatar route m
 assert.match(uploader, /prepareImage/, "avatar uploader must reuse the image preparation helper");
 assert.match(uploader, /router\.refresh\(\)/, "avatar uploader must refresh the server profile after changes");
 assert.match(uploader, /api\/profile\/avatar/, "avatar uploader must use the avatar API");
+assert.match(uploader, /aria-label="Edit profile image"/, "avatar control must be an accessible icon button");
+assert.match(uploader, /absolute -bottom-1 -right-1/, "edit control must sit at the avatar's lower-right");
 assert.match(profile, /avatar_key/, "profile must select the stored avatar key");
-assert.match(profile, /<img[\s\S]*avatarUrl/, "profile must render the uploaded image");
-assert.match(profile, /initials\(profile\)/, "profile must keep the initials fallback");
+assert.match(uploader, /<img[\s\S]*imageUrl/, "avatar control must render the uploaded image");
+assert.match(uploader, /initials/, "avatar control must keep the initials fallback");
 assert.match(profile, /AvatarUploader/, "profile must mount the avatar uploader");
 assert.match(types, /avatar_key: string \| null/, "User type must include avatar_key");
 

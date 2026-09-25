@@ -2,14 +2,15 @@
 
 import { useEffect, useRef, useState, type ChangeEvent, type ReactElement } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Loader2, Pencil } from "lucide-react";
 import { prepareImage } from "@/lib/image";
 
 const MAX_SIZE = 10 * 1024 * 1024;
 const ACCEPTED_MIME = ["image/jpeg", "image/png", "image/webp"];
 
 type Props = {
+  avatarUrl: string | null;
+  initials: string;
   hasAvatar: boolean;
 };
 
@@ -20,7 +21,7 @@ function errorMessage(data: unknown, fallback: string): string {
   return fallback;
 }
 
-export default function AvatarUploader({ hasAvatar }: Props): ReactElement {
+export default function AvatarUploader({ avatarUrl, initials, hasAvatar }: Props): ReactElement {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const previewRef = useRef<string | null>(null);
@@ -104,60 +105,49 @@ export default function AvatarUploader({ hasAvatar }: Props): ReactElement {
     }
   }
 
+  const imageUrl = previewUrl ?? avatarUrl;
+
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-3">
-      <div className="flex items-center gap-3">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface-secondary">
-          <Camera className="h-4 w-4 text-text-secondary" aria-hidden="true" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-text-primary">Profile image</p>
-          <p className="text-xs text-text-secondary">JPG, PNG, or WEBP up to 10MB.</p>
-        </div>
-        {previewUrl && (
+    <div className="flex flex-col items-center">
+      <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-border text-3xl font-semibold text-text-secondary shadow-sm">
+        {imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={previewUrl}
-            alt=""
-            className="h-10 w-10 rounded-full object-cover"
-          />
+          <img src={imageUrl} alt="" className="h-full w-full rounded-full object-cover" />
+        ) : (
+          <span aria-hidden="true">{initials}</span>
         )}
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <Button
+        <button
           type="button"
-          variant="outline"
-          className="w-auto"
+          aria-label="Edit profile image"
+          title="Edit profile image"
           disabled={busy}
           onClick={() => inputRef.current?.click()}
+          className="absolute -bottom-1 -right-1 z-10 flex h-8 w-8 items-center justify-center rounded-full border border-border bg-surface text-text-primary shadow-sm transition-colors hover:bg-surface-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {busy ? "Please wait…" : hasAvatar ? "Change image" : "Upload image"}
-        </Button>
-        {(hasAvatar || previewUrl) && (
-          <Button
-            type="button"
-            variant="ghost"
-            className="w-auto text-error hover:bg-error-lightest"
-            disabled={busy}
-            onClick={handleRemove}
-          >
-            <Trash2 aria-hidden="true" />
-            Remove
-          </Button>
-        )}
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Pencil className="h-4 w-4" aria-hidden="true" />}
+        </button>
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="hidden"
+          onChange={handleFileChange}
+          disabled={busy}
+        />
       </div>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        className="hidden"
-        onChange={handleFileChange}
-        disabled={busy}
-      />
       {error && (
-        <p role="alert" className="text-sm text-error-dark">
+        <p role="alert" className="mt-3 max-w-xs text-center text-sm text-error-dark">
           {error}
         </p>
+      )}
+      {hasAvatar && !busy && (
+        <button
+          type="button"
+          onClick={handleRemove}
+          className="mt-2 text-xs text-text-secondary underline-offset-4 transition-colors hover:text-text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        >
+          Remove image
+        </button>
       )}
     </div>
   );
