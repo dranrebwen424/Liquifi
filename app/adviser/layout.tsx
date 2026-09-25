@@ -23,7 +23,7 @@ export default async function AdviserLayout({
   const unreadCount = unreadRows?.length ?? 0;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       <PushSubscriber />
       <PushEnableToast />
       <AdviserSidebar unreadCount={unreadCount} />

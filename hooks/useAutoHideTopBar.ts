@@ -16,9 +16,14 @@ export function useAutoHideTopBar(): boolean {
 
       frame = window.requestAnimationFrame(() => {
         frame = 0;
-        const next = resolveTopBarScroll(anchorY.current, window.scrollY);
+        const y = window.scrollY;
+        const next = resolveTopBarScroll(anchorY.current, y);
         anchorY.current = next.anchorY;
-        if (next.visible !== null) setVisible(next.visible);
+        if (next.visible === null) return;
+        // At the document end, overscroll bounce jitters scrollY past the 8px
+        // threshold and flip-flops the bar right where scrolling stops.
+        if (y + window.innerHeight >= document.documentElement.scrollHeight - 1) return;
+        setVisible(next.visible);
       });
     };
 

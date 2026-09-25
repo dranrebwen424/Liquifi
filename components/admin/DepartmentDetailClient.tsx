@@ -201,6 +201,7 @@ export function DepartmentDetailClient({
         id="dept-tabpanel"
         role="tabpanel"
         aria-labelledby={`dept-tab-${activeTab.toLowerCase().replace(/\s+/g, "-")}`}
+        className="pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0"
       >
         {activeTab === "Events" && (
           <DepartmentEventsTab

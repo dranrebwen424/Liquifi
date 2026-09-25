@@ -16,7 +16,7 @@ export function MobileBottomNav({ navItems }: MobileBottomNavProps) {
   return (
     <nav
       className={cn(
-        "fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-surface transition-transform duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] md:hidden",
+        "fixed inset-x-0 bottom-0 z-40 flex transform-gpu border-t border-border bg-surface transition-transform duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] motion-reduce:transition-none md:hidden",
         hidden ? "translate-y-full opacity-0 pointer-events-none" : "translate-y-0 opacity-100",
       )}
     >

@@ -34,6 +34,8 @@ export function MobileTopBar({
 
   // Hide on scroll down, reappear on scroll up. Translate-only (no height
   // collapse) so it tracks the flow and never causes layout/scroll feedback.
+  // 8px hysteresis + frozen at the document end: without both, overscroll
+  // bounce at the very bottom flip-flops the bar and it feels laggy.
   const [scrolledDown, setScrolledDown] = useState(false);
   const lastY = useRef(0);
 
@@ -44,10 +46,11 @@ export function MobileTopBar({
       ticking = true;
       requestAnimationFrame(() => {
         const y = window.scrollY;
-        if (y <= lastY.current) {
-          setScrolledDown(false); // up or at top -> show
-        } else if (y > 72) {
-          setScrolledDown(true); // clearly scrolled down -> hide
+        const moved = y - lastY.current;
+        const atEnd = y + window.innerHeight >= document.documentElement.scrollHeight - 1;
+        if (!atEnd && Math.abs(moved) >= 8) {
+          if (moved < 0) setScrolledDown(false);
+          else if (y > 72) setScrolledDown(true);
         }
         lastY.current = y;
         ticking = false;
@@ -90,7 +93,7 @@ const exitSearch = () => {
     return (
       <div className={cn(
         "flex h-16 items-center gap-2 bg-background px-4 lg:hidden",
-        hidden ? "hidden" : cn("sticky top-0 z-40 transition-transform duration-300 ease-out", collapsed ? "-translate-y-full" : "translate-y-0"),
+        hidden ? "hidden" : cn("sticky top-0 z-40 transform-gpu transition-transform duration-300 ease-out motion-reduce:transition-none", collapsed ? "-translate-y-full" : "translate-y-0"),
       )}>
         <button
           type="button"
@@ -116,7 +119,7 @@ const exitSearch = () => {
   return (
     <div className={cn(
       "flex h-16 items-center gap-3 bg-background px-4 lg:hidden",
-      hidden ? "hidden" : cn("sticky top-0 z-40 transition-transform duration-300 ease-out", collapsed ? "-translate-y-full" : "translate-y-0"),
+      hidden ? "hidden" : cn("sticky top-0 z-40 transform-gpu transition-transform duration-300 ease-out motion-reduce:transition-none", collapsed ? "-translate-y-full" : "translate-y-0"),
     )}>
       {/* Hamburger */}
       {onOpenSidebar && (

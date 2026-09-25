@@ -66,7 +66,7 @@ export function AdminTopBar({ adminInitial, adminAvatarUrl, pendingApprovalsCoun
   return (
     <header
       className={cn(
-        "sticky top-0 z-40 hidden h-16 items-center gap-3 bg-background px-4 transition-transform duration-200 motion-reduce:transition-none md:px-8 lg:flex",
+        "sticky top-0 z-40 hidden h-16 items-center gap-3 bg-background px-4 transform-gpu transition-transform duration-200 motion-reduce:transition-none md:px-8 lg:flex",
         topBarVisible ? "translate-y-0" : "-translate-y-full",
       )}
     >
