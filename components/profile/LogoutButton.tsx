@@ -22,9 +22,11 @@ export function LogoutButton() {
         }
         router.push("/login");
       }}
-      className="flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-error bg-surface px-5 py-2.5 text-sm font-medium text-error transition-colors hover:bg-error-lightest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error focus-visible:ring-offset-2"
+      className="flex min-h-16 w-full items-center gap-3 rounded-2xl bg-surface px-4 py-3 text-sm font-medium text-error-dark transition-colors hover:bg-error-lightest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error focus-visible:ring-offset-2 sm:px-5"
     >
-      <LogOut className="h-4 w-4" aria-hidden="true" />
+      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-error-light">
+        <LogOut className="h-4 w-4" aria-hidden="true" />
+      </span>
       Log out
     </button>
   );
