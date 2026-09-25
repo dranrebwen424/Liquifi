@@ -91,12 +91,12 @@ Files: `components/profile/{ProfileView,LogoutButton}.tsx`, `app/{admin,adviser,
 - **Preferences** uses white rounded action rows with leading icon tiles and a trailing chevron on Change password. Change password is a semantic link to `/profile/change-password`, not an inline toggle. Logout is rendered only for Admin below `lg`, with `bg-error-light` icon tile and `text-error-dark` text. Desktop profile pages have neither logout nor back controls. The separate department member profile is unchanged.
 
 ### Profile change password flow
-Files: `components/profile/{ChangePasswordButton,ChangePasswordForm,ChangePasswordOtpForm,NewPasswordForm,ChangePasswordSuccess}.tsx`, `app/profile/change-password/**`, 2026-09-25
+Files: `components/profile/{ChangePasswordButton,ChangePasswordForm,ChangePasswordOtpForm,PasswordChangeProvider,ChangePasswordSuccess}.tsx`, `app/profile/change-password/**`, updated 2026-09-26
 - The flow reuses `AuthShell`, `AuthCard`, `AuthInput`, `AuthOtpInput`, and `AuthButton` so the pages match the forgot-password screens.
-- `/profile/change-password` verifies the current password and sends a reset OTP. It never sends or stores a new password.
-- `/profile/change-password/otp` verifies the session-bound code and sets a short-lived httpOnly reset-token cookie.
-- `/profile/change-password/new` collects the new and confirmed password, then calls the existing reset-token API.
+- `/profile/change-password` collects current, new, and confirmed passwords. The new password is held only in the layout provider's React memory after the current password verifies.
+- `/profile/change-password/otp` verifies the session-bound code, sets a short-lived httpOnly reset-token cookie, and immediately sends the in-memory new password to the existing reset-token API.
 - `/profile/change-password/success` shows the success Lottie, a ten-second countdown, and a Return to Home button. It redirects to the role home route.
+- A hard refresh on the OTP page loses the in-memory new password and restarts the flow. The password is never written to cookies, the URL, or browser storage.
 - `/profile` is protected by `proxy.ts` and the nested layout; forgot-password remains a separate public flow.
 
 ### Treasurer layout

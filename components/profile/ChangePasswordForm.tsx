@@ -6,7 +6,10 @@ import AuthShell from "@/components/auth/AuthShell";
 import AuthCard from "@/components/auth/AuthCard";
 import AuthInput from "@/components/auth/AuthInput";
 import AuthButton from "@/components/auth/AuthButton";
+import { usePendingNewPassword } from "@/components/profile/PasswordChangeProvider";
 import { PASSWORD_CHANGE_OTP_SENT_KEY } from "@/lib/password-change";
+
+const MIN_PASSWORD_LENGTH = 8;
 
 type Props = {
   profileHref: string;
@@ -14,7 +17,10 @@ type Props = {
 
 export function ChangePasswordForm({ profileHref }: Props): ReactElement {
   const router = useRouter();
+  const { setNewPassword } = usePendingNewPassword();
   const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPasswordValue] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -26,7 +32,19 @@ export function ChangePasswordForm({ profileHref }: Props): ReactElement {
 
     setSubmitted(true);
     setError("");
-    if (!currentPassword) return;
+    if (!currentPassword || !newPassword || !confirmPassword) return;
+    if (newPassword.length < MIN_PASSWORD_LENGTH) {
+      setError(`Use at least ${MIN_PASSWORD_LENGTH} characters for your new password.`);
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError("Your new passwords don't match.");
+      return;
+    }
+    if (currentPassword === newPassword) {
+      setError("Choose a new password different from your current password.");
+      return;
+    }
 
     submitting.current = true;
     setBusy(true);
@@ -43,6 +61,7 @@ export function ChangePasswordForm({ profileHref }: Props): ReactElement {
         return;
       }
 
+      setNewPassword(newPassword);
       try {
         sessionStorage.setItem(PASSWORD_CHANGE_OTP_SENT_KEY, String(Date.now()));
       } catch {
@@ -61,11 +80,11 @@ export function ChangePasswordForm({ profileHref }: Props): ReactElement {
     <AuthShell subtitle="Change your password." backHref={profileHref}>
       <AuthCard
         title="Change password"
-        subtitle="Confirm your current password to continue."
+        subtitle="Confirm your current password, then verify the new one with an email code."
       >
         <form onSubmit={handleSubmit} noValidate aria-busy={busy}>
           <fieldset disabled={busy} className="flex min-w-0 flex-col gap-6">
-            <legend className="sr-only">Verify your current password</legend>
+            <legend className="sr-only">Change your password</legend>
             <AuthInput
               id="current-password"
               label="Current password"
@@ -76,6 +95,26 @@ export function ChangePasswordForm({ profileHref }: Props): ReactElement {
               required
               error={submitted && !currentPassword}
             />
+            <AuthInput
+              id="new-password"
+              label="New password"
+              type="password"
+              autoComplete="new-password"
+              value={newPassword}
+              onChange={setNewPasswordValue}
+              required
+              error={submitted && !newPassword}
+            />
+            <AuthInput
+              id="confirm-password"
+              label="Confirm password"
+              type="password"
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={setConfirmPassword}
+              required
+              error={submitted && !confirmPassword}
+            />
             {error && (
               <p role="alert" className="text-center text-sm text-error-dark">
                 {error}
@@ -85,7 +124,7 @@ export function ChangePasswordForm({ profileHref }: Props): ReactElement {
               Continue
             </AuthButton>
             <p className="text-center text-sm font-normal text-text-secondary">
-              We will email you a verification code before setting your new password.
+              We will email you a verification code before updating your password.
             </p>
           </fieldset>
         </form>

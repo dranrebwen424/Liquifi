@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth-guard";
+import { PasswordChangeProvider } from "@/components/profile/PasswordChangeProvider";
 
 export default async function ChangePasswordLayout({
   children,
@@ -9,5 +10,5 @@ export default async function ChangePasswordLayout({
   const user = await getCurrentUser();
   if (!user || user.accountStatus !== "active") redirect("/login");
 
-  return children;
+  return <PasswordChangeProvider>{children}</PasswordChangeProvider>;
 }

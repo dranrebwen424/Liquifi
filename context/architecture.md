@@ -79,10 +79,9 @@
 │   │   └── profile/page.tsx
 │   ├── profile/
 │   │   └── change-password/
-│   │       ├── layout.tsx                              → Active-role guard
-│   │       ├── page.tsx                                 → Verify current password
-│   │       ├── otp/page.tsx                             → Session-bound reset OTP
-│   │       ├── new/page.tsx                             → Set new password with one-time token
+│   │       ├── layout.tsx                              → Active-role guard + in-memory flow state
+│   │       ├── page.tsx                                 → Collect passwords and verify current password
+│   │       ├── otp/page.tsx                             → Session-bound reset OTP + mutation
 │   │       └── success/page.tsx                         → Success, 10s redirect, Return to Home
 │   └── api/
 │       ├── entries/
@@ -279,6 +278,8 @@ InsForge updates the password → /login
 ```
 Profile → /profile/change-password
         ↓
+Collect current + new + confirm in client memory
+        ↓
 POST /api/auth/change-password/verify
   session guard + current-password check + rate limit
         ↓
@@ -291,9 +292,7 @@ POST /api/auth/otp/verify (intent = "change")
         ↓
 One-time reset token stored in a short-lived httpOnly cookie
         ↓
-/profile/change-password/new
-        ↓
-POST /api/auth/change-password with the reset token
+POST /api/auth/change-password with in-memory new password + cookie token
         ↓
 /profile/change-password/success
         ↓
@@ -301,7 +300,9 @@ Return to role home immediately or automatically after 10 seconds
 ```
 
 - This flow is separate from `/forgot-password`; both use InsForge's token-based reset mutation, but the profile flow first requires an active session and the current password.
-- A short-lived httpOnly marker cookie gates OTP send and verify for the authenticated flow. The one-time reset token is held in a separate short-lived httpOnly cookie, not the URL or browser storage. New passwords never cross page boundaries; the new-password page is entered after OTP verification.
+- A client provider in `app/profile/change-password/layout.tsx` keeps the new password in React memory across the page navigation, then clears it. It is never written to cookies, the URL, or browser storage.
+- A short-lived httpOnly marker cookie gates OTP send and verify. The one-time reset token is held in a separate short-lived httpOnly cookie.
+- A hard refresh on the OTP page loses the in-memory new password and restarts the flow at step one.
 - `/profile/*` is protected by `proxy.ts` and the nested active-role layout.
 
 ---

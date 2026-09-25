@@ -96,7 +96,6 @@ Phase 0 authorization foundation. This single artifact drives both the InsForge 
 | `/api/notifications/subscribe` | POST | treasurer \| adviser | n/a | — | DEPT |
 | `/profile/change-password` | GET | treasurer \| adviser \| admin | n/a | Active session | n/a |
 | `/profile/change-password/otp` | GET | treasurer \| adviser \| admin | n/a | Active session + current-password marker cookie | n/a |
-| `/profile/change-password/new` | GET | treasurer \| adviser \| admin | n/a | Active session + one-time reset token in short-lived httpOnly cookie | n/a |
 | `/profile/change-password/success` | GET | treasurer \| adviser \| admin | n/a | Active session | n/a |
 | `/api/auth/change-password/verify` | POST | treasurer \| adviser \| admin | n/a | Active session, current password verified, per-account rate limit | n/a |
 | `/api/auth/otp/send` (`intent = change`) | POST | treasurer \| adviser \| admin | n/a | Active session + current-password marker cookie | n/a |

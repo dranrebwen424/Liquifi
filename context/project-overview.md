@@ -110,9 +110,9 @@ Sidebar (web) / Bottom nav (mobile) — icons, minimal:
 ### Password Change (Signed In Profile)
 
 - The Profile preference opens `/profile/change-password` as a dedicated protected page.
-- The user verifies their current password first. The server derives the account from the session, rate-limits failures, and sends a reset OTP.
-- The user verifies the OTP at `/profile/change-password/otp`. The one-time reset token is kept in a short-lived httpOnly cookie.
-- The user enters and confirms the new password at `/profile/change-password/new`.
+- The user enters current, new, and confirmed passwords on that page. The new password stays in React memory only.
+- The server derives the account from the session, rate-limits current-password failures, and sends a reset OTP.
+- The user verifies the OTP at `/profile/change-password/otp`; the client then sends the in-memory new password with the one-time token cookie.
 - Success shows `/profile/change-password/success`, with a Return to Home button and an automatic redirect to the role home after 10 seconds.
 - This is separate from Forgot Password: the profile flow requires an active session and current password; forgot password remains the public email → OTP → reset → login flow.
 
@@ -187,7 +187,7 @@ All `Entry`, `Event`, `Report`, and file assets belong to `department_id`, not t
 
 - Signup/login with email OTP, role + department selection
 - Forgot-password reset flow: email → OTP → set new password (Phase 1)
-- Signed-in profile password change: current password → OTP → new password → success
+- Signed-in profile password change: current + new password → OTP → success
 - Admin approval of adviser signups; adviser approval of treasurer signups
 - One active adviser + one active treasurer per department, enforced at the DB level
 - Event creation with immutable-after-spend budget
