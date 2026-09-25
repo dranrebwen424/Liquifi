@@ -10,7 +10,7 @@ import { REFRESH_COOKIE_MAX_AGE } from "@/lib/session";
 // the page (by which time the refreshed access token is a cookie again).
 
 const AUTH_ROUTES = ["/login", "/signup", "/otp", "/forgot-password", "/change-password", "/pending-approval"];
-const PROTECTED_PREFIXES = ["/treasurer", "/adviser", "/admin"];
+const PROTECTED_PREFIXES = ["/treasurer", "/adviser", "/admin", "/profile"];
 const ROLE_REDIRECTS: Record<string, string> = {
   treasurer: "/treasurer/home",
   adviser: "/adviser/home",

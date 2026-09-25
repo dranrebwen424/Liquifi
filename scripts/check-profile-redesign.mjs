@@ -7,6 +7,7 @@ const profile = read("components/profile/ProfileView.tsx");
 const adminPage = read("app/admin/profile/page.tsx");
 const mobileTopBar = read("components/treasurer/MobileTopBar.tsx");
 const memberProfile = read("components/admin/AdminMemberProfile.tsx");
+const changePasswordButton = read("components/profile/ChangePasswordButton.tsx");
 
 assert.match(profile, /created_at/, "profile must render the joined date");
 assert.doesNotMatch(profile, /otp_verified_at/, "profile must omit email verification history");
@@ -16,7 +17,8 @@ assert.match(profile, /Preferences/, "profile must include the preferences secti
 assert.match(profile, /max-w-xl/, "profile must stay single-column on desktop");
 assert.doesNotMatch(profile, /lg:grid-cols/, "profile must not split into desktop columns");
 assert.doesNotMatch(profile, /bg-surface-inverse/, "profile identity must use the open reference layout");
-assert.match(profile, /Change password/, "profile must include the password placeholder action");
+assert.match(changePasswordButton, /Change password/, "profile must include the password action");
+assert.match(changePasswordButton, /href="\/profile\/change-password"/, "password action must open the dedicated page");
 assert.match(profile, /role === "admin"/, "mobile logout must be limited to admin");
 assert.match(profile, /aria-label="Back/, "mobile back control must have an accessible name");
 assert.doesNotMatch(adminPage, />\s*Profile\s*</, "admin page must not render a mobile Profile title");

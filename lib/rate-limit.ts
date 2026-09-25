@@ -86,6 +86,14 @@ export const SIGNUP_IP_LIMIT: BucketConfig = {
   capMs: 15 * 60_000,
 };
 
+/** Current-password checks for authenticated password changes. */
+export const CHANGE_PASSWORD_LIMIT: BucketConfig = {
+  mode: "ladder",
+  threshold: 5,
+  baseMs: 60_000,
+  capMs: 15 * 60_000,
+};
+
 const buckets = new Map<string, Bucket>();
 
 function delayFor(failures: number, config: LadderConfig): number {

@@ -24,8 +24,9 @@ Phase 0 authorization foundation. This single artifact drives both the InsForge 
 | `/signup` | GET | public | n/a | — | PUB |
 | `/pending-approval` | GET | public | n/a | — | PUB |
 | `/forgot-password` | GET | public | n/a | — | PUB |
-| `/api/auth/otp/send` | POST | public | n/a | — | PUB |
-| `/api/auth/otp/verify` | POST | public | n/a | Valid OTP required (verified before any account transition) | PUB |
+| `/api/auth/otp/send` | POST | public or session-bound (`intent = change`) | n/a | Public reset/signup: valid email. Change intent: active session + current-password marker cookie | PUB / session guard |
+| `/api/auth/otp/verify` | POST | public or session-bound (`intent = change`) | n/a | Valid OTP required; change intent derives email from the active session | PUB / session guard |
+| `/api/auth/change-password` | POST | public token flow | n/a | Valid one-time reset token; new password meets 8-character minimum | PUB |
 
 ## Treasurer
 
@@ -93,6 +94,13 @@ Phase 0 authorization foundation. This single artifact drives both the InsForge 
 | Route | Method | Role | Dept match? | State preconditions | RLS policy |
 | --- | --- | --- | --- | --- | --- |
 | `/api/notifications/subscribe` | POST | treasurer \| adviser | n/a | — | DEPT |
+| `/profile/change-password` | GET | treasurer \| adviser \| admin | n/a | Active session | n/a |
+| `/profile/change-password/otp` | GET | treasurer \| adviser \| admin | n/a | Active session + current-password marker cookie | n/a |
+| `/profile/change-password/new` | GET | treasurer \| adviser \| admin | n/a | Active session + one-time reset token in short-lived httpOnly cookie | n/a |
+| `/profile/change-password/success` | GET | treasurer \| adviser \| admin | n/a | Active session | n/a |
+| `/api/auth/change-password/verify` | POST | treasurer \| adviser \| admin | n/a | Active session, current password verified, per-account rate limit | n/a |
+| `/api/auth/otp/send` (`intent = change`) | POST | treasurer \| adviser \| admin | n/a | Active session + current-password marker cookie | n/a |
+| `/api/auth/otp/verify` (`intent = change`) | POST | treasurer \| adviser \| admin | n/a | Active session + marker cookie + valid OTP | n/a |
 
 ## Derived-state notes (enforced in `preconditionCheck`, never trusted from client)
 

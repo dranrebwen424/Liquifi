@@ -6,6 +6,7 @@ import { LogoutButton } from "@/components/profile/LogoutButton";
 import ChangePasswordButton from "@/components/profile/ChangePasswordButton";
 import { requireRole } from "@/lib/auth-guard";
 import { createInsforgeServer } from "@/lib/insforge-server";
+import { ROLE_HOME } from "@/lib/profile-routes";
 import type { AccountStatus, Role } from "@/types";
 
 type DbProfile = {
@@ -74,12 +75,7 @@ export async function ProfileView({ role }: { role: Role }) {
   if (error || !data) notFound();
 
   const profile = data as unknown as DbProfile;
-  const backHref =
-    role === "admin"
-      ? "/admin/departments"
-      : role === "adviser"
-        ? "/adviser/home"
-        : "/treasurer/home";
+  const homeHref = ROLE_HOME[role];
   const roleLabel = profile.role[0].toUpperCase() + profile.role.slice(1);
   const statusLabel = profile.account_status.replace(/_/g, " ");
   const roleStyle = {
@@ -92,7 +88,7 @@ export async function ProfileView({ role }: { role: Role }) {
     <div className="mx-auto flex w-full max-w-xl flex-col pb-8">
       <header className="relative flex h-11 items-center justify-center">
         <Link
-          href={backHref}
+          href={homeHref}
           aria-label="Back to home"
           className="absolute left-0 flex h-11 w-11 items-center justify-center rounded-xl bg-surface text-text-primary transition-colors hover:bg-surface-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent lg:hidden"
         >
@@ -139,7 +135,7 @@ export async function ProfileView({ role }: { role: Role }) {
           Preferences
         </h2>
         <div className="flex flex-col gap-3">
-          <ChangePasswordButton profileHref={backHref} />
+          <ChangePasswordButton />
           {role === "admin" && (
             <div className="lg:hidden">
               <LogoutButton />

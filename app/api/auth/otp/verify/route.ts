@@ -1,22 +1,49 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { createInsforgeServer } from "@/lib/insforge-server";
+import { getCurrentUser } from "@/lib/auth-guard";
+import { PASSWORD_CHANGE_COOKIE, PASSWORD_CHANGE_TOKEN_COOKIE, PASSWORD_CHANGE_TTL_SECONDS } from "@/lib/password-change";
 import { REFRESH_COOKIE_MAX_AGE } from "@/lib/session";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { email, code, intent } = body;
+    const code = typeof body.code === "string" ? body.code : "";
+    const intent = typeof body.intent === "string" ? body.intent : "";
+    let targetEmail = typeof body.email === "string" ? body.email.trim() : "";
 
-    if (!email || !code || !intent) {
+    if (!code || !intent) {
       return NextResponse.json(
-        { success: false, error: "Email, code, and intent are required." },
+        { success: false, error: "Code and intent are required." },
         { status: 400 },
       );
     }
-    if (!["signup", "reset"].includes(intent)) {
+    if (!["signup", "reset", "change"].includes(intent)) {
       return NextResponse.json(
         { success: false, error: "Invalid intent." },
+        { status: 400 },
+      );
+    }
+
+    if (intent === "change") {
+      const user = await getCurrentUser();
+      if (!user || user.accountStatus !== "active") {
+        return NextResponse.json(
+          { success: false, error: "Start the password change again." },
+          { status: 401 },
+        );
+      }
+      const cookieStore = await cookies();
+      if (cookieStore.get(PASSWORD_CHANGE_COOKIE)?.value !== "1") {
+        return NextResponse.json(
+          { success: false, error: "Verify your current password first." },
+          { status: 403 },
+        );
+      }
+      targetEmail = user.email;
+    } else if (!targetEmail) {
+      return NextResponse.json(
+        { success: false, error: "Email and code are required." },
         { status: 400 },
       );
     }
@@ -25,7 +52,7 @@ export async function POST(req: NextRequest) {
 
     if (intent === "signup") {
       // Verify the signup OTP
-      const { data, error } = await insforge.auth.verifyEmail({ email, otp: code });
+      const { data, error } = await insforge.auth.verifyEmail({ email: targetEmail, otp: code });
       if (error) {
         console.error("[auth/otp/verify] verifyEmail failed:", error);
         // Distinguish wrong code from expired/locked
@@ -85,15 +112,29 @@ export async function POST(req: NextRequest) {
       });
     } else {
       // Exchange reset code for a reset token
-      const { data, error } = await insforge.auth.exchangeResetPasswordToken({ email, code });
+      const { data, error } = await insforge.auth.exchangeResetPasswordToken({ email: targetEmail, code });
       if (error || !data) {
         console.error("[auth/otp/verify] exchangeResetPasswordToken failed:", error);
         const msg = error?.message || "";
         const message =
-          msg.toLowerCase().includes("invalid") || msg.toLowerCase().includes("wrong")
-            ? "Invalid code. Please check and try again."
-            : error?.message || "Verification failed. Please request a new code.";
+          intent === "change"
+            ? "Invalid code. Please request a new code."
+            : msg.toLowerCase().includes("invalid") || msg.toLowerCase().includes("wrong")
+              ? "Invalid code. Please check and try again."
+              : error?.message || "Verification failed. Please request a new code.";
         return NextResponse.json({ success: false, error: message }, { status: 400 });
+      }
+
+      if (intent === "change") {
+        const response = NextResponse.json({ success: true });
+        response.cookies.set(PASSWORD_CHANGE_TOKEN_COOKIE, data.token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          path: "/",
+          maxAge: PASSWORD_CHANGE_TTL_SECONDS,
+        });
+        return response;
       }
 
       return NextResponse.json({ success: true, token: data.token });

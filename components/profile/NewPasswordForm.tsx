@@ -6,15 +6,13 @@ import AuthShell from "@/components/auth/AuthShell";
 import AuthCard from "@/components/auth/AuthCard";
 import AuthInput from "@/components/auth/AuthInput";
 import AuthButton from "@/components/auth/AuthButton";
-import { PASSWORD_CHANGE_OTP_SENT_KEY } from "@/lib/password-change";
 
-type Props = {
-  profileHref: string;
-};
+const MIN_PASSWORD_LENGTH = 8;
 
-export function ChangePasswordForm({ profileHref }: Props): ReactElement {
+export function NewPasswordForm(): ReactElement {
   const router = useRouter();
-  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -26,29 +24,32 @@ export function ChangePasswordForm({ profileHref }: Props): ReactElement {
 
     setSubmitted(true);
     setError("");
-    if (!currentPassword) return;
+    if (!newPassword || !confirmPassword) return;
+    if (newPassword.length < MIN_PASSWORD_LENGTH) {
+      setError(`Use at least ${MIN_PASSWORD_LENGTH} characters for your new password.`);
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError("Your new passwords don't match.");
+      return;
+    }
 
     submitting.current = true;
     setBusy(true);
     try {
-      const response = await fetch("/api/auth/change-password/verify", {
+      const response = await fetch("/api/auth/change-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentPassword }),
+        body: JSON.stringify({ newPassword }),
       });
       const data = await response.json().catch(() => null);
 
       if (!response.ok || !data?.success) {
-        setError(data?.error || "We couldn't verify your password. Please try again.");
+        setError(data?.error || "We couldn't update your password. Please try again.");
         return;
       }
 
-      try {
-        sessionStorage.setItem(PASSWORD_CHANGE_OTP_SENT_KEY, String(Date.now()));
-      } catch {
-        // Storage can be unavailable in private browsing; the flow still works.
-      }
-      router.replace("/profile/change-password/otp");
+      router.replace("/profile/change-password/success");
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
@@ -58,23 +59,33 @@ export function ChangePasswordForm({ profileHref }: Props): ReactElement {
   }
 
   return (
-    <AuthShell subtitle="Change your password." backHref={profileHref}>
+    <AuthShell subtitle="Choose a new password." backHref="/profile/change-password">
       <AuthCard
-        title="Change password"
-        subtitle="Confirm your current password to continue."
+        title="Set a new password"
+        subtitle="Use at least 8 characters and avoid passwords you reuse elsewhere."
       >
         <form onSubmit={handleSubmit} noValidate aria-busy={busy}>
           <fieldset disabled={busy} className="flex min-w-0 flex-col gap-6">
-            <legend className="sr-only">Verify your current password</legend>
+            <legend className="sr-only">Set a new password</legend>
             <AuthInput
-              id="current-password"
-              label="Current password"
+              id="new-password"
+              label="New password"
               type="password"
-              autoComplete="current-password"
-              value={currentPassword}
-              onChange={setCurrentPassword}
+              autoComplete="new-password"
+              value={newPassword}
+              onChange={setNewPassword}
               required
-              error={submitted && !currentPassword}
+              error={submitted && !newPassword}
+            />
+            <AuthInput
+              id="confirm-password"
+              label="Confirm password"
+              type="password"
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={setConfirmPassword}
+              required
+              error={submitted && !confirmPassword}
             />
             {error && (
               <p role="alert" className="text-center text-sm text-error-dark">
@@ -82,11 +93,8 @@ export function ChangePasswordForm({ profileHref }: Props): ReactElement {
               </p>
             )}
             <AuthButton type="submit" loading={busy}>
-              Continue
+              Change password
             </AuthButton>
-            <p className="text-center text-sm font-normal text-text-secondary">
-              We will email you a verification code before setting your new password.
-            </p>
           </fieldset>
         </form>
       </AuthCard>

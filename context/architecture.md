@@ -77,6 +77,13 @@
 │   │   │       └── users/page.tsx
 │   │   ├── approvals/page.tsx
 │   │   └── profile/page.tsx
+│   ├── profile/
+│   │   └── change-password/
+│   │       ├── layout.tsx                              → Active-role guard
+│   │       ├── page.tsx                                 → Verify current password
+│   │       ├── otp/page.tsx                             → Session-bound reset OTP
+│   │       ├── new/page.tsx                             → Set new password with one-time token
+│   │       └── success/page.tsx                         → Success, 10s redirect, Return to Home
 │   └── api/
 │       ├── entries/
 │       │   ├── receipt/route.ts                     → Gemini receipt parse + Entry creation
@@ -91,9 +98,11 @@
 │       ├── events/
 │       │   ├── [eventId]/archive/route.ts             → Signed-document upload + AI completeness check
 │   ├── auth/
-│   │   ├── otp/send/route.ts                          → OTP send (signup + password-reset intents)
-│   │   ├── otp/verify/route.ts                         → OTP verify (signup + password-reset intents)
-│   │   └── change-password/route.ts                    → Password update after reset OTP verify
+│   │   ├── otp/send/route.ts                          → OTP send (signup + password-reset + authenticated change intents)
+│   │   ├── otp/verify/route.ts                         → OTP verify (signup + password-reset + authenticated change intents)
+│   │   └── change-password/
+│   │       ├── route.ts                                → Public password reset token mutation
+│   │       └── verify/route.ts                         → Authenticated current-password check + change OTP
 │       ├── approvals/
 │       │   ├── adviser/route.ts                        → Admin approves/rejects adviser signups
 │       │   └── treasurer/route.ts                      → Adviser approves/rejects treasurer signups
@@ -264,6 +273,36 @@ InsForge updates the password → /login
 - OTP rules identical to signup: 10 min expiry, resend after 60s (max 5/hour), 5 wrong attempts locks and forces resend.
 - The `/otp` screen is shared between signup verification and password reset — distinguished by `intent` / `purpose`.
 - UI screens are mock-first in Phase 1 (`01`); real OTP-send / verify / password-update wiring lands in Phase 1 (`03`).
+
+### Authenticated Password Change (Profile)
+
+```
+Profile → /profile/change-password
+        ↓
+POST /api/auth/change-password/verify
+  session guard + current-password check + rate limit
+        ↓
+InsForge sends a reset OTP to the signed-in user's email
+        ↓
+/profile/change-password/otp
+        ↓
+POST /api/auth/otp/verify (intent = "change")
+  session-bound email + verified current-password marker
+        ↓
+One-time reset token stored in a short-lived httpOnly cookie
+        ↓
+/profile/change-password/new
+        ↓
+POST /api/auth/change-password with the reset token
+        ↓
+/profile/change-password/success
+        ↓
+Return to role home immediately or automatically after 10 seconds
+```
+
+- This flow is separate from `/forgot-password`; both use InsForge's token-based reset mutation, but the profile flow first requires an active session and the current password.
+- A short-lived httpOnly marker cookie gates OTP send and verify for the authenticated flow. The one-time reset token is held in a separate short-lived httpOnly cookie, not the URL or browser storage. New passwords never cross page boundaries; the new-password page is entered after OTP verification.
+- `/profile/*` is protected by `proxy.ts` and the nested active-role layout.
 
 ---
 

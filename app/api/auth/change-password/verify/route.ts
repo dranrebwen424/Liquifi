@@ -1,67 +1,94 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { getCurrentUser } from "@/lib/auth-guard";
 import { createInsforgeServer } from "@/lib/insforge-server";
-import { cookies } from "next/headers";
+import {
+  PASSWORD_CHANGE_COOKIE,
+  PASSWORD_CHANGE_TTL_SECONDS,
+} from "@/lib/password-change";
+import {
+  CHANGE_PASSWORD_LIMIT,
+  checkRateLimit,
+  clearRateLimit,
+  recordFailure,
+} from "@/lib/rate-limit";
 
-export async function POST(request: NextRequest) {
+const StartChangeSchema = z.object({
+  currentPassword: z.string().min(1),
+});
+
+function lockedResponse(retryAfterSec: number): NextResponse {
+  return NextResponse.json(
+    { success: false, error: "Too many attempts. Try again later." },
+    { status: 429, headers: { "Retry-After": String(retryAfterSec) } },
+  );
+}
+
+export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { currentPassword, newPassword } = body as {
-      currentPassword?: string;
-      newPassword?: string;
-    };
-
-    if (!currentPassword || !newPassword) {
-      return NextResponse.json(
-        { success: false, error: "Current password and new password are required." },
-        { status: 400 },
-      );
-    }
-
-    if (newPassword.length < 6) {
-      return NextResponse.json(
-        { success: false, error: "New password must be at least 6 characters." },
-        { status: 400 },
-      );
-    }
-
-    if (currentPassword === newPassword) {
-      return NextResponse.json(
-        { success: false, error: "Choose a new password different from your current password." },
-        { status: 400 },
-      );
-    }
-
-    const insforge = await createInsforgeServer();
-
-    const cookieStore = await cookies();
-    const token = cookieStore.get("insforge_access_token")?.value;
-    const payload = token
-      ? (JSON.parse(Buffer.from(token.split(".")[1] ?? "", "base64url").toString("utf-8")) as { email?: string })
-      : null;
-    const email = payload?.email ?? null;
-
-    if (!email) {
+    const user = await getCurrentUser();
+    if (!user || user.accountStatus !== "active") {
       return NextResponse.json(
         { success: false, error: "You must be signed in to change your password." },
         { status: 401 },
       );
     }
 
-    // Verify the current password by attempting a sign-in with it.
-    const { error: verifyError } = await insforge.auth.signInWithPassword({
-      email,
-      password: currentPassword,
-    });
-
-    if (verifyError) {
-      console.error("[auth/change-password/verify] signInWithPassword failed:", verifyError);
+    const body = await request.json();
+    const parsed = StartChangeSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: verifyError.message || "Current password is incorrect." },
+        { success: false, error: "Current password is required." },
         { status: 400 },
       );
     }
 
-    return NextResponse.json({ success: true, email });
+    const key = `cp:${user.id}`;
+    const lock = checkRateLimit(key);
+    if (lock.blocked) return lockedResponse(lock.retryAfterSec);
+
+    const insforge = await createInsforgeServer();
+    const { error: verifyError } = await insforge.auth.signInWithPassword({
+      email: user.email,
+      password: parsed.data.currentPassword,
+    });
+
+    if (verifyError) {
+      const remaining = recordFailure(key, CHANGE_PASSWORD_LIMIT);
+      const failedLock = checkRateLimit(key);
+      if (failedLock.blocked) return lockedResponse(failedLock.retryAfterSec);
+
+      const suffix =
+        remaining > 0
+          ? ` ${remaining} attempt${remaining === 1 ? "" : "s"} remaining.`
+          : "";
+      return NextResponse.json(
+        { success: false, error: `Current password is incorrect.${suffix}` },
+        { status: 400 },
+      );
+    }
+
+    const { error: sendError } = await insforge.auth.sendResetPasswordEmail({
+      email: user.email,
+    });
+    if (sendError) {
+      console.error("[auth/change-password/verify] send code failed:", sendError);
+      return NextResponse.json(
+        { success: false, error: "We couldn't send a verification code. Please try again." },
+        { status: 500 },
+      );
+    }
+
+    clearRateLimit(key);
+    const response = NextResponse.json({ success: true });
+    response.cookies.set(PASSWORD_CHANGE_COOKIE, "1", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: PASSWORD_CHANGE_TTL_SECONDS,
+    });
+    return response;
   } catch (error) {
     console.error("[auth/change-password/verify]", error);
     return NextResponse.json(

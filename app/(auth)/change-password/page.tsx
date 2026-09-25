@@ -21,6 +21,8 @@ function ChangePasswordPageInner() {
   const [apiError, setApiError] = useState("");
   const [success, setSuccess] = useState(false);
 
+  const MIN_PASSWORD_LENGTH = 8;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitted(true);
@@ -28,6 +30,10 @@ function ChangePasswordPageInner() {
     if (!newPassword || !confirm) return;
     if (newPassword !== confirm) {
       setApiError("Passwords don't match.");
+      return;
+    }
+    if (newPassword.length < MIN_PASSWORD_LENGTH) {
+      setApiError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
       return;
     }
     setLoading(true);
@@ -49,8 +55,6 @@ function ChangePasswordPageInner() {
       setLoading(false);
     }
   }
-
-  const mismatch = submitted && newPassword !== confirm;
 
   return (
     <AuthShell
@@ -92,7 +96,7 @@ function ChangePasswordPageInner() {
             error={submitted && !confirm}
           />
           {apiError && (
-            <p className="text-sm text-red-500 text-center">{apiError}</p>
+            <p className="text-sm text-error-dark text-center">{apiError}</p>
           )}
           <AuthButton type="submit" loading={loading}>Reset password</AuthButton>
           <p className="text-center text-sm font-normal text-text-secondary">
