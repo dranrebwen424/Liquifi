@@ -10,24 +10,26 @@ assert.deepEqual(resolveTopBarScroll(20, 25), { anchorY: 20, visible: null });
 assert.deepEqual(resolveTopBarScroll(20, 40), { anchorY: 40, visible: false });
 assert.deepEqual(resolveTopBarScroll(40, 24), { anchorY: 24, visible: true });
 
-// Bottom-of-scroll jank guards. Shells MUST use a constant viewport unit
-// (min-h-screen = 100vh = largest viewport). A dynamic unit (dvh/svh/lvh) makes
-// the document height track mobile browser UI, so the instant the URL bar hides
-// and the visual viewport grows past the content, the browser clamps scrollY to
-// 0 — measured on /admin/profile: y 26 -> 0 when the viewport grew 844 -> 980.
-// That reads as "bounces back to top, then back to bottom". Dead space below
-// short content is the cheaper trade.
+// Bottom-of-scroll jank guards. Shells must be `min-h-[calc(100dvh+<slack>)]` on
+// mobile: the scroll range must stay positive whether or not mobile browser UI
+// is showing. Content shorter than the LARGEST viewport means the range collapses
+// to 0 the instant the URL bar hides, the browser clamps scrollY to 0, the bar
+// re-shows, and the page oscillates ("bounces back to top, then back to bottom").
+// A constant unit (100vh) does not help — the document is still shorter than the
+// viewport once the UI hides. Dynamic unit + slack keeps the range identical in
+// both UI states, so nothing clamps and the bar stays hidden. Desktop has no
+// dynamic UI, so it stays on min-h-screen.
 for (const layout of [
   "app/admin/layout.tsx",
   "app/adviser/layout.tsx",
   "app/treasurer/layout.tsx",
 ]) {
-  assert.match(read(layout), /min-h-screen/, `${layout} must use a constant viewport unit`);
-  assert.doesNotMatch(
+  assert.match(
     read(layout),
-    /min-h-d(vh|svh|lvh)|100d(vh|vh)|100svh|100lvh/,
-    `${layout} must not use a dynamic viewport unit (clamps scrollY when browser UI hides)`,
+    /min-h-\[calc\(100dvh\+\d+rem\)\]/,
+    `${layout} must keep a positive scroll range in both mobile UI states`,
   );
+  assert.match(read(layout), /md:min-h-screen/, `${layout} must not pad desktop`);
 }
 
 assert.match(
