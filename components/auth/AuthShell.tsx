@@ -45,7 +45,13 @@ export default function AuthShell({
   onBack?: () => void;
 }) {
   return (
-    <main className={`flex min-h-[calc(100vh+6rem)] ${top ? "items-start pt-0" : "items-center py-12"} justify-center bg-background px-4 font-sans`}>
+    // The one place that genuinely needs a viewport-relative height: `items-center`
+    // has nothing to center against without it. `svh` (the smallest viewport) is
+    // deliberate — it equals the resting viewport, so a short form fills the screen
+    // but the document is never scrollable, at rest or after the URL bar collapses.
+    // `vh`/`dvh` would both be wrong here: `vh` adds the toolbar height as scroll
+    // range, `dvh` resizes the document mid-animation.
+    <main className={`flex min-h-svh ${top ? "items-start pt-0" : "items-center py-12"} justify-center bg-background px-4 font-sans`}>
       <div className="w-full max-w-sm">
         {onBack ? (
           <button

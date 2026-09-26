@@ -21,15 +21,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // Full-height floor is `100vh + 6rem` everywhere (see ui-registry). `100vh`
-    // IS the large viewport and is constant, so the document never resizes while
-    // mobile browser chrome animates. The +6rem is load-bearing: the document must
-    // never land in the half-open band (svh, lvh], or collapsing the URL bar drives
-    // maxScroll negative and the browser clamps scrollY back in a loop.
-    // No percentage heights on the root — those resolve against the large viewport
-    // and reintroduce exactly that band.
-    <html lang="en" className={`${poppins.variable} min-h-[calc(100vh+6rem)] antialiased`}>
-      <body className="min-h-[calc(100vh+6rem)] flex flex-col">{children}</body>
+    // No height on the root. A viewport-relative floor here forced every page to be
+    // scrollable by the floor's margin — 96px of dead scroll on desktop, where
+    // 100vh is the viewport — and never fixed anything. Nothing here needs one: the
+    // background propagates to the canvas, so a short page still paints full-screen.
+    // Percentage heights (h-full / min-h-full) are equally wrong: they resolve
+    // against the large viewport and are how this file grew a phantom height once
+    // already. See context/ui-registry.md.
+    <html lang="en" className={`${poppins.variable} antialiased`}>
+      <body className="flex flex-col">{children}</body>
     </html>
   );
 }
