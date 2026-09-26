@@ -21,8 +21,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${poppins.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">{children}</body>
+    // No `h-full`/`min-h-full` on html/body: a percentage height there resolves
+    // against the initial containing block, which on mobile is the LARGEST
+    // viewport (browser chrome hidden). That is taller than 100svh, so it gave a
+    // short page ~100px of surplus scroll range — a real document bottom edge to
+    // bounce off. Pinning both to 100svh keeps a short page unscrollable.
+    <html lang="en" className={`${poppins.variable} min-h-[100svh] antialiased`}>
+      <body className="min-h-[100svh] flex flex-col">{children}</body>
     </html>
   );
 }

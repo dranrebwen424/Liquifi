@@ -175,10 +175,12 @@
   html {
     margin: 0;
     padding: 0;
-    /* Mobile: keep overscroll (pull-to-refresh / scroll chaining) from feeding
-       back into the page. Native rubber-band is the browser's; this stops the
-       app reacting to it. */
-    overscroll-behavior-y: contain;
+    /* Kill the overscroll affordance on the document scroller. `contain` was
+       wrong: it stops scroll chaining and pull-to-refresh but explicitly
+       ALLOWS the rubber-band bounce, which is exactly the bottom-of-page
+       "vibrating" feel on Android Chrome. `none` also removes the affordance,
+       so the document cannot be dragged past its own end. */
+    overscroll-behavior-y: none;
   }
   * {
     @apply border-border;

@@ -5,6 +5,12 @@ import { isAtScrollBoundary, resolveTopBarScroll } from "../lib/top-bar-scroll";
 const read = (path: string) =>
   readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
+/** Source with comments stripped, so negative assertions match code, not prose. */
+const code = (path: string) =>
+  read(path)
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(^|[^:])\/\/.*$/gm, "$1");
+
 assert.deepEqual(resolveTopBarScroll(0, 4), { anchorY: 4, visible: true });
 assert.deepEqual(resolveTopBarScroll(20, 25), { anchorY: 20, visible: null });
 assert.deepEqual(resolveTopBarScroll(20, 40), { anchorY: 40, visible: false });
@@ -65,11 +71,55 @@ for (const layout of [
   }
 }
 
+// The rubber band itself. `overscroll-behavior-y: contain` is the wrong value
+// and was the direct cause of the reported bottom-of-page bounce: `contain`
+// suppresses scroll chaining and pull-to-refresh but explicitly ALLOWS the
+// overscroll affordance, i.e. the rubber band. Only `none` removes it. This is
+// honored at the document scroller by Android Chrome and desktop Chrome/Edge;
+// iOS Safari ignores it at the root regardless of value, so iOS needs the
+// surplus-range guard above instead.
+const globals = code("app/globals.css");
 assert.match(
-  read("app/globals.css"),
-  /overscroll-behavior-y: contain/,
-  "mobile overscroll must not feed back into the page",
+  globals,
+  /overscroll-behavior-y: none/,
+  "the document scroller must not permit the rubber-band overscroll affordance",
 );
+assert.doesNotMatch(
+  globals,
+  /overscroll-behavior-y: contain/,
+  "`contain` still allows the rubber band — it only stops chaining and pull-to-refresh",
+);
+
+// The root must not reintroduce surplus range through percentage heights. On
+// mobile the initial containing block is the LARGEST viewport (chrome hidden),
+// so `h-full`/`min-h-full` on html/body resolve ~100px taller than 100svh and
+// hand a short page a real document bottom edge again. Measured: forcing
+// body's min-height to 125% on a fixed shell brought maxScroll straight back
+// from 0 to 211. Full-height pages that relied on the old chain now carry
+// `min-h-[100svh]` directly.
+const rootLayout = code("app/layout.tsx");
+assert.doesNotMatch(
+  rootLayout,
+  /\bh-full\b/,
+  "html must not use a percentage height — it resolves against the large viewport on mobile",
+);
+assert.doesNotMatch(
+  rootLayout,
+  /\bmin-h-full\b/,
+  "body must not use a percentage min-height — it resolves against the large viewport on mobile",
+);
+assert.match(
+  rootLayout,
+  /<body className="min-h-\[100svh\]/,
+  "body must be pinned to the smallest viewport",
+);
+for (const page of ["app/page.tsx", "components/auth/AuthShell.tsx"]) {
+  assert.doesNotMatch(
+    code(page),
+    /\bmin-h-full\b/,
+    `${page} loses its screen fill without a definite parent height — use min-h-[100svh]`,
+  );
+}
 
 assert.match(
   read("hooks/useAutoHideTopBar.ts"),
