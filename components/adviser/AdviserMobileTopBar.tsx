@@ -21,6 +21,8 @@ export function AdviserMobileTopBar({ onOpenSidebar, unreadCount = 0 }: Props) {
       unreadCount={unreadCount}
       homeHref="/adviser/home"
       notificationsHref="/adviser/notifications"
+      // Diagnostic isolation: keep Home's header still while testing the phone jolt.
+      autoHide={pathname !== "/adviser/home"}
     />
   );
 }

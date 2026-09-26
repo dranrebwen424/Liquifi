@@ -16,6 +16,7 @@ type Props = {
   unreadCount?: number;
   homeHref?: string;
   notificationsHref?: string;
+  autoHide?: boolean;
 };
 
 export function MobileTopBar({
@@ -23,6 +24,7 @@ export function MobileTopBar({
   unreadCount = 0,
   homeHref = "/treasurer/home",
   notificationsHref = "/treasurer/notifications",
+  autoHide = true,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -44,11 +46,15 @@ export function MobileTopBar({
   const lastY = useRef(0);
 
   useEffect(() => {
+    if (!autoHide) return;
+    lastY.current = window.scrollY;
     let ticking = false;
+    let frame = 0;
     const onScroll = () => {
       if (ticking) return;
       ticking = true;
-      requestAnimationFrame(() => {
+      frame = requestAnimationFrame(() => {
+        frame = 0;
         const y = window.scrollY;
         const moved = y - lastY.current;
         // Freeze at either boundary: elastic spring-back and clamp compensation
@@ -69,10 +75,13 @@ export function MobileTopBar({
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
+  }, [autoHide]);
 
-  const collapsed = hidden || (!keepVisible && scrolledDown);
+  const collapsed = hidden || (autoHide && !keepVisible && scrolledDown);
 
   // ponytail: debounce URL sync so router.replace doesn't fire on every keystroke
   useEffect(() => {
