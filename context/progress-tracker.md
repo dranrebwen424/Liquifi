@@ -6,6 +6,8 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Current Status
 
+**Mobile scroll followup (2026-09-26, in progress):** User confirmed no jolt during slow scrolling with Chrome's address bar visible, but a jolt during fast scrolling as it retracts. Department Detail now reserves bottom tab clearance once (4rem row + 1px border + stable `safe-area-max-inset-bottom`, 36px fallback), instead of stacking 96px page padding and 64px dynamic panel padding. The fixed tabs use stable safe area padding and a dynamic `bottom` offset. Shared shell spacing, desktop layout, Admin Profile, and the working Treasurer and Adviser pages are unchanged. Scoped lint, four focused check scripts, and direct Tailwind compilation pass. The full type check is blocked by an existing missing `ReportSectionHeader` in the modified Treasurer budget history page. Phone verification remains pending because no browser connection is available. Do not mark the bounce fixed or add an isolated Profile scroller without that verification.
+
 **Current Status (2026-09-26):** In progress. Shared profile avatar support is being added: nullable `users.avatar_key`, public versioned storage keys, authenticated upload/remove routes, and initials fallback. The `avatar_key` migration is applied and verified in InsForge. The feature is not deployed yet.
 
 **Phase:** Phase 11 — Audit & Read-Only Views (COMPLETE — all 30 build-plan features done) + post-plan hardening
