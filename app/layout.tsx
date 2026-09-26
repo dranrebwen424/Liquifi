@@ -21,13 +21,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // No `h-full`/`min-h-full` on html/body: a percentage height there resolves
-    // against the initial containing block, which on mobile is the LARGEST
-    // viewport (browser chrome hidden). That is taller than 100svh, so it gave a
-    // short page ~100px of surplus scroll range — a real document bottom edge to
-    // bounce off. Pinning both to 100svh keeps a short page unscrollable.
-    <html lang="en" className={`${poppins.variable} min-h-[100svh] antialiased`}>
-      <body className="min-h-[100svh] flex flex-col">{children}</body>
+    // Full-height floor is `100vh + 6rem` everywhere (see ui-registry). `100vh`
+    // IS the large viewport and is constant, so the document never resizes while
+    // mobile browser chrome animates. The +6rem is load-bearing: the document must
+    // never land in the half-open band (svh, lvh], or collapsing the URL bar drives
+    // maxScroll negative and the browser clamps scrollY back in a loop.
+    // No percentage heights on the root — those resolve against the large viewport
+    // and reintroduce exactly that band.
+    <html lang="en" className={`${poppins.variable} min-h-[calc(100vh+6rem)] antialiased`}>
+      <body className="min-h-[calc(100vh+6rem)] flex flex-col">{children}</body>
     </html>
   );
 }

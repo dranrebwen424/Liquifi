@@ -46,7 +46,7 @@ const cardClass =
 
 export default function LandingPage() {
   return (
-    <main className="flex min-h-[100svh] flex-col bg-background font-sans">
+    <main className="flex min-h-[calc(100vh+6rem)] flex-col bg-background font-sans">
       <HeroSection />
 
       {/* Features — eyebrow → heading → intro → cards */}

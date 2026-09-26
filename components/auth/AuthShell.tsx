@@ -45,7 +45,7 @@ export default function AuthShell({
   onBack?: () => void;
 }) {
   return (
-    <main className={`flex min-h-[100svh] ${top ? "items-start pt-0" : "items-center py-12"} justify-center bg-background px-4 font-sans`}>
+    <main className={`flex min-h-[calc(100vh+6rem)] ${top ? "items-start pt-0" : "items-center py-12"} justify-center bg-background px-4 font-sans`}>
       <div className="w-full max-w-sm">
         {onBack ? (
           <button

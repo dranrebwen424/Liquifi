@@ -27,43 +27,79 @@ assert.equal(isAtScrollBoundary(2260, 800, 3000), true, "overscrolled past the e
 // boundary, so a spring-back never reads as a scroll-up intent.
 assert.equal(isAtScrollBoundary(2210, 800, 3000), true, "mid spring-back is a boundary");
 
-// Bottom-of-scroll jank guard. The shell floor must add ZERO surplus scroll
-// range, so a page shorter than the viewport is not scrollable at all: there is
-// no document bottom edge to bounce off, no rubber band to pump, and the mobile
-// toolbar is never triggered (a non-scrollable document keeps its toolbar
-// permanently, which is the stable state every other site settles into).
+// Bottom-of-scroll jank guard — the real invariant.
 //
-// `100svh` is the smallest viewport, so surplus range is exactly 0 in both UI
-// states: with the toolbar shown the document equals the viewport, and with it
-// hidden the viewport is larger than the document. It is a CONSTANT unit, so the
-// document does not resize while the toolbar animates.
+// A page's document height must never land in the half-open band (svh, lvh].
+// Inside that band, collapsing the mobile URL bar grows the viewport past the
+// document, maxScroll goes NEGATIVE, and the browser clamps scrollY back up. The
+// clamp reads as an upward scroll, which brings the URL bar back, which shrinks
+// the viewport, which makes maxScroll positive again — a closed per-frame loop
+// that is the "vibrating" bottom. This is not a rubber band and not an animation:
+// measured on the deployed app, 0 running animations and 0 DOM mutations over
+// 2.5s at the bottom, with overscroll-behavior already `none`.
 //
-// Units that leave surplus range or track the UI are banned. `100vh` is the
-// largest viewport, so a short page stays scrollable by exactly the toolbar
-// height (~50px) and the toolbar oscillates: it hides on a downward scroll,
-// which zeroes the range and puts the page flush against its end, which brings
-// the toolbar back, and round again. `dvh` ties the document to the live
-// viewport, so the document resizes every frame mid-animation. An earlier
-// revision used `125vh` (~211px of surplus); that removed the oscillation but
-// replaced it with a rubber-band trap — on `/admin/approvals` the wrapper was
-// 1055px tall around 360px of content, so 695px of empty background sat between
-// the last row and a hard stop. Measured on the deployed app: 0 DOM mutations and
-// 0px of self-motion across a full scroll-to-bottom, so the app was never moving
-// anything — the void was the whole of the bounce. `svh` is required, so the ban
-// has to avoid matching the `vh` inside it.
-for (const layout of [
+// The signature is a page whose content sits a few tens of px above the small
+// viewport, and that is exactly what was reported: /admin/profile content 870px
+// (26px of range) and /admin/departments/[id] 888px (44px) were both broken,
+// while /admin/departments at 1281px and /admin/approvals at 360px (unscrollable)
+// were fine.
+//
+// So the floor is `100vh + 6rem`, applied uniformly. `100vh` IS the large
+// viewport per spec and is CONSTANT, so the document never resizes while browser
+// chrome animates. The +6rem is the load-bearing part: it keeps maxScroll at a
+// positive 96px after the URL bar hides, so the toolbar has no reason to return.
+// Device-independent — content can be any height, but the document is always
+// above lvh, so the band is unreachable on any phone.
+//
+// Banned, and why:
+//   100svh      floors at the SMALL viewport, so any content between svh and lvh
+//               lands in the band. This was the regression: it looked perfect in
+//               DevTools, which resolves svh/vh/dvh to one height.
+//   100vh alone leaves exactly lvh-svh of range, which reaches 0 once the URL
+//               bar hides — the same oscillation, reached from the other side.
+//   125vh       clears the band but the slack is unbounded: on /admin/approvals
+//               it put 695px of empty background between the last row and the
+//               stop. 6rem bounds it at ~150px.
+//               (Unit names are written out here rather than as literal class
+//               names: Tailwind v4 scans every source file including this one
+//               and emits a utility for each class-like token it finds, so naming
+//               them literally would ship dead CSS for each banned variant.)
+//   dvh         tracks the live viewport, so the document resizes every frame
+//               mid-animation and any scroll anchoring fights it.
+//   min-h-screen / min-h-dvh / h-full / min-h-full — the same two traps, or a
+//               percentage that resolves against the large viewport.
+const FLOORED_SURFACES = [
+  "app/layout.tsx",
   "app/admin/layout.tsx",
   "app/adviser/layout.tsx",
   "app/treasurer/layout.tsx",
   "app/preview-dept/page.tsx",
-]) {
-  const source = read(layout);
+  "app/page.tsx",
+  "components/auth/AuthShell.tsx",
+];
+const SLACK_FLOOR = /min-h-\[calc\(100vh\+[1-9]\d*rem\)\]/;
+// `min-h-full` is banned everywhere: it propagates a percentage min-height up the
+// box chain and resolves against the large viewport. Plain `h-full` is NOT banned
+// here — cards use it to fill their grid track, which is unrelated to the viewport
+// (app/page.tsx cardClass does exactly that). Only the root `<html>` is checked
+// for `h-full`, below, because there it is the original defect.
+const BANNED_FLOORS = [
+  "100svh",
+  "100dvh",
+  "100lvh",
+  "min-h-screen",
+  "min-h-dvh",
+  "min-h-svh",
+  "min-h-full",
+];
+for (const layout of FLOORED_SURFACES) {
+  const source = code(layout);
   assert.match(
     source,
-    /min-h-\[100svh\]/,
-    `${layout} must floor at the smallest viewport, leaving no surplus scroll range`,
+    SLACK_FLOOR,
+    `${layout} must floor at the large viewport plus a positive rem margin so the document always clears the (svh, lvh] band`,
   );
-  for (const banned of ["dvh", "lvh", "100vh", "min-h-screen"]) {
+  for (const banned of BANNED_FLOORS) {
     assert.ok(
       !source.includes(banned),
       `${layout} must not use ${banned} — it leaves surplus range or tracks the live viewport`,
@@ -90,36 +126,24 @@ assert.doesNotMatch(
   "`contain` still allows the rubber band — it only stops chaining and pull-to-refresh",
 );
 
-// The root must not reintroduce surplus range through percentage heights. On
-// mobile the initial containing block is the LARGEST viewport (chrome hidden),
-// so `h-full`/`min-h-full` on html/body resolve ~100px taller than 100svh and
-// hand a short page a real document bottom edge again. Measured: forcing
-// body's min-height to 125% on a fixed shell brought maxScroll straight back
-// from 0 to 211. Full-height pages that relied on the old chain now carry
-// `min-h-[100svh]` directly.
+// The root must not reintroduce the band through percentage heights. On mobile the
+// initial containing block is the LARGEST viewport (chrome hidden), so
+// `h-full`/`min-h-full` on html/body resolve taller than 100svh and drop the
+// document back into (svh, lvh]. Measured: forcing `body { min-height: 125% }`
+// on an already-floored shell drove maxScroll from 0 straight back to 211.
+// BANNED_FLOORS above already covers both tokens; assert the body specifically so
+// the failure names the root rather than a generic ban.
 const rootLayout = code("app/layout.tsx");
-assert.doesNotMatch(
-  rootLayout,
-  /\bh-full\b/,
-  "html must not use a percentage height — it resolves against the large viewport on mobile",
-);
-assert.doesNotMatch(
-  rootLayout,
-  /\bmin-h-full\b/,
-  "body must not use a percentage min-height — it resolves against the large viewport on mobile",
-);
 assert.match(
   rootLayout,
-  /<body className="min-h-\[100svh\]/,
-  "body must be pinned to the smallest viewport",
+  /<body className="min-h-\[calc\(100vh\+[1-9]\d*rem\)\]/,
+  "body must carry the same slack floor as the shells",
 );
-for (const page of ["app/page.tsx", "components/auth/AuthShell.tsx"]) {
-  assert.doesNotMatch(
-    code(page),
-    /\bmin-h-full\b/,
-    `${page} loses its screen fill without a definite parent height — use min-h-[100svh]`,
-  );
-}
+const htmlTag = /<html[^>]*>/.exec(rootLayout)?.[0] ?? "";
+assert.ok(
+  htmlTag && !/\bh-full\b/.test(htmlTag),
+  "the root <html> must not use a percentage height — it resolves against the large viewport",
+);
 
 assert.match(
   read("hooks/useAutoHideTopBar.ts"),

@@ -23,7 +23,7 @@ export default async function TreasurerLayout({
   const unreadCount = unreadRows?.length ?? 0;
 
   return (
-    <div className="min-h-[100svh] bg-background">
+    <div className="min-h-[calc(100vh+6rem)] bg-background">
       <PushSubscriber />
       <PushEnableToast />
       <TreasurerSidebar unreadCount={unreadCount} />
