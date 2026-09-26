@@ -418,7 +418,7 @@ const router = useRouter();
           <button
             type="button"
             onClick={openNewEvent}
-            className="fixed bottom-6 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-[18px] bg-accent text-accent-foreground shadow-lg transition-[color,transform,shadow] hover:bg-accent-hover hover:shadow-xl hover:scale-110 active:scale-95"
+            className="fixed bottom-[calc(1.5rem+var(--safe-bottom))] right-5 z-50 flex h-14 w-14 items-center justify-center rounded-[18px] bg-accent text-accent-foreground shadow-lg transition-[color,transform,shadow] hover:bg-accent-hover hover:shadow-xl hover:scale-110 active:scale-95"
             aria-label="New event"
           >
             <Plus className="h-6 w-6" />

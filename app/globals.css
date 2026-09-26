@@ -26,6 +26,14 @@
   --chart-3: oklch(0.6 0.12 30);
   --chart-4: oklch(0.7 0.14 80);
   --chart-5: oklch(0.65 0.16 340);
+
+  /* Stable bottom clearance for chrome anchored to the bottom of the layout
+     viewport (FABs, bottom bars, tab bars). `safe-area-max-inset-bottom` is the
+     largest bottom inset the browser will ever apply — using it for STABLE
+     padding is the Chrome edge-to-edge guidance, and it cannot double-count
+     with a browser that already offsets fixed elements. Falls back to 36px on
+     browsers without support. See globals: department tab bar. */
+  --safe-bottom: env(safe-area-max-inset-bottom, 36px);
 }
 
 .dark {

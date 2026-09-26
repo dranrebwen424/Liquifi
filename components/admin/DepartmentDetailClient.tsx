@@ -99,7 +99,7 @@ export function DepartmentDetailClient({
   };
 
   return (
-    <div className="flex flex-col gap-6 [--department-safe-bottom:env(safe-area-max-inset-bottom,36px)] pb-[calc(4rem+1px+var(--department-safe-bottom))] md:pb-10">
+    <div className="flex flex-col gap-6 pb-[calc(4rem+1px+var(--safe-bottom))] md:pb-10">
       <div className="relative flex min-h-11 items-center justify-center md:hidden">
         <Link
           href="/admin/departments"
@@ -232,7 +232,7 @@ export function DepartmentDetailClient({
       <div
         role="tablist"
         aria-label="Department sections"
-        className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0px)-var(--department-safe-bottom))] z-40 grid grid-cols-4 border-t border-border bg-surface pb-[var(--department-safe-bottom)] shadow-card md:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-border bg-surface pb-[var(--safe-bottom)] shadow-card md:hidden"
       >
         {TABS.map((tab) => {
           const active = activeTab === tab;

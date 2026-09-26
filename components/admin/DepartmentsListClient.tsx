@@ -280,7 +280,7 @@ export function DepartmentsListClient({ initialDepartments, loadError }: Props) 
       {!createView && (
         <button
           onClick={() => setCreateView("sheet")}
-          className="fixed bottom-5 right-5 z-50 flex h-16 w-16 items-center justify-center rounded-xl bg-accent text-accent-foreground shadow-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] md:hidden"
+          className="fixed bottom-[calc(1.25rem+var(--safe-bottom))] right-5 z-50 flex h-16 w-16 items-center justify-center rounded-xl bg-accent text-accent-foreground shadow-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] md:hidden"
           aria-label="New department"
         >
           <Plus className="h-8 w-8" strokeWidth={2.5} />

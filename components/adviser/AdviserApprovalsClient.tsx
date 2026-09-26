@@ -446,7 +446,7 @@ export function AdviserApprovalsClient({ pendingUsers: initialUsers, pendingEntr
 
       {tab === "expenses" && !expensesError && pendingEntries.length > 0 && (
         <>
-          <div className="fixed inset-x-0 bottom-0 z-40 bg-gradient-to-t from-background via-background/95 to-background/0 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-5 md:hidden">
+          <div className="fixed inset-x-0 bottom-0 z-40 bg-gradient-to-t from-background via-background/95 to-background/0 px-4 pb-[calc(0.75rem+var(--safe-bottom))] pt-5 md:hidden">
             <div className="mx-auto flex max-w-md items-center gap-2.5 rounded-2xl border border-border bg-surface p-2.5 shadow-card">
               <label className="flex min-h-10 items-center gap-1.5 rounded-xl px-1.5 text-[11px] font-medium text-text-muted" onClick={(event) => event.stopPropagation()}>
                 <Checkbox checked={allSelected} onCheckedChange={toggleAll} className="rounded-[5px] border-border-strong bg-surface" />
