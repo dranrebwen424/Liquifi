@@ -10,17 +10,18 @@ assert.deepEqual(resolveTopBarScroll(20, 25), { anchorY: 20, visible: null });
 assert.deepEqual(resolveTopBarScroll(20, 40), { anchorY: 40, visible: false });
 assert.deepEqual(resolveTopBarScroll(40, 24), { anchorY: 24, visible: true });
 
-// Bottom-of-scroll jank guards. Shells must be `min-h-[calc(100vh+<slack>)]` on
-// mobile — a CONSTANT unit plus slack. Measured discriminator: long pages scroll
-// fine, short pages bounce. On a long page the floor never binds, so the document
-// is content-bound and its height is constant. On a short page the floor binds:
-//   - dynamic unit (100dvh): the document resizes every frame while the browser UI
-//     animates, the browser compensates scrollY, and the page oscillates.
-//   - no slack (100vh alone): the document is shorter than the largest viewport,
-//     so the range collapses to 0 the moment the UI hides and scrollY clamps to 0.
-// Constant + slack: a document that never resizes and a range that never hits 0.
-// 100vh is the largest viewport and is constant on iOS Safari and Chrome Android
-// (the classic iOS "100vh is too tall" behaviour). Desktop: no dynamic UI, no slack.
+// Bottom-of-scroll jank guards. Shells must be `min-h-[125vh]` on mobile — a
+// CONSTANT unit with enough range that a one-screen page behaves like a long one.
+// Measured discriminator: long pages scroll fine, short pages bounce, on every
+// phone tried, never on desktop. Evidence that the app is not the cause: on the
+// deployed short page, 0 DOM mutations while scrolling and 0 px of self-motion
+// across 201 frames with zero input. What is left is the browser's own toolbar:
+// it hides on a downward scroll and returns on an upward one, and with only a
+// few dozen scrollable pixels it toggles constantly mid-gesture. A 125vh floor
+// gives ~380px of range so the toolbar hides early and never has to come back.
+// Units that track the UI (dvh/svh/lvh) are banned: the document then resizes
+// every frame while the toolbar animates. 100vh is the largest viewport and is
+// constant on iOS Safari and Chrome Android. Desktop: no toolbar, no extra height.
 for (const layout of [
   "app/admin/layout.tsx",
   "app/adviser/layout.tsx",
@@ -29,8 +30,8 @@ for (const layout of [
   const source = read(layout);
   assert.match(
     source,
-    /min-h-\[calc\(100vh\+\d+rem\)\]/,
-    `${layout} must use a constant viewport unit plus slack`,
+    /min-h-\[125vh\]/,
+    `${layout} must keep a one-screen page scrollable enough to settle the toolbar`,
   );
   assert.doesNotMatch(
     source,
