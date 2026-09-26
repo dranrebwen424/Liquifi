@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { resolveTopBarScroll } from "../lib/top-bar-scroll";
+import { isAtScrollBoundary, resolveTopBarScroll } from "../lib/top-bar-scroll";
 
 const read = (path: string) =>
   readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
@@ -9,6 +9,17 @@ assert.deepEqual(resolveTopBarScroll(0, 4), { anchorY: 4, visible: true });
 assert.deepEqual(resolveTopBarScroll(20, 25), { anchorY: 20, visible: null });
 assert.deepEqual(resolveTopBarScroll(20, 40), { anchorY: 40, visible: false });
 assert.deepEqual(resolveTopBarScroll(40, 24), { anchorY: 24, visible: true });
+
+// Boundary detection. The bottom cases model an elastic spring-back: the browser
+// reports scroll positions at and beyond the maximum while the page bounces.
+assert.equal(isAtScrollBoundary(0, 800, 3000), true, "top edge is a boundary");
+assert.equal(isAtScrollBoundary(500, 800, 3000), false, "mid page is not a boundary");
+assert.equal(isAtScrollBoundary(2190, 800, 3000), false, "just short of the end is still scrollable");
+assert.equal(isAtScrollBoundary(2200, 800, 3000), true, "flush with the end is a boundary");
+assert.equal(isAtScrollBoundary(2260, 800, 3000), true, "overscrolled past the end is a boundary");
+// Every position from the overscroll peak back down to flush (2260 -> 2200) is a
+// boundary, so a spring-back never reads as a scroll-up intent.
+assert.equal(isAtScrollBoundary(2210, 800, 3000), true, "mid spring-back is a boundary");
 
 // Bottom-of-scroll jank guards. Shells must be `min-h-[125vh]` on mobile — a
 // CONSTANT unit with enough range that a one-screen page behaves like a long one.
@@ -49,8 +60,8 @@ assert.match(
 
 assert.match(
   read("hooks/useAutoHideTopBar.ts"),
-  /scrollHeight/,
-  "auto-hide hook must freeze the bar at the document end",
+  /isAtScrollBoundary/,
+  "auto-hide hook must freeze the bar at either scroll boundary",
 );
 assert.match(
   read("hooks/useAutoHideTopBar.ts"),
@@ -66,6 +77,11 @@ assert.match(
   read("components/treasurer/MobileTopBar.tsx"),
   /FAST_SCROLL_DELTA/,
   "treasurer top bar must skip flips during a fast fling",
+);
+assert.match(
+  read("components/treasurer/MobileTopBar.tsx"),
+  /isAtScrollBoundary/,
+  "treasurer top bar must freeze at either scroll boundary",
 );
 assert.match(
   read("components/admin/DepartmentDetailClient.tsx"),

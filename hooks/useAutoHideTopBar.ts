@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { resolveTopBarScroll } from "@/lib/top-bar-scroll";
+import { isAtScrollBoundary, resolveTopBarScroll } from "@/lib/top-bar-scroll";
 
 /** Per-frame scroll delta (px) treated as a fling rather than a gesture. */
 const FAST_SCROLL_DELTA = 24;
@@ -32,9 +32,18 @@ export function useAutoHideTopBar(): boolean {
         const next = resolveTopBarScroll(anchorY.current, y);
         anchorY.current = next.anchorY;
         if (next.visible === null) return;
-        // At the document end, overscroll bounce jitters scrollY past the 8px
-        // threshold and flip-flops the bar right where scrolling stops.
-        if (y + window.innerHeight >= document.documentElement.scrollHeight - 1) return;
+        // At either boundary the movement is the browser's, not the user's —
+        // elastic spring-back and clamp compensation both look like an upward
+        // scroll. Freeze here so the bar cannot flicker in sympathy.
+        if (
+          isAtScrollBoundary(
+            y,
+            window.innerHeight,
+            document.documentElement.scrollHeight,
+          )
+        ) {
+          return;
+        }
         setVisible(next.visible);
       });
     };

@@ -16,3 +16,22 @@ export function resolveTopBarScroll(anchorY: number, currentY: number): TopBarSc
 
   return { anchorY: currentY, visible: distance < 0 };
 }
+
+/**
+ * True while the page sits flush against either scroll boundary.
+ *
+ * A fast flick that reaches the end produces an elastic spring-back, which the
+ * browser reports as a large upward delta in scrollY. That is not the user
+ * scrolling up, so the bar must ignore it — otherwise the bar re-extends on
+ * every bounce and layers a 200-300ms transform on top of the bounce, which is
+ * what reads as vibration. Freezing here is one frame of grace: a real upward
+ * scroll leaves the boundary immediately and the bar reappears on the next
+ * qualifying frame.
+ */
+export function isAtScrollBoundary(
+  scrollY: number,
+  viewportHeight: number,
+  scrollHeight: number,
+): boolean {
+  return scrollY <= TOP_EDGE || scrollY + viewportHeight >= scrollHeight - 1;
+}

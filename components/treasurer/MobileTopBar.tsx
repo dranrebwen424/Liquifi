@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { ArrowLeft, Bell, Search } from "lucide-react";
 import { isImmersivePage } from "@/lib/event-route";
+import { isAtScrollBoundary } from "@/lib/top-bar-scroll";
 import { cn } from "@/lib/utils";
 
 /** Per-frame scroll delta (px) treated as a fling rather than a gesture. */
@@ -50,9 +51,15 @@ export function MobileTopBar({
       requestAnimationFrame(() => {
         const y = window.scrollY;
         const moved = y - lastY.current;
-        const atEnd = y + window.innerHeight >= document.documentElement.scrollHeight - 1;
+        // Freeze at either boundary: elastic spring-back and clamp compensation
+        // are the browser's movement, not a scroll-up intent.
+        const atBoundary = isAtScrollBoundary(
+          y,
+          window.innerHeight,
+          document.documentElement.scrollHeight,
+        );
         const flinging = Math.abs(moved) >= FAST_SCROLL_DELTA;
-        if (!atEnd && !flinging && Math.abs(moved) >= 8) {
+        if (!atBoundary && !flinging && Math.abs(moved) >= 8) {
           if (moved < 0) setScrolledDown(false);
           else if (y > 72) setScrolledDown(true);
         }
