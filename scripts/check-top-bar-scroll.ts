@@ -21,35 +21,48 @@ assert.equal(isAtScrollBoundary(2260, 800, 3000), true, "overscrolled past the e
 // boundary, so a spring-back never reads as a scroll-up intent.
 assert.equal(isAtScrollBoundary(2210, 800, 3000), true, "mid spring-back is a boundary");
 
-// Bottom-of-scroll jank guards. Shells must be `min-h-[125vh]` on mobile — a
-// CONSTANT unit with enough range that a one-screen page behaves like a long one.
-// Measured discriminator: long pages scroll fine, short pages bounce, on every
-// phone tried, never on desktop. Evidence that the app is not the cause: on the
-// deployed short page, 0 DOM mutations while scrolling and 0 px of self-motion
-// across 201 frames with zero input. What is left is the browser's own toolbar:
-// it hides on a downward scroll and returns on an upward one, and with only a
-// few dozen scrollable pixels it toggles constantly mid-gesture. A 125vh floor
-// gives ~380px of range so the toolbar hides early and never has to come back.
-// Units that track the UI (dvh/svh/lvh) are banned: the document then resizes
-// every frame while the toolbar animates. 100vh is the largest viewport and is
-// constant on iOS Safari and Chrome Android. Desktop: no toolbar, no extra height.
+// Bottom-of-scroll jank guard. The shell floor must add ZERO surplus scroll
+// range, so a page shorter than the viewport is not scrollable at all: there is
+// no document bottom edge to bounce off, no rubber band to pump, and the mobile
+// toolbar is never triggered (a non-scrollable document keeps its toolbar
+// permanently, which is the stable state every other site settles into).
+//
+// `100svh` is the smallest viewport, so surplus range is exactly 0 in both UI
+// states: with the toolbar shown the document equals the viewport, and with it
+// hidden the viewport is larger than the document. It is a CONSTANT unit, so the
+// document does not resize while the toolbar animates.
+//
+// Units that leave surplus range or track the UI are banned. `100vh` is the
+// largest viewport, so a short page stays scrollable by exactly the toolbar
+// height (~50px) and the toolbar oscillates: it hides on a downward scroll,
+// which zeroes the range and puts the page flush against its end, which brings
+// the toolbar back, and round again. `dvh` ties the document to the live
+// viewport, so the document resizes every frame mid-animation. An earlier
+// revision used `125vh` (~211px of surplus); that removed the oscillation but
+// replaced it with a rubber-band trap — on `/admin/approvals` the wrapper was
+// 1055px tall around 360px of content, so 695px of empty background sat between
+// the last row and a hard stop. Measured on the deployed app: 0 DOM mutations and
+// 0px of self-motion across a full scroll-to-bottom, so the app was never moving
+// anything — the void was the whole of the bounce. `svh` is required, so the ban
+// has to avoid matching the `vh` inside it.
 for (const layout of [
   "app/admin/layout.tsx",
   "app/adviser/layout.tsx",
   "app/treasurer/layout.tsx",
+  "app/preview-dept/page.tsx",
 ]) {
   const source = read(layout);
   assert.match(
     source,
-    /min-h-\[125vh\]/,
-    `${layout} must keep a one-screen page scrollable enough to settle the toolbar`,
+    /min-h-\[100svh\]/,
+    `${layout} must floor at the smallest viewport, leaving no surplus scroll range`,
   );
-  assert.doesNotMatch(
-    source,
-    /dvh|svh|lvh/,
-    `${layout} must not tie document height to the dynamic viewport`,
-  );
-  assert.match(source, /md:min-h-screen/, `${layout} must not pad desktop`);
+  for (const banned of ["dvh", "lvh", "100vh", "min-h-screen"]) {
+    assert.ok(
+      !source.includes(banned),
+      `${layout} must not use ${banned} — it leaves surplus range or tracks the live viewport`,
+    );
+  }
 }
 
 assert.match(

@@ -24,7 +24,7 @@ export default async function AdminLayout({
   const adminAvatarUrl = getAvatarUrl(user.avatarKey, insforge);
 
   return (
-    <div className="min-h-[125vh] bg-background md:min-h-screen">
+    <div className="min-h-[100svh] bg-background">
       <PushSubscriber />
 
       <AdminSidebar />
