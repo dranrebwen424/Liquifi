@@ -180,7 +180,10 @@ export function TreasurerReportWorkspace({ event, latestReport, entryComments }:
 
       <nav aria-label="Report details" className="flex flex-col gap-2.5 px-3 sm:px-4">
         {DESTINATIONS.map(({ label, path, icon: Icon }) => (
-          <Link key={path} href={`/treasurer/reports/${event.id}/${path}`}
+          // prefetch: full RSC warmed by Next's viewport-first scheduler, so
+          // these open from the router cache instead of a cold server render.
+          // Same treatment as the event-detail links.
+          <Link key={path} href={`/treasurer/reports/${event.id}/${path}`} prefetch
             className="group flex min-h-14 items-center gap-3 rounded-sm bg-surface px-4 py-3.5 shadow-card transition-colors hover:bg-surface-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
             <Icon className="h-4 w-4 shrink-0 text-text-secondary" strokeWidth={1.5} aria-hidden />
             <span className="min-w-0 flex-1 text-xs font-medium text-text-primary sm:text-sm">{label}</span>

@@ -45,6 +45,7 @@ function ReportRow({ item, href }: { item: ReportOverviewItem; href: string }) {
   return (
     <Link
       href={href}
+      prefetch
       className="group flex min-h-16 items-center gap-3 rounded-xl bg-surface-secondary px-4 py-3 transition-[background-color,transform] hover:bg-surface-tertiary active:scale-[0.99]"
     >
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface text-text-primary shadow-sm">
@@ -174,6 +175,7 @@ export function ReportsOverview({ role, items, basePath, embedded }: Props) {
               </p>
               <Link
                 href={detailHref(actionRequired.eventId)}
+                prefetch
                 className="mt-4 inline-flex items-center rounded-full bg-surface px-4 py-2 text-xs font-semibold text-text-primary transition-transform active:scale-[0.98]"
               >
                 Review report
@@ -295,6 +297,7 @@ export function ReportsOverview({ role, items, basePath, embedded }: Props) {
                 <Link
                   key={item.eventId}
                   href={detailHref(item.eventId)}
+                  prefetch
                   className="group flex items-center gap-3 border-b border-border py-3 last:border-0 hover:text-accent"
                 >
                   <FolderArchive className="h-5 w-5 shrink-0 text-text-muted group-hover:text-text-primary" aria-hidden="true" />
