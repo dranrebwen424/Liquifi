@@ -44,7 +44,7 @@ export function FolderCard({ id, name, href }: FolderCardProps) {
         prefetch
         initial="rest"
         whileTap="pressed"
-        className="flex w-full flex-col items-stretch gap-1"
+        className="flex w-full flex-col items-stretch gap-1 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
       >
         {/* Folder visual — Figma "folder" (mobile) */}
         <motion.div

@@ -33,6 +33,7 @@ type Props = {
   canMutate: boolean;
   /** Figma mobile layout — shows "Expenses" heading + count + filter icons. */
   mobileLayout?: boolean;
+  backHref?: string;
 };
 
 const DEFAULT_FILTERS: ExpenseFiltersState = {
@@ -42,7 +43,7 @@ const DEFAULT_FILTERS: ExpenseFiltersState = {
   category: "all",
 };
 
-export function ExpensesSection({ entries, categories, isArchived, canMutate, mobileLayout }: Props) {
+export function ExpensesSection({ entries, categories, isArchived, canMutate, mobileLayout, backHref }: Props) {
   const [filters, setFilters] = useState<ExpenseFiltersState>(DEFAULT_FILTERS);
 
   const filtered = useMemo(() => {
@@ -99,6 +100,8 @@ export function ExpensesSection({ entries, categories, isArchived, canMutate, mo
       isArchived={isArchived}
       canMutate={canMutate}
       mobileLayout={mobileLayout}
+      backHref={backHref}
+      totalEntries={entries.length}
       filters={{
         state: filters,
         onChange: setFilters,

@@ -138,8 +138,17 @@ export function EntryCard({
   return (
     <div
       onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={(event) => {
+        if (onClick && (event.key === "Enter" || event.key === " ")) {
+          event.preventDefault();
+          onClick();
+        }
+      }}
       className={cn(
         "group flex cursor-pointer flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-sm transition-all duration-200 hover:border-accent hover:shadow-md hover:scale-[1.02] active:scale-[0.98]",
+        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
         isVoided && "opacity-60",
       )}
     >
@@ -191,6 +200,7 @@ export function EntryCard({
               {formatDateTime(createdAt)}
             </p>
           )}
+          {isVoided && voidReason && <p className="mt-1 break-words text-xs text-text-secondary">{voidReason}</p>}
         </div>
 
         {/* Amount — pushed to bottom */}

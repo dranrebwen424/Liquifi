@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { EntryCard } from "@/components/entries/EntryCard";
 import { EntryRow } from "@/components/entries/EntryRow";
 import { EntryDetailModal } from "@/components/entries/EntryDetailModal";
@@ -41,6 +43,8 @@ type EntryListProps = {
   canMutate: boolean;
   /** Figma mobile layout — shows "Expenses" heading + count + filter icons. */
   mobileLayout?: boolean;
+  backHref?: string;
+  totalEntries?: number;
   filters?: {
     state: ExpenseFiltersState;
     onChange: (filters: ExpenseFiltersState) => void;
@@ -50,23 +54,30 @@ type EntryListProps = {
 
 type ViewMode = "grid" | "list";
 
-export function EntryList({ entries, isArchived, canMutate, mobileLayout, filters }: EntryListProps) {
+export function EntryList({ entries, isArchived, canMutate, mobileLayout, backHref, totalEntries = entries.length, filters }: EntryListProps) {
   const [view, setView] = useState<ViewMode>("grid");
   const [selectedEntry, setSelectedEntry] = useState<EntryListItem | null>(null);
   const [voidTarget, setVoidTarget] = useState<EntryListItem | null>(null);
+  const Heading = backHref ? "h1" : "h2";
 
   return (
     <div>
       {/* Header — mobile Figma layout */}
       {mobileLayout ? (
-        <div className="mb-4 flex items-end justify-between">
+        <div className={`flex items-center justify-between gap-2 ${backHref ? "mb-8" : "mb-4"}`}>
+          <div className="flex min-w-0 items-start gap-2">
+            {backHref && <Link href={backHref} prefetch aria-label="Back to report" title="Back to report"
+              className="-ml-3 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-text-primary hover:bg-surface-secondary focus-visible:outline-2 focus-visible:outline-accent">
+              <ArrowLeft className="h-5 w-5" aria-hidden />
+            </Link>}
           <div>
-            <h2 className="text-[22px] font-medium text-text-primary">
+            <Heading className={backHref ? "pt-1 text-lg font-semibold text-text-primary" : "text-[22px] font-medium text-text-primary"}>
               Expenses
-            </h2>
+            </Heading>
             <p className="mt-0.5 text-[12px] text-text-muted">
-              Total of {entries.length} {entries.length === 1 ? "Entry" : "Entries"}
+              {entries.length === totalEntries ? `Total of ${totalEntries}` : `${entries.length} of ${totalEntries}`} {totalEntries === 1 ? "Entry" : "Entries"}
             </p>
+          </div>
           </div>
 
           {/* Filter + View Toggle icons */}
@@ -111,23 +122,25 @@ export function EntryList({ entries, isArchived, canMutate, mobileLayout, filter
         </div>
       )}
 
+      {backHref && filters && <div className="mb-5 hidden md:block"><ExpenseFilterChips filters={filters.state} onChange={filters.onChange} categories={filters.categories} /></div>}
+
       {entries.length === 0 ? (
         /* Empty state */
         <div className="flex flex-col items-center gap-2 py-12 text-center">
           <svg className="h-10 w-10 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
           </svg>
-          <p className="text-sm font-medium text-text-primary">No entries yet</p>
+          <p className="text-sm font-medium text-text-primary">{totalEntries > 0 ? "No matching expenses" : "No entries yet"}</p>
           <p className="text-sm text-text-muted">
-            {isArchived
+            {totalEntries > 0 ? "Try changing your filters to see more expenses." : isArchived
               ? "This event is archived."
-              : "Log your first expense to get started."}
+              : canMutate ? "Log your first expense to get started." : "Expenses will appear here when the treasurer logs them."}
           </p>
         </div>
       ) : view === "grid" ? (
         /* Card grid */
         <div
-          className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 md:gap-5 lg:grid-cols-4 lg:gap-6 xl:grid-cols-5"
+          className={backHref ? "grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3" : "grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 md:gap-5 lg:grid-cols-4 lg:gap-6 xl:grid-cols-5"}
         >
           {entries.map((entry, index) => (
             <FadeIn key={entry.id} delay={30 + index * 80}>

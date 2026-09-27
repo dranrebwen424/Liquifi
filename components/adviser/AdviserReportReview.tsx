@@ -2,359 +2,195 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
-import { AlertTriangle, ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
+import { useRef, useState } from "react";
+import { ArrowLeft, ArrowUpRight, ChevronRight, Download, Eye, History, ReceiptText } from "lucide-react";
+import LottiePlayer from "@/components/LottiePlayer";
+import { ApprovalDecisionDialog } from "@/components/adviser/ApprovalDecisionDialog";
+import { FolderCard } from "@/components/events/FolderCard";
+import { entryTitle } from "@/components/entries/entry-title";
+import { StatusBadge, reportStatusMap } from "@/components/ui/StatusBadge";
 import type { getEventDashboard } from "@/lib/queries/events";
-import type { getLatestReportByEvent } from "@/lib/queries/reports";
+import type { ReportForDashboard } from "@/lib/queries/reports";
 import { formatPHP } from "@/lib/format";
 import { isUnresolvedOverspendEntry } from "@/lib/overspend";
-import { entryTitle } from "@/components/entries/entry-title";
-import { EntryList, type EntryListItem } from "@/components/entries/EntryList";
-import { ReportFileCard } from "@/components/reports/ReportFileCard";
-import { StatusBadge, reportStatusMap } from "@/components/ui/StatusBadge";
 
 type EventDashboard = NonNullable<Awaited<ReturnType<typeof getEventDashboard>>>;
-type LatestReport = NonNullable<Awaited<ReturnType<typeof getLatestReportByEvent>>>;
-
 type Props = {
   event: EventDashboard;
-  report: LatestReport;
+  report: ReportForDashboard & { rejection_reason?: string | null };
 };
+type Decision = "approve" | "reject";
 
 export function AdviserReportReview({ event, report }: Props) {
   const router = useRouter();
-  const [busy, setBusy] = useState<"approve" | "reject" | null>(null);
-  const [showReject, setShowReject] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState("");
+  const [decision, setDecision] = useState<Decision | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [reason, setReason] = useState("");
   const [comments, setComments] = useState<Record<string, string>>({});
-  const [error, setError] = useState<string | null>(null);
-  // Optimistic status while the approve/reject POST is in flight — badge +
-  // action section flip instantly; they revert on failure (server stays the
-  // source of truth, this is presentation only).
-  const [flash, setFlash] = useState<"approved" | "rejected" | null>(null);
-
-  const displayStatus = flash ?? report.status;
-  const statusEntry = reportStatusMap[displayStatus] ?? null;
-
-  const unresolved = useMemo(
-    () =>
-      event.entries.filter((entry) =>
-        isUnresolvedOverspendEntry(
-          entry.status,
-          entry.causes_overspend,
-          entry.overspend_resolved_at,
-        ),
-      ),
-    [event.entries],
+  const [error, setError] = useState<string>();
+  const [completed, setCompleted] = useState<"approved" | "rejected" | null>(null);
+  const submitting = useRef(false);
+  const [lastDecision, setLastDecision] = useState<Decision>("approve");
+  const reportPanel = useRef<HTMLElement>(null);
+  const approveButton = useRef<HTMLButtonElement>(null);
+  const rejectButton = useRef<HTMLButtonElement>(null);
+  const displayStatus = completed ?? report.status;
+  const status = reportStatusMap[displayStatus];
+  const canReview = displayStatus === "pending_adviser_approval" && event.status !== "archived";
+  const basePath = `/adviser/reports/${event.id}`;
+  const unresolved = event.entries.filter((entry) =>
+    isUnresolvedOverspendEntry(entry.status, entry.causes_overspend, entry.overspend_resolved_at),
   );
+  const showOverspend = unresolved.length > 0 && displayStatus !== "approved";
+  const activeDecision = decision ?? lastDecision;
+  const titleFor = (entry: EventDashboard["entries"][number]): string => entryTitle({
+    supplierName: entry.supplier_name, category: entry.category,
+    formPayload: entry.form_payload_json, itemBreakdown: entry.item_breakdown,
+  });
 
-  const listItems: EntryListItem[] = useMemo(
-    () =>
-      event.entries.map((entry) => ({
-        id: entry.id,
-        type: entry.type,
-        status: entry.status,
-        amount: Number(entry.amount),
-        supplierName: entry.supplier_name,
-        documentType: entry.document_type_raw,
-        documentNumber: entry.document_number,
-        category: entry.category,
-        issueDate: entry.issue_date,
-        issueTime: entry.issue_time,
-        imageUrl: entry.image_url,
-        itemBreakdown: entry.item_breakdown,
-        formPayload: entry.form_payload_json,
-        rejectionReason: entry.rejection_reason,
-        resubmissionExplanation: entry.resubmission_explanation,
-        createdAt: entry.created_at,
-        voidReason: entry.void_reason,
-        voidedBy: entry.voided_by,
-        voidedAt: entry.voided_at,
-        voidedByName: entry.voidedByName,
-      })),
-    [event.entries],
-  );
-
-  async function approve() {
-    const hasOverspend = unresolved.length > 0;
-    const ok = window.confirm(
-      hasOverspend
-        ? "This report has unresolved overspend entries. Approving acknowledges that overspend. Continue?"
-        : "Approve this report? This cannot be undone.",
-    );
-    if (!ok) return;
-
-    setBusy("approve");
-    setError(null);
-    setFlash("approved");
-    try {
-      const res = await fetch(`/api/reports/${report.id}/approve`, {
-        method: "POST",
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok || !json.success) {
-        setError(json.error ?? "Failed to approve report.");
-        setFlash(null);
-        return;
-      }
-      router.refresh();
-    } catch {
-      setError("Failed to approve report.");
-      setFlash(null);
-    } finally {
-      setBusy(null);
-    }
+  function openDecision(next: Decision): void {
+    setLastDecision(next);
+    setError(undefined);
+    setDecision(next);
   }
 
-  async function reject(e: React.FormEvent) {
-    e.preventDefault();
-    if (!rejectionReason.trim()) return;
-
-    setBusy("reject");
-    setError(null);
-    setFlash("rejected");
+  async function submitDecision(): Promise<void> {
+    if (!decision || !canReview || submitting.current || (decision === "reject" && !reason.trim())) return;
+    submitting.current = true;
+    setBusy(true);
+    setError(undefined);
     try {
-      const res = await fetch(`/api/reports/${report.id}/reject`, {
+      const response = await fetch(`/api/reports/${report.id}/${decision}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          rejection_reason: rejectionReason.trim(),
-          comments: unresolved
-            .filter((entry) => comments[entry.id]?.trim())
-            .map((entry) => ({
-              entry_id: entry.id,
-              text: comments[entry.id].trim(),
+        ...(decision === "reject" ? {
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            rejection_reason: reason.trim(),
+            comments: unresolved.filter((entry) => comments[entry.id]?.trim()).map((entry) => ({
+              entry_id: entry.id, text: comments[entry.id].trim(),
             })),
-        }),
+          }),
+        } : {}),
       });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok || !json.success) {
-        setError(json.error ?? "Failed to reject report.");
-        setFlash(null);
+      const result = await response.json().catch(() => null);
+      if (!response.ok || result?.success !== true) {
+        setError(response.status === 409
+          ? "This report has changed. Close this dialog and refresh the page before reviewing it."
+          : `Couldn't ${decision} this report. Please try again.`);
         return;
       }
+      setCompleted(decision === "approve" ? "approved" : "rejected");
+      setDecision(null);
       router.refresh();
     } catch {
-      setError("Failed to reject report.");
-      setFlash(null);
+      setError("Couldn't reach the server. Check your connection and try again.");
     } finally {
-      setBusy(null);
+      submitting.current = false;
+      setBusy(false);
     }
   }
 
   return (
-    <div className="flex flex-col gap-5 pb-16">
-      {/* Back link */}
-      <Link
-        href="/adviser/reports"
-        className="inline-flex items-center gap-1.5 text-sm text-text-secondary transition-colors hover:text-text-primary"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to reports
-      </Link>
-
-      {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold text-text-primary md:text-[28px]">
-              {event.name}
-            </h1>
-            {statusEntry && (
-              <StatusBadge
-                icon={statusEntry.icon}
-                variant={statusEntry.variant}
-                label={statusEntry.label}
-              />
-            )}
-          </div>
-          <p className="mt-1 text-xs text-text-muted">
-            {report.fs_document_number} · {formatPHP(event.total_spent)} of{" "}
-            {formatPHP(event.budget_total)} spent
-          </p>
-        </div>
-
-        {/* Round-trip to the full event dashboard */}
-        <Link
-          href={`/adviser/events/${event.id}`}
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-text-secondary transition-colors hover:text-text-primary"
-        >
-          View event
-          <ArrowRight className="h-4 w-4" />
+    <div className="mx-auto w-full max-w-2xl px-2 pb-16 pt-6 sm:px-4 sm:pt-10">
+      <header className="mb-8 flex items-start gap-2 sm:gap-3">
+        <Link href="/adviser/reports" prefetch aria-label="Back to reports" title="Back to reports"
+          className="-ml-3 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-text-primary transition-colors hover:bg-surface-secondary focus-visible:outline-2 focus-visible:outline-accent">
+          <ArrowLeft className="h-5 w-5" aria-hidden />
         </Link>
-      </div>
+        <div className="min-w-0 flex-1 pt-2">
+          <h1 className="break-words text-lg font-semibold leading-6 text-text-primary sm:text-2xl">{event.name}</h1>
+          <p className="mt-2 text-xs text-text-secondary">By: {event.created_by_name}</p>
+          <p className="mt-1 text-xs text-text-secondary">Created {new Date(event.created_at).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })}</p>
+        </div>
+        <Link href={`/adviser/events/${event.id}`} prefetch
+          className="mt-1 inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-border-strong px-3 text-xs font-medium text-text-primary transition-colors hover:bg-surface focus-visible:outline-2 focus-visible:outline-accent sm:px-4">
+          <ArrowUpRight className="h-3.5 w-3.5" aria-hidden /> View Event
+        </Link>
+      </header>
 
-      {/* Unresolved overspend banner */}
-      {unresolved.length > 0 && (
-        <div className="rounded-xl border border-warning bg-warning-lightest p-4">
-          <p className="flex items-center gap-2 text-sm font-semibold text-warning-foreground">
-            <AlertTriangle className="h-4 w-4" />
-            Unresolved overspend ({unresolved.length})
-          </p>
-          <ul className="mt-2 flex flex-col gap-2">
+      {showOverspend && (
+        <section aria-labelledby="overspend-title" className="relative mb-6 overflow-hidden rounded-xl bg-surface-inverse p-5 text-text-inverse sm:p-6">
+          <h2 id="overspend-title" className="relative z-10 text-sm font-semibold"><span className="text-error">Overspend</span> Reason</h2>
+          <ul className="relative z-10 mt-3 space-y-4 pr-16 sm:pr-24">
             {unresolved.map((entry) => (
-              <li
-                key={entry.id}
-                className="rounded-lg border border-warning/40 bg-surface px-3 py-2 text-xs text-text-secondary"
-              >
-                <span className="font-medium text-text-primary">
-                  {entryTitle({
-                    supplierName: entry.supplier_name,
-                    description: undefined,
-                    category: entry.category,
-                    formPayload: entry.form_payload_json,
-                    itemBreakdown: entry.item_breakdown,
-                  })}
-                </span>{" "}
-                — {formatPHP(Number(entry.amount))}
-                {entry.overspend_explanation && (
-                  <p className="mt-1 text-text-muted">
-                    {entry.overspend_explanation}
-                  </p>
-                )}
+              <li key={entry.id}>
+                <p className="break-words text-xs font-medium leading-5">{titleFor(entry)} <span className="whitespace-nowrap text-text-inverse/70">{formatPHP(Number(entry.amount))}</span></p>
+                <p className="mt-1 whitespace-pre-wrap break-words text-xs leading-5 text-text-inverse/80">{entry.overspend_explanation?.trim() || "No explanation was provided for this entry."}</p>
               </li>
             ))}
           </ul>
-        </div>
-      )}
-
-      {/* Signed report — a file card with View (full PDF) + Download */}
-      <section className="flex flex-col gap-2">
-        <h2 className="text-base font-semibold text-text-primary">
-          Signed report
-        </h2>
-        <ReportFileCard report={report} />
-      </section>
-
-      {/* Entries */}
-      <section className="flex flex-col gap-2">
-        <h2 className="text-base font-semibold text-text-primary">
-          Entries ({event.entries.length})
-        </h2>
-        <EntryList
-          entries={listItems}
-          isArchived={event.status === "archived"}
-          canMutate={false}
-        />
-      </section>
-
-      {/* Review actions */}
-      {displayStatus === "pending_adviser_approval" && (
-        <section className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
-          {error && (
-            <p className="rounded-lg border border-error/30 bg-error-lightest px-3 py-2 text-xs text-error">
-              {error}
-            </p>
-          )}
-
-          {!showReject ? (
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                disabled={busy !== null}
-                onClick={approve}
-                className="inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent-hover disabled:opacity-50"
-              >
-                {busy === "approve" ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : null}
-                {unresolved.length > 0
-                  ? "Acknowledge overspend & Approve"
-                  : "Approve Report"}
-              </button>
-              <button
-                type="button"
-                disabled={busy !== null}
-                onClick={() => {
-                  setError(null);
-                  setShowReject(true);
-                }}
-                className="rounded-full border border-error px-6 py-3 text-sm font-medium text-error transition-colors hover:bg-error-lightest disabled:opacity-50"
-              >
-                Reject Report
-              </button>
-            </div>
-          ) : (
-            <form onSubmit={reject} className="flex flex-col gap-3">
-              <div>
-                <label
-                  htmlFor="rejection-reason"
-                  className="mb-1 block text-xs font-medium text-text-secondary"
-                >
-                  Rejection reason{" "}
-                  <span className="text-error">*</span>
-                </label>
-                <textarea
-                  id="rejection-reason"
-                  required
-                  value={rejectionReason}
-                  onChange={(e) => setRejectionReason(e.target.value)}
-                  maxLength={1000}
-                  placeholder="Why is this report being rejected?"
-                  className="min-h-20 w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:ring-1 focus:ring-accent"
-                />
-              </div>
-
-              {unresolved.map((entry) => (
-                <div key={entry.id}>
-                  <label
-                    htmlFor={`comment-${entry.id}`}
-                    className="mb-1 block text-xs font-medium text-text-secondary"
-                  >
-                    Comment on{" "}
-                    {entryTitle({
-                      supplierName: entry.supplier_name,
-                      description: undefined,
-                      category: entry.category,
-                      formPayload: entry.form_payload_json,
-                      itemBreakdown: entry.item_breakdown,
-                    })}
-                    {" "}
-                    (optional)
-                  </label>
-                  <textarea
-                    id={`comment-${entry.id}`}
-                    value={comments[entry.id] ?? ""}
-                    onChange={(e) =>
-                      setComments((prev) => ({
-                        ...prev,
-                        [entry.id]: e.target.value,
-                      }))
-                    }
-                    maxLength={1000}
-                    placeholder="Optional note for this flagged entry"
-                    className="min-h-16 w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:ring-1 focus:ring-accent"
-                  />
-                </div>
-              ))}
-
-              <div className="flex flex-wrap items-center gap-3">
-                <button
-                  type="submit"
-                  disabled={busy !== null || !rejectionReason.trim()}
-                  className="rounded-full border border-error px-6 py-3 text-sm font-medium text-error transition-colors hover:bg-error-lightest disabled:opacity-50"
-                >
-                  {busy === "reject" ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : null}
-                  Confirm Rejection
-                </button>
-                <button
-                  type="button"
-                  disabled={busy !== null}
-                  onClick={() => {
-                    setShowReject(false);
-                    setError(null);
-                  }}
-                  className="rounded-full border border-border px-6 py-3 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-secondary disabled:opacity-50"
-                >
-                  Keep Report
-                </button>
-              </div>
-            </form>
-          )}
+          <LottiePlayer src="/mascot.json" className="pointer-events-none absolute bottom-1 right-1 h-24 w-24 sm:h-32 sm:w-32" />
         </section>
       )}
+
+      <section ref={reportPanel} tabIndex={-1} aria-labelledby="report-number" className="rounded-2xl bg-surface-inverse px-5 py-6 text-text-inverse outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 sm:p-7">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-xs text-text-inverse/65">Control Number</p>
+            <h2 id="report-number" className="mt-1 break-words text-base font-semibold tracking-tight sm:text-lg">{report.fs_document_number}</h2>
+            <p className="mt-2 text-xs text-text-inverse/65">Event Financial Statement Report</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            <a href={`/api/reports/${report.id}/pdf`} target="_blank" rel="noopener noreferrer" aria-label="View report PDF" title="View report PDF"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full text-text-inverse/80 transition-colors hover:bg-text-inverse/10 hover:text-text-inverse focus-visible:outline-2 focus-visible:outline-text-inverse">
+              <Eye className="h-5 w-5" aria-hidden />
+            </a>
+            <a href={`/api/reports/${report.id}/pdf?dl=1`} download aria-label="Download report PDF" title="Download report PDF"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full text-text-inverse/80 transition-colors hover:bg-text-inverse/10 hover:text-text-inverse focus-visible:outline-2 focus-visible:outline-text-inverse">
+              <Download className="h-5 w-5" aria-hidden />
+            </a>
+          </div>
+        </div>
+        <div aria-live="polite" className="mt-5 flex items-center gap-2 text-xs text-text-inverse/80">
+          <StatusBadge {...status} /> {event.status === "archived" ? "Archived" : status.label}
+        </div>
+        {canReview && (
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            <button ref={approveButton} type="button" onClick={() => openDecision("approve")} disabled={busy}
+              className="min-h-11 rounded-full bg-surface px-4 py-3 text-sm font-medium text-text-primary transition-colors hover:bg-surface-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-text-inverse disabled:opacity-50">Approve</button>
+            <button ref={rejectButton} type="button" onClick={() => openDecision("reject")} disabled={busy}
+              className="min-h-11 rounded-full border border-error/70 px-4 py-3 text-sm font-medium text-error transition-colors hover:bg-error/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-error disabled:opacity-50">Reject</button>
+          </div>
+        )}
+        {displayStatus === "rejected" && (reason || report.rejection_reason) && (
+          <p className="mt-4 whitespace-pre-wrap break-words border-t border-text-inverse/15 pt-4 text-xs leading-5 text-text-inverse/80">{reason || report.rejection_reason}</p>
+        )}
+      </section>
+
+      <nav aria-label="Report details" className="mt-8">
+        <div className="grid grid-cols-2 gap-8 sm:gap-12">
+          <FolderCard id={event.id} name="Expenses" href={`${basePath}/expenses`} />
+          <FolderCard id={event.id} name="Budget History" href={`${basePath}/budget-history`} />
+        </div>
+        <div className="mt-7 flex flex-col gap-3">
+          {[
+            { label: "Spending Summary", path: "spending-summary", icon: ReceiptText },
+            { label: "Previous Revisions", path: "previous-revisions", icon: History },
+          ].map(({ label, path, icon: Icon }) => (
+            <Link key={path} href={`${basePath}/${path}`} prefetch className="flex min-h-14 items-center gap-3 rounded-sm bg-surface px-4 py-3.5 text-sm font-medium text-text-primary shadow-card transition-colors hover:bg-surface-secondary focus-visible:outline-2 focus-visible:outline-accent">
+              <Icon className="h-5 w-5 shrink-0 text-text-secondary" aria-hidden />
+              <span className="flex-1">{label}</span><ChevronRight className="h-4 w-4 text-text-secondary" aria-hidden />
+            </Link>
+          ))}
+        </div>
+      </nav>
+
+      <ApprovalDecisionDialog modal open={decision !== null} title={activeDecision === "reject" ? "Reject this report?" : "Approve this report?"}
+        description={activeDecision === "reject" ? "Tell the treasurer what needs to change before they submit a new revision." : unresolved.length > 0 ? "Approving acknowledges all unresolved overspend shown on this report. This decision cannot be undone." : "The report will be ready for signing. This decision cannot be undone."}
+        confirmLabel={activeDecision === "reject" ? "Reject report" : unresolved.length > 0 ? "Acknowledge & approve" : "Approve report"}
+        busyLabel={activeDecision === "reject" ? "Rejecting…" : "Approving…"} tone={activeDecision}
+        reason={activeDecision === "reject" ? reason : undefined} onReasonChange={setReason} reasonLabel="Rejection reason (required)" reasonPlaceholder="Explain what needs to be corrected" reasonMaxLength={1000}
+        busy={busy} error={error} finalFocus={completed ? reportPanel : lastDecision === "reject" ? rejectButton : approveButton}
+        onClose={() => { if (!submitting.current) { setDecision(null); setError(undefined); } }} onConfirm={submitDecision}>
+        {activeDecision === "reject" && unresolved.map((entry) => (
+          <label key={entry.id} className="block space-y-2">
+            <span className="text-xs font-medium text-text-secondary">Note on {titleFor(entry)} (optional)</span>
+            <textarea value={comments[entry.id] ?? ""} onChange={(change) => setComments((previous) => ({ ...previous, [entry.id]: change.target.value }))}
+              disabled={busy} rows={2} maxLength={1000} placeholder="Add a note about this expense"
+              className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:ring-1 focus:ring-accent" />
+          </label>
+        ))}
+      </ApprovalDecisionDialog>
     </div>
   );
 }

@@ -17,6 +17,7 @@ type EntryRowProps = {
   createdAt?: string;
   voidedAt?: string | null;
   voidedByName?: string | null;
+  voidReason?: string | null;
   onClick?: () => void;
 };
 
@@ -47,6 +48,7 @@ export function EntryRow({
   createdAt,
   voidedAt,
   voidedByName,
+  voidReason,
   onClick,
 }: EntryRowProps) {
   const isVoided = status === "voided";
@@ -56,9 +58,18 @@ export function EntryRow({
   return (
     <div
       onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={(event) => {
+        if (onClick && (event.key === "Enter" || event.key === " ")) {
+          event.preventDefault();
+          onClick();
+        }
+      }}
       className={cn(
         "flex cursor-pointer items-start justify-between px-4 py-3 transition-colors hover:bg-surface-secondary/50",
         "md:items-center md:justify-start md:gap-4 md:grid md:[grid-template-columns:minmax(0,2.5fr)_1fr_1fr_0.8fr_7rem]",
+        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
         isVoided && "opacity-60",
       )}
     >
@@ -92,6 +103,7 @@ export function EntryRow({
               {[category, dateStr].filter(Boolean).join(" \u00B7 ") || "\u00A0"}
             </p>
           )}
+          {isVoided && voidReason && <p className="mt-1 break-words text-xs text-text-secondary">{voidReason}</p>}
         </div>
       </div>
 
