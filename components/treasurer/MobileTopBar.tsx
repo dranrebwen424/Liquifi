@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { ArrowLeft, Bell, Search } from "lucide-react";
 import { isImmersivePage } from "@/lib/event-route";
+import { useAutoHideTopBar } from "@/hooks/useAutoHideTopBar";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -29,36 +30,18 @@ export function MobileTopBar({
   const profilePage =
     pathname === "/treasurer/profile" || pathname === "/adviser/profile";
   const hidden = isImmersivePage(pathname) || profilePage;
-  const keepVisible = pathname === "/treasurer/reports" || pathname === "/adviser/reports";
-  const isReportsPage = keepVisible;
+  const isReportsPage =
+    pathname === "/treasurer/reports" || pathname === "/adviser/reports";
 
-  // Hide on scroll down, reappear on scroll up. Translate-only (no height
-  // collapse) so it tracks the flow and never causes layout/scroll feedback.
-  const [scrolledDown, setScrolledDown] = useState(false);
-  const lastY = useRef(0);
+  // Hide on scroll down, reappear on scroll up. Shared hook with the admin top
+  // bars, so treasurer/adviser get the same tested thresholds (8px direction,
+  // always visible within 16px of the page top) instead of a local copy.
+  // Translate-only, so it never causes layout/scroll feedback.
+  const topBarVisible = useAutoHideTopBar();
 
-  useEffect(() => {
-    let ticking = false;
-    const onScroll = () => {
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(() => {
-        const y = window.scrollY;
-        if (y <= lastY.current) {
-          setScrolledDown(false); // up or at top -> show
-        } else if (y > 72) {
-          setScrolledDown(true); // clearly scrolled down -> hide
-        }
-        lastY.current = y;
-        ticking = false;
-      });
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    onScroll();
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  const collapsed = hidden || (!keepVisible && scrolledDown);
+  // Search stays pinned so the input can't slide away mid-interaction — the
+  // same rule the admin bars apply to their focused search.
+  const collapsed = hidden || (!isSearching && !topBarVisible);
 
   // ponytail: debounce URL sync so router.replace doesn't fire on every keystroke
   useEffect(() => {

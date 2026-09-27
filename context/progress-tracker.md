@@ -93,6 +93,14 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Decisions Made During Build
 
+### 2026-09-27 - Mobile top bar retracts on scroll everywhere, like the admin bars
+
+- **The behaviour already existed but was switched off in one place.** `MobileTopBar` had its own inline scroll listener (72px threshold, no near-top guarantee, untested) and a `keepVisible` guard that pinned the bar on `/treasurer/reports` and `/adviser/reports`. That guard existed to stop a `sticky top-16` filter strip being stranded when the header slid away — but the strip was lost in the 09-27 rebuild (`ReportsOverview.tsx` filter row is now a plain `border-y` block that scrolls away), so the pin was protecting nothing.
+- **One implementation, not two.** The inline listener is replaced by the shared `useAutoHideTopBar` hook, so treasurer and adviser get the same tested `resolveTopBarScroll` the admin bars use: 8px direction threshold, always visible within 16px of the page top, `translate-y` only. `scripts/check-top-bar-scroll.ts` covers that logic and now applies to three top bars instead of two.
+- **Search stays pinned** (`collapsed = hidden || (!isSearching && !topBarVisible)`) so the autofocus input cannot slide away mid-interaction — the rule the admin bars already apply to their focused search.
+- **Immersive routes deliberately unchanged.** Report *detail* and its three sub-pages, event pages, notifications, and the all-events list still render no top bar at all, and `MobileBottomNav` shares `isImmersivePage`. This matches the admin bars, which also return `null` on immersive routes — the request was for the retract *behaviour* to match admin, not to extend admin's presence to pages admin itself leaves chrome-free. Bringing a bar back to the report workspace would put a hamburger/search/bell row above the page's own back arrow and cost ~64px of a deliberately single-column layout.
+- **Verification:** `tsc --noEmit`, scoped ESLint, `next build`, and all 16 check scripts pass, including `check-top-bar-scroll`. **No browser available**, so the retract was not observed live; the wiring is a one-line predicate over an already-tested hook.
+
 ### 2026-09-27 - Report rejection notes reach the treasurer, and report navigation warms up
 
 - **A write-only table is now read.** `entry_comments` was inserted by the reject route and read by nothing, so the adviser's per-entry note was invisible to the treasurer. `getEntryCommentsByReportIds` (`lib/queries/reports.ts`) reads it back and the rejection card renders each note under a `Notes on your entries` heading, naming the entry with `entryTitle()` and pricing it with `formatPHP()`. A comment whose entry no longer resolves still renders its text.
