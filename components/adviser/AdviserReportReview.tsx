@@ -20,9 +20,8 @@ type Props = {
   report: ReportForDashboard & { rejection_reason?: string | null };
   /**
    * `"adviser"` (default) is the deciding view. `"admin"` is the read-only
-   * department-workspace view: same presentation, but the Approve/Reject
-   * controls are omitted entirely and the destination links are suppressed
-   * because the admin has no equivalent sub-routes yet.
+   * department-workspace view: same presentation and same destinations, but the
+   * Approve/Reject controls and their dialog are omitted entirely.
    */
   role?: "adviser" | "admin";
 };
@@ -165,10 +164,6 @@ export function AdviserReportReview({ event, report, role = "adviser" }: Props) 
         )}
       </section>
 
-      {/* Destination links are omitted for admin: the department workspace has
-          no expenses / budget-history / spending-summary / previous-revisions /
-          signed-report sub-routes yet, and a link that 404s is worse than none. */}
-      {!readOnly && (
       <nav aria-label="Report details" className="mt-8">
         <div className="grid grid-cols-2 gap-8 sm:gap-12">
           <FolderCard id={event.id} name="Expenses" href={`${basePath}/expenses`} />
@@ -189,7 +184,6 @@ export function AdviserReportReview({ event, report, role = "adviser" }: Props) 
           ))}
         </div>
       </nav>
-      )}
 
       {!readOnly && (
       <ApprovalDecisionDialog modal open={decision !== null} title={activeDecision === "reject" ? "Reject this report?" : "Approve this report?"}

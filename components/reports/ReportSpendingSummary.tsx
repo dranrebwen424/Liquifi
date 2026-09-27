@@ -6,16 +6,18 @@ import type { getEventDashboard } from "@/lib/queries/events";
 type Props = {
   event: NonNullable<Awaited<ReturnType<typeof getEventDashboard>>>;
   role?: "treasurer" | "adviser";
+  /** Overrides the derived back target — see ReportDetailHeader. */
+  backHref?: string;
 };
 
-export function ReportSpendingSummary({ event, role = "treasurer" }: Props) {
+export function ReportSpendingSummary({ event, role = "treasurer", backHref }: Props) {
   const eventId = event.id;
   const breakdown = computeSpendingBreakdown(event.entries);
   const remaining = event.budget_total - event.total_spent;
 
   return (
     <div className="mx-auto w-full max-w-2xl px-2 pb-16 pt-6 sm:px-4 sm:pt-10">
-      <ReportDetailHeader role={role} eventId={eventId} title="Spending Summary" />
+      <ReportDetailHeader role={role} eventId={eventId} title="Spending Summary" backHref={backHref} />
       <section aria-labelledby="totals-title">
         <h2 id="totals-title" className="mb-3 text-xs font-medium text-text-secondary">Event totals</h2>
         <dl className="flex flex-col gap-2.5">

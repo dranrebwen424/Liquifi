@@ -1,4 +1,5 @@
 import assert from "node:assert";
+import { readFileSync } from "node:fs";
 import { getDepartmentEventSections } from "../lib/admin-department-detail";
 
 const events = [
@@ -41,5 +42,33 @@ assert.deepEqual(oldestFirst.archivedEvents.map((event) => event.id), [
   "archive-old",
   "archive-new",
 ]);
+
+// ── Admin report sub-routes ────────────────────────────────────────────
+// Source-level guard assertions, matching how this script family already
+// covers admin pages. Every department-nested report route must require the
+// admin role and reject an event that does not belong to the department in
+// the path, before it reads anything.
+const reportSubRoutes = [
+  "app/admin/departments/[departmentId]/reports/[eventId]/page.tsx",
+  "app/admin/departments/[departmentId]/reports/[eventId]/expenses/page.tsx",
+  "app/admin/departments/[departmentId]/reports/[eventId]/budget-history/page.tsx",
+  "app/admin/departments/[departmentId]/reports/[eventId]/spending-summary/page.tsx",
+  "app/admin/departments/[departmentId]/reports/[eventId]/previous-revisions/page.tsx",
+  "app/admin/departments/[departmentId]/reports/[eventId]/signed-report/page.tsx",
+];
+for (const route of reportSubRoutes) {
+  const source = readFileSync(route, "utf8");
+  assert.match(source, /requireRole\("admin"\)/, `${route} must require the admin role`);
+  assert.match(
+    source,
+    /event\.department_id !== departmentId\)\s*notFound\(\)/,
+    `${route} must 404 when the event is not in the department path`,
+  );
+}
+
+// The workspace must honour ?tab=reports, or the admin report page's back
+// link silently lands on the Events tab.
+const workspace = readFileSync("app/admin/departments/[departmentId]/page.tsx", "utf8");
+assert.match(workspace, /tab === "reports"/, "the department workspace must accept ?tab=reports");
 
 console.log("admin department detail check: all assertions passed");

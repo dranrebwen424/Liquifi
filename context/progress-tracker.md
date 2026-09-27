@@ -95,6 +95,14 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Decisions Made During Build
 
+### 2026-09-28 - Admin gets the full report destination set
+
+- **Follow-up to the admin report parity work:** the destination links that were deliberately omitted are now backed by real routes. `/admin/departments/[deptId]/reports/[eventId]/` gains `expenses`, `budget-history`, `spending-summary`, `previous-revisions` and `signed-report`, so the admin report page shows the same Expenses + Budget History folder cards and Spending Summary / Previous Revisions / Signed Report rows as the adviser.
+- **Reused, not rebuilt.** The five pages are thin wrappers over the same shared components the adviser uses — `ExpensesSection`, `BudgetHistoryList`, `ReportSpendingSummary`, `ReportPreviousRevisions`, `SignedReportPages`. Every one requires `requireRole("admin")` and 404s when `event.department_id !== departmentId` before reading anything. Expenses is `canMutate={false}`.
+- **Back targets without teaching shared components about departments.** `ReportDetailHeader`, `ReportSpendingSummary` and `ReportPreviousRevisions` gained an optional `backHref` that overrides the derived `/{role}/reports/{eventId}` link. Existing treasurer/adviser call sites are unchanged. This was preferred over widening their `role` unions to `"admin"`, which would have forced those components to know the department path shape.
+- **Still read-only.** `role="admin"` continues to force `canReview` false, so no Approve/Reject controls and no decision dialog.
+- Verification: `tsc --noEmit`, `next build` (all six admin report routes in the manifest), and all 17 check scripts pass. `check-adviser-report-ui.cjs` now asserts the admin links point at the *admin* routes for all four always-present destinations, that Signed Report appears only when archived, and that neither deciding button renders in any admin state. `check-admin-department-detail.ts` gained source-level guard assertions for all six admin report routes plus the `?tab=reports` requirement, matching how this script family already covers admin pages. No browser available, so the rendered admin navigation is unverified.
+
 ### 2026-09-28 - Admin report page adopts the adviser report presentation
 
 - **One component, two roles.** `AdviserReportReview` gains `role?: "adviser" | "admin"`, mirroring `ReportDetailHeader`'s existing `role` prop. `/admin/departments/[deptId]/reports/[eventId]` now renders `role="admin"` instead of its own `ReportViewer` layout, so the event header, unresolved-overspend disclosure and control-number panel match the adviser view exactly.

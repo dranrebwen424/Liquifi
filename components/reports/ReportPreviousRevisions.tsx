@@ -7,9 +7,11 @@ type Props = {
   reports: Awaited<ReturnType<typeof getAllReportsByEvent>>;
   eventId: string;
   role?: "treasurer" | "adviser";
+  /** Overrides the derived back target — see ReportDetailHeader. */
+  backHref?: string;
 };
 
-export function ReportPreviousRevisions({ reports, eventId, role = "treasurer" }: Props) {
+export function ReportPreviousRevisions({ reports, eventId, role = "treasurer", backHref }: Props) {
   const byMonth = new Map<string, typeof reports>();
   for (const report of reports) {
     const month = new Date(report.generated_at).toLocaleDateString("en-PH", { month: "long", year: "numeric" });
@@ -20,7 +22,7 @@ export function ReportPreviousRevisions({ reports, eventId, role = "treasurer" }
 
   return (
     <div className="mx-auto w-full max-w-2xl px-2 pb-16 pt-6 sm:px-4 sm:pt-10">
-      <ReportDetailHeader role={role} eventId={eventId} title="Previous Revisions" />
+      <ReportDetailHeader role={role} eventId={eventId} title="Previous Revisions" backHref={backHref} />
       {reports.length === 0 ? (
         <p className="mt-16 text-center text-sm text-text-muted">No previous revisions yet.</p>
       ) : (

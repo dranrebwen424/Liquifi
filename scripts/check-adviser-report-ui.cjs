@@ -120,19 +120,21 @@ async function main() {
   assert(adminPending.includes('aria-label="View report PDF"'), "admin keeps PDF access");
   assert(!adminPending.includes(">Approve</button>"), "admin must not be able to approve");
   assert(!adminPending.includes(">Reject</button>"), "admin must not be able to reject");
-  assert(!adminPending.includes("/expenses"), "admin has no expenses sub-route");
-  assert(!adminPending.includes("/budget-history"), "admin has no budget-history sub-route");
-  assert(!adminPending.includes("/spending-summary"), "admin has no spending-summary sub-route");
-  assert(!adminPending.includes("/previous-revisions"), "admin has no previous-revisions sub-route");
-  assert(!adminPending.includes("/signed-report"), "admin has no signed-report sub-route");
+  // Admin has its own department-nested sub-routes for every destination.
+  for (const destination of ["expenses", "budget-history", "spending-summary", "previous-revisions"]) {
+    assert(adminPending.includes(`href="/admin/departments/dept-1/reports/event-1/${destination}"`),
+      `admin must link its own ${destination} route`);
+  }
+  assert(!adminPending.includes("/signed-report"), "Signed Report is archived-only");
   assert(adminPending.includes('href="/admin/departments/dept-1/events/event-1"'), "View Event points at the admin event page");
   assert(adminPending.includes('href="/admin/departments/dept-1?tab=reports"'), "back returns to the department Reports tab");
-  // Archived admin view still suppresses destinations — Signed Report is a
-  // destination, and the admin has no signed-report route.
+  // Archived admin view gains the Signed Report destination, on the admin route.
   const adminArchived = render(React.createElement(AdviserReportReview, {
     event: { ...event, status: "archived" }, report: { ...report, status: "approved" }, role: "admin",
   }));
-  assert(!adminArchived.includes("/signed-report"), "archived admin view must not link Signed Report");
+  assert(adminArchived.includes('href="/admin/departments/dept-1/reports/event-1/signed-report"'));
+  assert(!adminArchived.includes(">Approve</button>"), "archived admin view still has no Approve");
+  assert(!adminArchived.includes(">Reject</button>"), "archived admin view still has no Reject");
   const resolved = { ...flagged, entries: flagged.entries.map((entry) => ({ ...entry, overspend_resolved_at: "2026-09-27" })) };
   assert(!render(React.createElement(AdviserReportReview, { event: resolved, report })).includes("overspend-title"));
   const archived = render(React.createElement(AdviserReportReview, { event: { ...event, status: "archived" }, report }));

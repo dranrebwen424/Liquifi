@@ -1,0 +1,25 @@
+import { notFound } from "next/navigation";
+import { BudgetHistoryList } from "@/components/events/BudgetHistoryList";
+import { ReportDetailHeader } from "@/components/reports/ReportDetailHeader";
+import { requireRole } from "@/lib/auth-guard";
+import { getBudgetProofsByEvent } from "@/lib/queries/budget-proofs";
+import { getEventDashboard } from "@/lib/queries/events";
+
+type Props = { params: Promise<{ departmentId: string; eventId: string }> };
+
+export default async function AdminReportBudgetHistoryPage({ params }: Props) {
+  const { departmentId, eventId } = await params;
+  await requireRole("admin");
+  const event = await getEventDashboard(eventId);
+  if (!event || event.department_id !== departmentId) notFound();
+
+  const proofs = await getBudgetProofsByEvent(eventId, departmentId);
+
+  return (
+    <div className="mx-auto w-full max-w-2xl px-2 pb-16 pt-6 sm:px-4 sm:pt-10">
+      <ReportDetailHeader eventId={eventId} title="Budget History"
+        backHref={`/admin/departments/${departmentId}/reports/${eventId}`} />
+      <BudgetHistoryList proofs={proofs} />
+    </div>
+  );
+}
