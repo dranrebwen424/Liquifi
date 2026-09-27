@@ -14,9 +14,11 @@ type Props = {
   className?: string;
   /** Align the open menu to the button's right edge (for right-aligned triggers). */
   align?: "left" | "right";
+  /** Compact option rows — for stacked dropdowns inside the mobile filter popover. */
+  dense?: boolean;
 };
 
-export function FilterDropdown({ label, options, value, onChange, className, align = "left" }: Props) {
+export function FilterDropdown({ label, options, value, onChange, className, align = "left", dense = false }: Props) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(() =>
     Math.max(0, options.findIndex((o) => o.value === value)),
@@ -108,7 +110,8 @@ export function FilterDropdown({ label, options, value, onChange, className, ali
               onMouseEnter={() => setActive(i)}
               onClick={() => choose(o.value)}
               className={cn(
-                "cursor-pointer whitespace-nowrap px-3 py-2 text-sm transition-colors",
+                "cursor-pointer whitespace-nowrap transition-colors",
+                dense ? "px-2.5 py-1.5 text-xs" : "px-3 py-2 text-sm",
                 o.value === value
                   ? "bg-accent-muted font-medium text-accent"
                   : i === active

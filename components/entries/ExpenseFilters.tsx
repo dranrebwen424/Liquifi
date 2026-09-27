@@ -153,28 +153,28 @@ function FilterPopover({ filters, onChange, categories }: Props) {
   };
 
   return (
-    <div className="absolute right-0 top-full z-30 mt-1.5 w-64 rounded-lg border border-border-strong bg-surface p-4 shadow-card">
-      <div className="flex flex-col gap-4">
+    <div className="absolute right-0 top-full z-30 mt-1.5 w-60 rounded-lg border border-border-strong bg-surface p-3 shadow-card">
+      <div className="flex flex-col gap-2.5">
         <div>
-          <p className="mb-1.5 text-xs font-medium text-text-muted">Type</p>
-          <FilterDropdown label="Type" options={TYPE_OPTIONS} value={filters.type} onChange={(v) => update("type", v)} className="w-full" />
+          <p className="mb-1 text-[11px] font-medium text-text-muted">Type</p>
+          <FilterDropdown label="Type" options={TYPE_OPTIONS} value={filters.type} onChange={(v) => update("type", v)} className="w-full" dense />
         </div>
         <div>
-          <p className="mb-1.5 text-xs font-medium text-text-muted">Sort</p>
-          <FilterDropdown label="Sort" options={SORT_OPTIONS} value={filters.sort} onChange={(v) => update("sort", v)} className="w-full" />
+          <p className="mb-1 text-[11px] font-medium text-text-muted">Sort</p>
+          <FilterDropdown label="Sort" options={SORT_OPTIONS} value={filters.sort} onChange={(v) => update("sort", v)} className="w-full" dense />
         </div>
         <div>
-          <p className="mb-1.5 text-xs font-medium text-text-muted">Budget</p>
-          <FilterDropdown label="Budget" options={BUDGET_OPTIONS} value={filters.budget} onChange={(v) => update("budget", v)} className="w-full" />
+          <p className="mb-1 text-[11px] font-medium text-text-muted">Budget</p>
+          <FilterDropdown label="Budget" options={BUDGET_OPTIONS} value={filters.budget} onChange={(v) => update("budget", v)} className="w-full" dense />
         </div>
         <div>
-          <p className="mb-1.5 text-xs font-medium text-text-muted">Category</p>
-          <FilterDropdown label="Category" options={categoryOptions} value={filters.category} onChange={(v) => update("category", v)} className="w-full" />
+          <p className="mb-1 text-[11px] font-medium text-text-muted">Category</p>
+          <FilterDropdown label="Category" options={categoryOptions} value={filters.category} onChange={(v) => update("category", v)} className="w-full" dense />
         </div>
       </div>
       <button
         onClick={() => onChange(DEFAULT_FILTERS)}
-        className="mt-4 w-full rounded-xl border border-border py-2.5 text-sm font-medium text-text-secondary hover:bg-surface-secondary hover:text-text-primary"
+        className="mt-3 w-full rounded-xl border border-border py-2 text-xs font-medium text-text-secondary hover:bg-surface-secondary hover:text-text-primary"
       >
         Reset Filters
       </button>
