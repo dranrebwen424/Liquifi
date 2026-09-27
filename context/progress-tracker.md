@@ -95,6 +95,13 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Decisions Made During Build
 
+### 2026-09-27 - Adviser home loses the Latest notifications card
+
+- **What went:** the `AdviserNotificationCard` spotlight panel (`bg-surface-inverse`, `Wumpus` Lottie cycling notification pairs every 4.2s) from `/adviser/home`, per user direction.
+- **Dead code removed with it, not left behind:** the page's 12-row unread `notifications` query and its `notificationContent` mapping, the `AdviserNotificationCard` component file (nothing else imported it), and the `topSlot` prop on `TreasurerHomeClient` — that slot existed solely for this card, so the shared treasurer/adviser client no longer carries a prop no caller uses. `ReactNode` went with it from the type import.
+- **No capability lost.** The adviser still has the unread badge on the sidebar / bottom nav / mobile top bar bell, the full `/adviser/notifications` page, and web push. Only the on-page spotlight is gone.
+- **Verification:** `tsc --noEmit`, `next build`, and all 17 check scripts pass (none asserted on the card). Scoped ESLint on the two touched files reports one **pre-existing** `setState`-in-effect error at `app/treasurer/home/client.tsx` — confirmed present on `HEAD` at line 106, unrelated to this change. No browser available, so the page was not seen rendered.
+
 ### 2026-09-27 - Adviser report page: identity panel and mobile metadata scale
 
 - **The Control Number panel no longer carries the rejection reason.** It renders FS number, subtitle, PDF View/Download, status and the Approve/Reject actions only. The reason an adviser typed is a review artefact, not report identity: the adviser reads it back on `previous-revisions`, and the treasurer reads their copy in the treasurer rejection card. This is the second placement correction to this string today — the first was that the reject route never persisted it at all.

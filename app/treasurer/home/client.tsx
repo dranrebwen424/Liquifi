@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
-import type { ComponentType, ReactNode } from "react";
+import type { ComponentType } from "react";
 import { Plus, Search, Archive, ArrowLeft, ChevronRight } from "lucide-react";
 import { EventCard } from "@/components/events/EventCard";
 import { EventListItem } from "@/components/events/EventListItem";
@@ -29,7 +29,6 @@ type Props = {
   events: EventWithMeta[];
   readOnly?: boolean;
   paths?: HomePaths;
-  topSlot?: ReactNode;
 };
 
 const TREASURER_PATHS: HomePaths = {
@@ -80,7 +79,6 @@ export function TreasurerHomeClient({
   events,
   readOnly = false,
   paths = TREASURER_PATHS,
-  topSlot,
 }: Props) {
 const router = useRouter();
   const searchParams = useSearchParams();
@@ -235,11 +233,6 @@ const router = useRouter();
         </div>
       </div>
 
-{topSlot && (
-        <div className={isSearching ? "hidden md:block" : undefined}>
-          {topSlot}
-        </div>
-      )}
       {/* ═══════════════════════════════════════════════════════════
           MOBILE LAYOUT — Figma "treasurer home page" design
           ═══════════════════════════════════════════════════════════ */}
