@@ -45,6 +45,13 @@ const report = {
 let currentEvent = event;
 let currentReports = [report];
 let currentEntryComments = [];
+let currentSignedReport = {
+  id: "report-1",
+  fs_document_number: "FS-CCS-2026-00001",
+  signed_document_urls: ["a/1", "a/2"],
+  signed_page_count: 2,
+  signing_confirmed_at: "2026-09-27T00:00:00Z",
+};
 let reportReads = 0;
 let proofReads = 0;
 let entryCommentReads = 0;
@@ -65,6 +72,11 @@ mocks.set("@/lib/queries/reports", {
     entryCommentReads += 1;
     commentReportIds = reportIds;
     return currentEntryComments;
+  },
+  getSignedReportByEvent: async (eventId, departmentId) => {
+    assert.equal(eventId, event.id);
+    assert.equal(departmentId, "dept-1");
+    return currentSignedReport;
   },
 });
 mocks.set("@/lib/queries/budget-proofs", { getBudgetProofsByEvent: async (eventId, departmentId) => {
@@ -131,12 +143,19 @@ async function main() {
   assert(archived.includes("Your report is complete"));
   assert(archived.includes("Print Report"));
   assert(!archived.includes('aria-current="step"'));
+  // Signed Report is an archived-only destination.
+  assert(archived.includes(`href="/treasurer/reports/${event.id}/signed-report"`));
+  assert(archived.includes(">Signed Report</span>"));
+  for (const status of ["pending_adviser_approval", "approved", "rejected", "cancelled"]) {
+    const open = workspace(event, { ...report, status });
+    assert(!open.includes("signed-report"), `Signed Report must not appear for a ${status} report`);
+  }
 
   const blocked = workspace({ ...event, entries: [{ ...event.entries[0], status: "pending_approval" }] }, null);
   assert(blocked.includes("Your adviser needs to resolve the pending expenses"));
   assert.match(blocked, /<button[^>]*disabled=""[^>]*aria-describedby="report-generation-blocked"/);
 
-  const pages = ["", "budget-history/", "spending-summary/", "previous-revisions/"];
+  const pages = ["", "budget-history/", "spending-summary/", "previous-revisions/", "signed-report/"];
   for (const page of pages) {
     const Page = require(`../app/treasurer/reports/[eventId]/${page}page.tsx`).default;
     const props = { params: Promise.resolve({ eventId: event.id }) };
@@ -144,6 +163,22 @@ async function main() {
     if (page) assert(html.includes(`href="/treasurer/reports/${event.id}"`));
     if (page === "budget-history/") assert(html.includes("No budget history yet."));
     if (page === "previous-revisions/") assert(html.includes("No previous revisions yet."));
+    if (page === "signed-report/") {
+      assert(html.includes("Signed Report</h1>"));
+      assert(html.includes("2 uploaded pages"), "page count must come from the stored keys");
+      assert(html.includes("/api/reports/report-1/signed-page?i=0"));
+      assert(html.includes("/api/reports/report-1/signed-page?i=1"));
+      currentSignedReport = null;
+      const empty = render(await Page(props));
+      assert(empty.includes("No signed report yet"));
+      currentSignedReport = {
+        id: "report-1",
+        fs_document_number: "FS-CCS-2026-00001",
+        signed_document_urls: ["a/1", "a/2"],
+        signed_page_count: 2,
+        signing_confirmed_at: "2026-09-27T00:00:00Z",
+      };
+    }
     if (page === "spending-summary/") {
       assert(html.includes("3,000.00"));
       assert(!html.includes("9,000.00"), "Voided expenses must not contribute to spending");

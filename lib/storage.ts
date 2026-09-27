@@ -268,38 +268,34 @@ export async function deleteSignedReportPage(key: string): Promise<void> {
 }
 
 /**
- * Get presigned URL for signed report page.
+ * Download one uploaded signed-report page as a blob. `index` is 0-based into
+ * `signed_document_urls`, which holds the authoritative storage keys — reading
+ * the key from the row rather than rebuilding `{deptId}/reports/{id}/page-N.jpg`
+ * keeps this correct if the key pattern ever changes.
+ * Ownership is enforced by the caller (route-level requireRole).
  */
-export async function getSignedReportUrl(
+export async function getSignedReportPageBlob(
   reportId: string,
-  pageN: number,
-): Promise<string> {
-  const deptId = await getUserDeptId();
-  if (!deptId) throw new Error("Authentication required");
-
+  index = 0,
+): Promise<Blob> {
   const insforge = await createInsforgeServer();
   const { data: report, error } = await insforge.database
     .from("reports")
-    .select("id, event_id")
+    .select("id, signed_document_urls")
     .eq("id", reportId)
     .single();
 
   if (error || !report) throw new Error("Report not found");
 
-  const { data: sigEvent } = await insforge.database
-    .from("events")
-    .select("department_id")
-    .eq("id", report.event_id)
-    .single();
-  if (!sigEvent || sigEvent.department_id !== deptId) throw new Error("Unauthorized");
+  const key = (report.signed_document_urls ?? [])[index];
+  if (!key) throw new Error("Report page not found");
 
-  const key = `${deptId}/reports/${reportId}/page-${pageN}.jpg`;
-  const { data: blob } = await insforge.storage
+  const { data: blob, error: downloadError } = await insforge.storage
     .from(SIGNED_REPORT_BUCKET)
     .download(key);
 
-  if (blob) return URL.createObjectURL(blob);
-  throw new Error("Report page not found");
+  if (downloadError || !blob) throw new Error("Report page not found");
+  return blob;
 }
 
 /**

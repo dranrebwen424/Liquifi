@@ -100,6 +100,39 @@ export const getEntryCommentsByReportIds = cache(async function getEntryComments
   return (data ?? []) as EntryComment[];
 });
 
+/** The latest report that actually carries uploaded signed pages, for an event.
+ *  Scoped through `events!inner(department_id)` like getAllReportsByEvent.
+ *  Returns null when nothing has been signed/archived yet. */
+export const getSignedReportByEvent = cache(async function getSignedReportByEvent(
+  eventId: string,
+  departmentId: string,
+): Promise<{
+  id: string;
+  fs_document_number: string;
+  signed_document_urls: string[] | null;
+  signed_page_count: number | null;
+  signing_confirmed_at: string | null;
+} | null> {
+  const insforge = await createInsforgeServer();
+
+  const { data, error } = await insforge.database
+    .from("reports")
+    .select(
+      "id, fs_document_number, signed_document_urls, signed_page_count, signing_confirmed_at, events!inner(department_id)",
+    )
+    .eq("event_id", eventId)
+    .eq("events.department_id", departmentId)
+    .not("signed_document_urls", "is", null)
+    .order("generated_at", { ascending: false })
+    .maybeSingle();
+
+  if (error) {
+    console.error("[queries/reports] signed report fetch failed:", error);
+    throw new Error("Unable to load the signed report. Please try again.");
+  }
+  return data ?? null;
+});
+
 export const getLatestReportByEvent = cache(async function getLatestReportByEvent(
   eventId: string,
 ): Promise<ReportForDashboard | null> {

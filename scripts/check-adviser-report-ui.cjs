@@ -113,6 +113,14 @@ async function main() {
   const resolved = { ...flagged, entries: flagged.entries.map((entry) => ({ ...entry, overspend_resolved_at: "2026-09-27" })) };
   assert(!render(React.createElement(AdviserReportReview, { event: resolved, report })).includes("overspend-title"));
   const archived = render(React.createElement(AdviserReportReview, { event: { ...event, status: "archived" }, report }));
+  // Signed Report is an archived-only destination, and the adviser row must
+  // point at the adviser's own route.
+  assert(archived.includes('href="/adviser/reports/event-1/signed-report"'));
+  assert(archived.includes(">Signed Report</span>"));
+  for (const status of ["pending_adviser_approval", "approved", "rejected", "cancelled"]) {
+    const open = render(React.createElement(AdviserReportReview, { event, report: { ...report, status } }));
+    assert(!open.includes("signed-report"), `Signed Report must not appear for a ${status} report`);
+  }
   assert(!archived.includes(">Approve</button>"));
   assert(!archived.includes(">Reject</button>"));
 

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, ArrowUpRight, ChartNoAxesCombined, ChevronRight, Download, Eye, History, ScrollText } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, ChartNoAxesCombined, ChevronRight, Download, Eye, FileSignature, History, ScrollText } from "lucide-react";
 import LottiePlayer from "@/components/LottiePlayer";
 import { CancelReportButton } from "@/components/reports/CancelReportButton";
 import { PrintReportButton } from "@/components/reports/PrintReportButton";
@@ -190,6 +190,14 @@ export function TreasurerReportWorkspace({ event, latestReport, entryComments }:
             <ChevronRight className="h-4 w-4 shrink-0 text-text-secondary" aria-hidden />
           </Link>
         ))}
+        {workspace.state === "archived" && (
+          <Link href={`/treasurer/reports/${event.id}/signed-report`} prefetch
+            className="group flex min-h-14 items-center gap-3 rounded-sm bg-surface px-4 py-3.5 shadow-card transition-colors hover:bg-surface-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+            <FileSignature className="h-4 w-4 shrink-0 text-text-secondary" strokeWidth={1.5} aria-hidden />
+            <span className="min-w-0 flex-1 text-xs font-medium text-text-primary sm:text-sm">Signed Report</span>
+            <ChevronRight className="h-4 w-4 shrink-0 text-text-secondary" aria-hidden />
+          </Link>
+        )}
       </nav>
     </div>
   );

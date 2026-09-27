@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import { ArrowLeft, ArrowUpRight, ChevronRight, Download, Eye, History, ReceiptText } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, ChevronRight, Download, Eye, FileSignature, History, ReceiptText } from "lucide-react";
 import LottiePlayer from "@/components/LottiePlayer";
 import { ApprovalDecisionDialog } from "@/components/adviser/ApprovalDecisionDialog";
 import { FolderCard } from "@/components/events/FolderCard";
@@ -163,6 +163,9 @@ export function AdviserReportReview({ event, report }: Props) {
           {[
             { label: "Spending Summary", path: "spending-summary", icon: ReceiptText },
             { label: "Previous Revisions", path: "previous-revisions", icon: History },
+            ...(event.status === "archived"
+              ? [{ label: "Signed Report", path: "signed-report", icon: FileSignature }]
+              : []),
           ].map(({ label, path, icon: Icon }) => (
             <Link key={path} href={`${basePath}/${path}`} prefetch className="flex min-h-14 items-center gap-3 rounded-sm bg-surface px-4 py-3.5 text-sm font-medium text-text-primary shadow-card transition-colors hover:bg-surface-secondary focus-visible:outline-2 focus-visible:outline-accent">
               <Icon className="h-5 w-5 shrink-0 text-text-secondary" aria-hidden />

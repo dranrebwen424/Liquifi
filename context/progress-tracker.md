@@ -95,6 +95,15 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Decisions Made During Build
 
+### 2026-09-27 - Archived events expose the uploaded Signed Report
+
+- **New destination for both roles.** "Signed Report" appears in the report workspace nav for treasurer and adviser, shown **only when `event.status === "archived"`** — before archiving there are no pages to show, and an empty link would be a dead end. It leads to `/treasurer|adviser/reports/[eventId]/signed-report`, which lists the pages uploaded at archive time and opens the shared `ImageViewer` on tap.
+- **A proxy had to be built first.** The `signed-reports` bucket is private and the SDK exposes no signed URLs, so page images are streamed by a new session-authed route `GET /api/reports/[reportId]/signed-page?i=N`, mirroring `api/entries/[entryId]/image`: resolve report → event, `requireRole(["treasurer","adviser","admin"], event.department_id)`, stream the blob. Both new pages keep `requireRole(<role>)` plus the explicit cross-department `notFound()` before any read.
+- **Replaced a broken unused helper.** `lib/storage.ts` had `getSignedReportUrl`, unreferenced, which returned `URL.createObjectURL(blob)` — a server-side object URL, explicitly forbidden by the storage rules and useless as a URL. It is now `getSignedReportPageBlob(reportId, index)`, returning a blob and reading the key from `signed_document_urls` rather than rebuilding `{deptId}/reports/{id}/page-N.jpg`, so it cannot drift from what was actually uploaded.
+- **Page count comes from the stored keys,** not `signed_page_count` — that column records the count the AI verified, while the array is what was stored; the array is authoritative for rendering.
+- **Page images stay native `<img>`** with `alt`, `loading="lazy"` and `decoding="async"`, matching the documented receipt-image precedent: session-proxied, variable size, `object-contain`. One `@next/next/no-img-element` warning is expected and intentional.
+- Verification: `tsc --noEmit`, scoped ESLint (0 errors), `next build`, and all 17 check scripts pass. Both report check scripts gained coverage — the archived-only link for both roles (and its absence in all four non-archived states), the page's page-count line, both proxy URLs, the empty state, and the cross-department 404 path. No browser available, so the rendered grid is unverified.
+
 ### 2026-09-27 - Adviser home loses the Latest notifications card
 
 - **What went:** the `AdviserNotificationCard` spotlight panel (`bg-surface-inverse`, `Wumpus` Lottie cycling notification pairs every 4.2s) from `/adviser/home`, per user direction.
