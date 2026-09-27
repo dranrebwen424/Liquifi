@@ -18,10 +18,17 @@ type EventDashboard = NonNullable<Awaited<ReturnType<typeof getEventDashboard>>>
 type Props = {
   event: EventDashboard;
   report: ReportForDashboard & { rejection_reason?: string | null };
+  /**
+   * `"adviser"` (default) is the deciding view. `"admin"` is the read-only
+   * department-workspace view: same presentation, but the Approve/Reject
+   * controls are omitted entirely and the destination links are suppressed
+   * because the admin has no equivalent sub-routes yet.
+   */
+  role?: "adviser" | "admin";
 };
 type Decision = "approve" | "reject";
 
-export function AdviserReportReview({ event, report }: Props) {
+export function AdviserReportReview({ event, report, role = "adviser" }: Props) {
   const router = useRouter();
   const [decision, setDecision] = useState<Decision | null>(null);
   const [busy, setBusy] = useState(false);
@@ -36,8 +43,12 @@ export function AdviserReportReview({ event, report }: Props) {
   const rejectButton = useRef<HTMLButtonElement>(null);
   const displayStatus = completed ?? report.status;
   const status = reportStatusMap[displayStatus];
-  const canReview = displayStatus === "pending_adviser_approval" && event.status !== "archived";
-  const basePath = `/adviser/reports/${event.id}`;
+  const readOnly = role === "admin";
+  const canReview = !readOnly && displayStatus === "pending_adviser_approval" && event.status !== "archived";
+  const deptPath = `/admin/departments/${event.department_id}`;
+  const basePath = readOnly ? `${deptPath}/reports/${event.id}` : `/adviser/reports/${event.id}`;
+  const backHref = readOnly ? `${deptPath}?tab=reports` : "/adviser/reports";
+  const eventHref = readOnly ? `${deptPath}/events/${event.id}` : `/adviser/events/${event.id}`;
   const unresolved = event.entries.filter((entry) =>
     isUnresolvedOverspendEntry(entry.status, entry.causes_overspend, entry.overspend_resolved_at),
   );
@@ -93,7 +104,7 @@ export function AdviserReportReview({ event, report }: Props) {
   return (
     <div className="mx-auto w-full max-w-2xl px-2 pb-16 pt-6 sm:px-4 sm:pt-10">
       <header className="mb-8 flex items-start gap-2 sm:gap-3">
-        <Link href="/adviser/reports" prefetch aria-label="Back to reports" title="Back to reports"
+        <Link href={backHref} prefetch aria-label="Back to reports" title="Back to reports"
           className="-ml-3 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-text-primary transition-colors hover:bg-surface-secondary focus-visible:outline-2 focus-visible:outline-accent">
           <ArrowLeft className="h-5 w-5" aria-hidden />
         </Link>
@@ -102,7 +113,7 @@ export function AdviserReportReview({ event, report }: Props) {
           <p className="mt-2 text-[10px] leading-4 text-text-secondary sm:text-xs sm:leading-5">By: {event.created_by_name}</p>
           <p className="mt-1 text-[10px] leading-4 text-text-secondary sm:text-xs sm:leading-5">Created {new Date(event.created_at).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })}</p>
         </div>
-        <Link href={`/adviser/events/${event.id}`} prefetch
+        <Link href={eventHref} prefetch
           className="mt-1 inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-border-strong px-3 text-xs font-medium text-text-primary transition-colors hover:bg-surface focus-visible:outline-2 focus-visible:outline-accent sm:px-4">
           <ArrowUpRight className="h-3.5 w-3.5" aria-hidden /> View Event
         </Link>
@@ -154,6 +165,10 @@ export function AdviserReportReview({ event, report }: Props) {
         )}
       </section>
 
+      {/* Destination links are omitted for admin: the department workspace has
+          no expenses / budget-history / spending-summary / previous-revisions /
+          signed-report sub-routes yet, and a link that 404s is worse than none. */}
+      {!readOnly && (
       <nav aria-label="Report details" className="mt-8">
         <div className="grid grid-cols-2 gap-8 sm:gap-12">
           <FolderCard id={event.id} name="Expenses" href={`${basePath}/expenses`} />
@@ -174,7 +189,9 @@ export function AdviserReportReview({ event, report }: Props) {
           ))}
         </div>
       </nav>
+      )}
 
+      {!readOnly && (
       <ApprovalDecisionDialog modal open={decision !== null} title={activeDecision === "reject" ? "Reject this report?" : "Approve this report?"}
         description={activeDecision === "reject" ? "Tell the treasurer what needs to change before they submit a new revision." : unresolved.length > 0 ? "Approving acknowledges all unresolved overspend shown on this report. This decision cannot be undone." : "The report will be ready for signing. This decision cannot be undone."}
         confirmLabel={activeDecision === "reject" ? "Reject report" : unresolved.length > 0 ? "Acknowledge & approve" : "Approve report"}
@@ -191,6 +208,7 @@ export function AdviserReportReview({ event, report }: Props) {
           </label>
         ))}
       </ApprovalDecisionDialog>
+      )}
     </div>
   );
 }

@@ -95,6 +95,16 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Decisions Made During Build
 
+### 2026-09-28 - Admin report page adopts the adviser report presentation
+
+- **One component, two roles.** `AdviserReportReview` gains `role?: "adviser" | "admin"`, mirroring `ReportDetailHeader`'s existing `role` prop. `/admin/departments/[deptId]/reports/[eventId]` now renders `role="admin"` instead of its own `ReportViewer` layout, so the event header, unresolved-overspend disclosure and control-number panel match the adviser view exactly.
+- **Read-only by construction, not by flag.** `role="admin"` forces `canReview` false, so the Approve/Reject buttons *and* the decision dialog are omitted entirely — following the project's read-only convention of omitting rather than disabling, and making it impossible to pass `role="admin"` and still get deciding controls.
+- **Destination links suppressed for admin.** The department workspace has no `expenses` / `budget-history` / `spending-summary` / `previous-revisions` / `signed-report` sub-routes, so the folder cards and rows are not rendered. Rendering links that 404 would be worse than omitting them. Adding the admin sub-routes is a separate follow-up; when they exist this is a one-line change.
+- **Paths derive from `event.department_id`** — back goes to `/admin/departments/[deptId]?tab=reports` and View Event to `/admin/departments/[deptId]/events/[eventId]`. The workspace page's `initialTab` previously only honoured `tab=users` and silently fell back to Events, so `?tab=reports` was added; without it the back link would have landed on the wrong tab.
+- **Data is now department-scoped.** `getLatestReportByEvent` → `getAllReportsByEvent(eventId, departmentId)`, which filters through `events!inner(department_id)`. `[0]` is still the newest report of any status including cancelled, so the honest-badge behaviour is preserved.
+- **`ReportViewer` deleted.** The admin page was its last consumer and `TreasurerReportWorkspace` had already replaced it; the registry keeps a tombstone so a third report viewer is not reintroduced.
+- Verification: `tsc --noEmit`, scoped ESLint (0 problems), `next build`, and all 17 check scripts pass. `check-adviser-report-ui.cjs` gained an admin block asserting the shared presentation is present, that neither deciding button nor any destination link renders, and that both derived admin hrefs are correct — plus the archived-admin case. No browser available, so the rendered parity is unverified.
+
 ### 2026-09-27 - Archived events expose the uploaded Signed Report
 
 - **New destination for both roles.** "Signed Report" appears in the report workspace nav for treasurer and adviser, shown **only when `event.status === "archived"`** — before archiving there are no pages to show, and an empty link would be a dead end. It leads to `/treasurer|adviser/reports/[eventId]/signed-report`, which lists the pages uploaded at archive time and opens the shared `ImageViewer` on tap.

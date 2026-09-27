@@ -147,7 +147,7 @@ export default async function DepartmentDetailPage({
       users={memberRows}
       auditLogs={auditLogs as DepartmentAuditLog[]}
       auditActors={auditActors}
-      initialTab={tab === "users" ? "Users" : "Events"}
+      initialTab={tab === "users" ? "Users" : tab === "reports" ? "Reports" : "Events"}
     />
   );
 }

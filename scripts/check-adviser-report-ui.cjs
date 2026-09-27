@@ -110,6 +110,29 @@ async function main() {
   assert(flaggedHtml.includes("overspend-title"));
   assert(flaggedHtml.includes("Additional &lt;paper&gt; was needed."));
   assert(!flaggedHtml.includes("Do not show this voided expense."));
+
+  // ── Admin read-only view: same presentation, no deciding controls ──
+  const adminPending = render(React.createElement(AdviserReportReview, {
+    event: { ...flagged, status: "open" }, report, role: "admin",
+  }));
+  assert(adminPending.includes("overspend-title"), "admin sees the same overspend disclosure");
+  assert(adminPending.includes("FS-CCS-2026-00001"), "admin sees the control number");
+  assert(adminPending.includes('aria-label="View report PDF"'), "admin keeps PDF access");
+  assert(!adminPending.includes(">Approve</button>"), "admin must not be able to approve");
+  assert(!adminPending.includes(">Reject</button>"), "admin must not be able to reject");
+  assert(!adminPending.includes("/expenses"), "admin has no expenses sub-route");
+  assert(!adminPending.includes("/budget-history"), "admin has no budget-history sub-route");
+  assert(!adminPending.includes("/spending-summary"), "admin has no spending-summary sub-route");
+  assert(!adminPending.includes("/previous-revisions"), "admin has no previous-revisions sub-route");
+  assert(!adminPending.includes("/signed-report"), "admin has no signed-report sub-route");
+  assert(adminPending.includes('href="/admin/departments/dept-1/events/event-1"'), "View Event points at the admin event page");
+  assert(adminPending.includes('href="/admin/departments/dept-1?tab=reports"'), "back returns to the department Reports tab");
+  // Archived admin view still suppresses destinations — Signed Report is a
+  // destination, and the admin has no signed-report route.
+  const adminArchived = render(React.createElement(AdviserReportReview, {
+    event: { ...event, status: "archived" }, report: { ...report, status: "approved" }, role: "admin",
+  }));
+  assert(!adminArchived.includes("/signed-report"), "archived admin view must not link Signed Report");
   const resolved = { ...flagged, entries: flagged.entries.map((entry) => ({ ...entry, overspend_resolved_at: "2026-09-27" })) };
   assert(!render(React.createElement(AdviserReportReview, { event: resolved, report })).includes("overspend-title"));
   const archived = render(React.createElement(AdviserReportReview, { event: { ...event, status: "archived" }, report }));
