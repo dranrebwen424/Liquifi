@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
+import { SIDEBAR_INIT_SCRIPT } from "@/lib/sidebar";
 import "./globals.css";
 
 // Loaded once, root only. next/font exposes the loaded face as --font-sans,
@@ -22,6 +23,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${poppins.variable} h-full antialiased`}>
+      <head>
+        {/* Must resolve the sidebar width on the first frame, before any
+            useEffect can. See lib/sidebar.ts. */}
+        <script dangerouslySetInnerHTML={{ __html: SIDEBAR_INIT_SCRIPT }} />
+      </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );

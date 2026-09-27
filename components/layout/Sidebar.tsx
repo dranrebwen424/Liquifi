@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ChevronUp, LogOut, PanelLeftClose, PanelLeftOpen, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NavItem, type NavItemConfig } from "@/components/layout/NavItem";
+import { SIDEBAR_COLLAPSED_KEY } from "@/lib/sidebar";
 
 type SidebarProps = {
   navItems: NavItemConfig[];
@@ -19,7 +20,7 @@ const profileLinks: Record<string, string> = {
   admin: "/admin/profile",
 };
 
-const STORAGE_KEY = "liquifi:sidebar-collapsed";
+const STORAGE_KEY = SIDEBAR_COLLAPSED_KEY;
 
 export function Sidebar({ navItems, role }: SidebarProps) {
   const pathname = usePathname();
@@ -28,13 +29,12 @@ export function Sidebar({ navItems, role }: SidebarProps) {
   const [profileOpen, setProfileOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
 
+  // Width is NOT written here — SidebarShell owns it. Two writers with
+  // different numbers is what made the content column reflow mid-scroll.
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored !== null) {
-        setCollapsed(stored === "true");
-        document.documentElement.style.setProperty("--sidebar-width", stored === "true" ? "72px" : "240px");
-      }
+      if (stored !== null) setCollapsed(stored === "true");
     } catch { /* ponytail: SSR safe */ }
   }, []);
 
@@ -43,7 +43,6 @@ export function Sidebar({ navItems, role }: SidebarProps) {
       const next = !v;
       try {
         localStorage.setItem(STORAGE_KEY, String(next));
-        document.documentElement.style.setProperty("--sidebar-width", next ? "72px" : "240px");
         queueMicrotask(() => {
           window.dispatchEvent(new CustomEvent("sidebar:toggle", { detail: { collapsed: next } }));
         });

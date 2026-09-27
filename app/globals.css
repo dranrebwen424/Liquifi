@@ -28,6 +28,21 @@
   --chart-5: oklch(0.65 0.16 340);
 }
 
+/* Sidebar geometry.
+   --sidebar-width drives BOTH the sidebar's width (components/layout/Sidebar.tsx)
+   and the content column's left padding (components/layout/SidebarShell.tsx),
+   so it must have a CSS default: with no value at first paint the calc() in
+   lg:pl-[calc(var(--sidebar-width)+48px)] is invalid and padding-left drops to
+   0, then the page reflows to full width once JS sets the var — the mid-scroll
+   "jump" on home / profile / department detail.
+   Collapsed is the default; app/layout.tsx sets data-sidebar pre-hydration. */
+:root {
+  --sidebar-width: 72px;
+}
+:root[data-sidebar="expanded"] {
+  --sidebar-width: 240px;
+}
+
 .dark {
   --background: #ffffff; /* page background — forced white (per request) */
   --foreground: #111114;

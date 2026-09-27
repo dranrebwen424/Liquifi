@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { isImmersivePage } from "@/lib/event-route";
+import { SIDEBAR_COLLAPSED_KEY } from "@/lib/sidebar";
 import { cn } from "@/lib/utils";
-
-const STORAGE_KEY = "liquifi:sidebar-collapsed";
 
 /**
  * Shared shell that syncs main content padding with the collapsible Sidebar.
@@ -17,25 +16,32 @@ const STORAGE_KEY = "liquifi:sidebar-collapsed";
  */
 export function SidebarShell({ children, mobileBottomNav = true }: { children: React.ReactNode; mobileBottomNav?: boolean }) {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(true);
+
+  // Sole writer of the sidebar width — Sidebar used to write it too, from a
+  // different effect, with different numbers. The two widths themselves are CSS
+  // (app/globals.css); this only picks one, and only when it actually changes,
+  // so no mount can re-apply a stale value and reflow the page under the user.
+  const applyWidth = useCallback((collapsed: boolean) => {
+    document.documentElement.dataset.sidebar = collapsed ? "collapsed" : "expanded";
+  }, []);
 
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored !== null) setCollapsed(stored === "true");
+      const stored = localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
+      if (stored !== null) applyWidth(stored === "true");
     } catch { /* ponytail: SSR safe */ }
 
     const onToggle = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (detail && typeof detail.collapsed === "boolean") {
-        setCollapsed(detail.collapsed);
+        applyWidth(detail.collapsed);
       }
     };
     window.addEventListener("sidebar:toggle", onToggle);
 
     const onStorage = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEY && e.newValue !== null) {
-        setCollapsed(e.newValue === "true");
+      if (e.key === SIDEBAR_COLLAPSED_KEY && e.newValue !== null) {
+        applyWidth(e.newValue === "true");
       }
     };
     window.addEventListener("storage", onStorage);
@@ -44,15 +50,7 @@ export function SidebarShell({ children, mobileBottomNav = true }: { children: R
       window.removeEventListener("sidebar:toggle", onToggle);
       window.removeEventListener("storage", onStorage);
     };
-  }, []);
-
-  // Sidebar 64/220px
-  useEffect(() => {
-    document.documentElement.style.setProperty(
-      "--sidebar-width",
-      collapsed ? "64px" : "220px",
-    );
-  }, [collapsed]);
+  }, [applyWidth]);
 
   const eventPage = isImmersivePage(pathname);
 
