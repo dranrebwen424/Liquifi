@@ -8,9 +8,10 @@ import { Printer } from "lucide-react";
 
 type PrintReportButtonProps = {
   pdfUrl: string;
+  inverse?: boolean;
 };
 
-export function PrintReportButton({ pdfUrl }: PrintReportButtonProps) {
+export function PrintReportButton({ pdfUrl, inverse = false }: PrintReportButtonProps) {
   const handlePrint = () => {
     const frame = document.createElement("iframe");
     frame.src = pdfUrl;
@@ -34,7 +35,7 @@ export function PrintReportButton({ pdfUrl }: PrintReportButtonProps) {
     <button
       type="button"
       onClick={handlePrint}
-      className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent-hover"
+      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-4 py-2 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${inverse ? "border border-text-inverse/30 text-text-inverse hover:bg-text-inverse/10 focus-visible:outline-text-inverse" : "bg-accent text-accent-foreground hover:bg-accent-hover focus-visible:outline-accent"}`}
     >
       <Printer className="h-3.5 w-3.5" />
       Print Report

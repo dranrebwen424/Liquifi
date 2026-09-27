@@ -77,7 +77,7 @@ export function SpendingBreakdownCard({
       {!readOnly && topCategories.length > 0 && (
         <div className="mt-4 pt-3 border-t border-border-light">
           <Link
-            href={`/treasurer/reports/${eventId}#spending-breakdown`}
+            href={`/treasurer/reports/${eventId}/spending-summary`}
             className="group inline-flex items-center gap-1 text-xs font-medium text-text-muted transition-colors hover:text-text-primary hover:underline underline-offset-2"
           >
             See more

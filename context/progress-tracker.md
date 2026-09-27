@@ -6,6 +6,8 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Current Status
 
+**Latest UI update (2026-09-27):** Treasurer report detail rebuilt from Figma `229:337` and the supplied pending-state reference. Real adviser rejection feedback appears beside the existing mascot; the signatory form uses stacked name/position fields and trash controls; pending View/Cancel and the FS number share one inverse panel. Budget History, Spending Summary, and Previous Revisions now have dedicated guarded pages with the existing history UI pattern and report back navigation. Render checks cover six states, page links, feedback, empty/revision lists, spending exclusion, and department rejection. TypeScript, scoped ESLint, and production build pass. Browser visual and interaction QA remains unverified because no browser provider is available in this session.
+
 **In progress (2026-09-25):** Profile Change password functionality requested for all roles with current/new/confirm fields and no OTP. `components/profile/ChangePasswordForm.tsx` is prepared using the existing auth design and an injected submit callback, with validation, busy/error/success states. It is not routed or connected to the profile button yet. The installed InsForge SDK and official auth API expose token-based password reset but no current-password change endpoint. This session has no InsForge MCP or backend management configuration, so a secure backend extension cannot yet be implemented and verified. TypeScript, scoped lint, and diff checks pass. Do not claim the password-change feature works until its backend is implemented and applied.
 
 **Phase:** Phase 11 — Audit & Read-Only Views (COMPLETE — all 30 build-plan features done) + post-plan hardening
@@ -90,6 +92,13 @@ Update this file after every completed feature. Any AI agent reading this should
 ---
 
 ## Decisions Made During Build
+
+### 2026-09-27 - Treasurer report detail and linked history pages
+
+- **Reference implementation:** `TreasurerReportWorkspace` follows the Figma hierarchy with token colors, Poppins, compact event metadata, three progress rails, inverse signatory/status panel, and three white navigation rows. The rejection banner renders the adviser's stored message rather than the reference's placeholder paragraph. The existing mascot JSON renders a static SVG frame, including for reduced motion.
+- **Navigation:** `/treasurer/reports/[eventId]/budget-history`, `/spending-summary`, and `/previous-revisions` share `ReportDetailHeader`. Budget history reuses the proof list/detail sheet; spending retains totals and category bars; previous revisions groups immutable older PDFs by month. The event dashboard See more link follows the new spending route.
+- **Data and state:** `getAllReportsByEvent(eventId, departmentId)` selects `rejection_reason`, scopes through `events!inner(department_id)`, and reports fetch failures instead of treating them as no report. All four report routes verify role and department. Existing generation/cancellation/PDF endpoints remain. Pending expenses disable generation with a reason; rejected/cancelled reports retain a direct prior-PDF link; archived views omit mutation controls.
+- **Verification:** `node scripts/check-report-ui.cjs` renders the actual components/pages using synthetic data and checks six workspace states, escaped adviser feedback, all links and back destinations, empty history, old-PDF links, exclusion of voided spending, and cross-department/missing-event 404s before history queries. TypeScript, scoped lint, diff checks, and production build passed. The build needed network permission for the existing Google Fonts download. No browser was available, so no mobile/desktop screenshot or live mutation verification is claimed.
 
 ### 2026-09-24 - Shared single-column account profile
 

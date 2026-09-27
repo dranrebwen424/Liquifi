@@ -14,13 +14,14 @@ type Screen = "setup" | "generating" | "preview";
 
 type ReportGenerationFlowProps = {
   eventId: string;
+  disabledReason?: string;
   /** Non-blocking report already on file for this event (rejected/cancelled) — regeneration allowed. */
-  previousReport?: { fs_document_number: string; status: string } | null;
+  previousReport?: { id: string; fs_document_number: string; status: string } | null;
 };
 
 // ─── Component — owns the setup → generating → preview state machine ──
 
-export function ReportGenerationFlow({ eventId, previousReport }: ReportGenerationFlowProps) {
+export function ReportGenerationFlow({ eventId, previousReport, disabledReason }: ReportGenerationFlowProps) {
   const router = useRouter();
   const [screen, setScreen] = useState<Screen>("setup");
   const [fsNumber, setFsNumber] = useState<string | null>(null);
@@ -69,15 +70,6 @@ export function ReportGenerationFlow({ eventId, previousReport }: ReportGenerati
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Step 19 flavor: banner for regeneration after rejection/cancellation */}
-      {previousReport && screen === "setup" && (
-        <div className="rounded-xl border border-text-inverse/15 bg-text-inverse/10 px-4 py-3 text-xs leading-5 text-text-inverse/70">
-          Previous report {previousReport.fs_document_number} was{" "}
-          {previousReport.status.replace(/_/g, " ")}. Regenerating creates a new
-          revision of the same FS number.
-        </div>
-      )}
-
       {error && screen === "setup" && (
         <div className="rounded-xl border border-error/30 bg-error-lightest px-4 py-3 text-xs text-error-foreground">
           {error}
@@ -85,7 +77,15 @@ export function ReportGenerationFlow({ eventId, previousReport }: ReportGenerati
       )}
 
       {screen === "setup" && (
-        <SignatorySetup eventId={eventId} generating={false} onGenerate={handleGenerate} />
+        <SignatorySetup eventId={eventId} generating={false} disabledReason={disabledReason} onGenerate={handleGenerate} />
+      )}
+
+      {previousReport && screen === "setup" && (
+        <p className="text-xs leading-5 text-text-inverse/65">
+          Regenerating keeps {previousReport.fs_document_number} and saves the previous revision.
+          {" "}<a href={`/api/reports/${previousReport.id}/pdf`} target="_blank" rel="noopener noreferrer"
+            className="text-text-inverse underline underline-offset-4">View previous report</a>
+        </p>
       )}
 
       {screen === "generating" && (

@@ -22,19 +22,24 @@ export type ReportForDashboard = {
  */
 export const getAllReportsByEvent = cache(async function getAllReportsByEvent(
   eventId: string,
-): Promise<ReportForDashboard[]> {
+  departmentId: string,
+): Promise<(ReportForDashboard & { rejection_reason: string | null })[]> {
   const insforge = await createInsforgeServer();
 
   const { data, error } = await insforge.database
     .from("reports")
     .select(
-      "id, event_id, fs_document_number, status, revision_count, generated_at",
+      "id, event_id, fs_document_number, status, revision_count, generated_at, rejection_reason, events!inner(department_id)",
     )
     .eq("event_id", eventId)
+    .eq("events.department_id", departmentId)
     .order("generated_at", { ascending: false });
 
-  if (error || !data) return [];
-  return data as ReportForDashboard[];
+  if (error) {
+    console.error("[queries/reports] fetch failed:", error);
+    throw new Error("Unable to load reports. Please try again.");
+  }
+  return data ?? [];
 });
 
 export const getLatestReportByEvent = cache(async function getLatestReportByEvent(
