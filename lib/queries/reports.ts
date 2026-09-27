@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { createInsforgeServer } from "@/lib/insforge-server";
-import type { ReportStatus } from "@/types";
+import type { EntryComment, ReportStatus } from "@/types";
 
 /** Latest Report row for an event, if any. Ordered by generated_at desc. */
 export type ReportForDashboard = {
@@ -67,6 +67,37 @@ export const getAllReportsByEvent = cache(async function getAllReportsByEvent(
   return reports.map((r) =>
     r.rejection_reason?.trim() ? r : { ...r, rejection_reason: fromAudit.get(r.id) ?? null },
   );
+});
+
+/**
+ * Adviser comments left on individual entries during a report review.
+ *
+ * `entry_comments` has NO department_id column — it reaches a department only
+ * through entry → report → event → department_id. So this query is deliberately
+ * unfiltered and MUST only be called with report ids the caller already proved
+ * belong to the actor's department (i.e. straight from getAllReportsByEvent).
+ * Do not "add" a department filter here — there is no column to filter on.
+ *
+ * Returns [] on error: entry notes are supplementary, and failing the whole
+ * report page over one would be worse than showing the rejection without them.
+ */
+export const getEntryCommentsByReportIds = cache(async function getEntryCommentsByReportIds(
+  reportIds: string[],
+): Promise<EntryComment[]> {
+  if (reportIds.length === 0) return [];
+  const insforge = await createInsforgeServer();
+
+  const { data, error } = await insforge.database
+    .from("entry_comments")
+    .select("id, entry_id, report_id, comment, created_by, created_at")
+    .in("report_id", reportIds)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[queries/reports] entry comments fetch failed:", error);
+    return [];
+  }
+  return (data ?? []) as EntryComment[];
 });
 
 export const getLatestReportByEvent = cache(async function getLatestReportByEvent(

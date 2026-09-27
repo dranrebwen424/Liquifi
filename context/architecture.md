@@ -387,6 +387,16 @@ UNIQUE(department_id) WHERE role = 'treasurer' AND account_status = 'active'
 
 ### `entry_comments`
 
+Per-entry notes an adviser leaves while reviewing a report. Written **only** on
+the reject path (the approve route takes no comments). Scoped to the report
+revision, so a note stays attached to the review round it was made in.
+
+**This table has no `department_id` column** — it reaches a department only via
+`entry → report → event → department_id`. Reads must therefore be driven by
+report ids the caller has already department-verified (see
+`getEntryCommentsByReportIds` in `lib/queries/reports.ts`). Do not add a
+department filter to a query on this table; there is no column to filter on.
+
 | Column      | Type        | Notes                                                        |
 | ------------ | ----------- | ---------------------------------------------------------------- |
 | id           | uuid        |                                                                  |
@@ -496,7 +506,7 @@ Avatar uploads use a fresh versioned key, then delete the previous blob after th
 
 ### RLS / Realtime Scoping
 
-- Every table carrying `department_id` gets a row-level policy: adviser and treasurer restricted to `department_id = current_user.department_id`; admin unrestricted.
+- Every table carrying `department_id` gets a row-level policy: adviser and treasurer restricted to `department_id = current_user.department_id`; admin unrestricted. `entry_comments` is the exception — it has no such column, so its policy has to reach the department through the `report` relation.
 - Admin-only tables (`departments`, cross-department `audit_logs` reads) use a role check instead.
 - Realtime channels are scoped per department (e.g. `entries:department_id=X`) — belt-and-suspenders on top of RLS, not a replacement for it.
 

@@ -44,19 +44,29 @@ const report = {
 };
 let currentEvent = event;
 let currentReports = [report];
+let currentEntryComments = [];
 let reportReads = 0;
 let proofReads = 0;
+let entryCommentReads = 0;
+let commentReportIds = [];
 mocks.set("@/lib/auth-guard", { requireRole: async (role) => {
   assert.equal(role, "treasurer");
   return { departmentId: "dept-1" };
 } });
 mocks.set("@/lib/queries/events", { getEventDashboard: async () => currentEvent });
-mocks.set("@/lib/queries/reports", { getAllReportsByEvent: async (eventId, departmentId) => {
-  assert.equal(eventId, event.id);
-  assert.equal(departmentId, "dept-1");
-  reportReads += 1;
-  return currentReports;
-} });
+mocks.set("@/lib/queries/reports", {
+  getAllReportsByEvent: async (eventId, departmentId) => {
+    assert.equal(eventId, event.id);
+    assert.equal(departmentId, "dept-1");
+    reportReads += 1;
+    return currentReports;
+  },
+  getEntryCommentsByReportIds: async (reportIds) => {
+    entryCommentReads += 1;
+    commentReportIds = reportIds;
+    return currentEntryComments;
+  },
+});
 mocks.set("@/lib/queries/budget-proofs", { getBudgetProofsByEvent: async (eventId, departmentId) => {
   assert.equal(eventId, event.id);
   assert.equal(departmentId, "dept-1");
@@ -68,8 +78,8 @@ const render = (node) => renderToStaticMarkup(
   React.createElement(AppRouterContext.Provider, { value: { refresh() {} } }, node),
 );
 const { TreasurerReportWorkspace } = require("../components/reports/TreasurerReportWorkspace.tsx");
-const workspace = (eventValue, latestReport) => render(React.createElement(TreasurerReportWorkspace, {
-  event: eventValue, latestReport,
+const workspace = (eventValue, latestReport, entryComments = []) => render(React.createElement(TreasurerReportWorkspace, {
+  event: eventValue, latestReport, entryComments,
 }));
 
 async function main() {
@@ -98,6 +108,22 @@ async function main() {
   assert(legacyRejection.includes("Adviser feedback"));
   assert(!legacyRejection.includes("without a message"));
   assert(!legacyRejection.includes("notifications"));
+
+  // Per-entry adviser notes render inside the same card, named and priced.
+  // Absent when there are none — the card must not grow an empty section.
+  assert(!legacyRejection.includes("Notes on your entries"));
+  const commented = workspace(
+    event,
+    { ...report, status: "rejected", rejection_reason: "Totals are off." },
+    [
+      { id: "c1", entry_id: "entry-1", report_id: report.id, comment: "Use the cheaper <route> fare.", created_by: "adv-1", created_at: "2026-09-26T00:00:00Z" },
+      { id: "c2", entry_id: "entry-missing", report_id: report.id, comment: "Orphan note still renders.", created_by: "adv-1", created_at: "2026-09-26T00:00:00Z" },
+    ],
+  );
+  assert(commented.includes("Notes on your entries"));
+  assert(commented.includes("Use the cheaper &lt;route&gt; fare."));
+  assert(commented.includes("Orphan note still renders."));
+  assert(commented.includes("3,000.00"), "the note must name the entry it refers to");
 
   const archived = workspace({ ...event, status: "archived" }, { ...report, status: "approved" });
   assert(!archived.includes("Generate Report"));
@@ -138,7 +164,25 @@ async function main() {
   assert(revisions.includes("/api/reports/old-report/pdf"));
   assert(!revisions.includes("/api/reports/report-1/pdf"));
   assert(revisions.includes("Fix the signatories."));
-  console.log("Report UI: all six states, linked pages, feedback, spend exclusion, revisions, and department guards passed.");
+
+  // Page-level wiring: entry notes are read only for the latest report, and only
+  // while it is rejected — the card is their only render site.
+  const ReportPage = require("../app/treasurer/reports/[eventId]/page.tsx").default;
+  const pageProps = { params: Promise.resolve({ eventId: event.id }) };
+  render(await ReportPage(pageProps));
+  assert.equal(entryCommentReads, 0, "a pending report must not read entry comments");
+
+  currentReports = [{ ...report, status: "rejected", rejection_reason: "Totals are off." }];
+  currentEntryComments = [
+    { id: "c1", entry_id: "entry-1", report_id: report.id, comment: "Use the cheaper fare.", created_by: "adv-1", created_at: "2026-09-26T00:00:00Z" },
+  ];
+  const rejectedHtml = render(await ReportPage(pageProps));
+  assert.equal(entryCommentReads, 1);
+  assert.deepEqual(commentReportIds, [report.id]);
+  assert(rejectedHtml.includes("Notes on your entries"));
+  assert(rejectedHtml.includes("Use the cheaper fare."));
+
+  console.log("Report UI: all six states, linked pages, feedback, entry notes, spend exclusion, revisions, and department guards passed.");
 }
 
 main().catch((error) => { console.error(error); process.exitCode = 1; });

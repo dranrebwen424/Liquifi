@@ -7,10 +7,14 @@ import { ReportGenerationFlow } from "@/components/reports/ReportGenerationFlow"
 import type { getEventDashboard } from "@/lib/queries/events";
 import type { ReportForDashboard } from "@/lib/queries/reports";
 import { getReportWorkspaceState } from "@/lib/report-workspace";
+import { entryTitle } from "@/components/entries/entry-title";
+import { formatPHP } from "@/lib/format";
+import type { EntryComment } from "@/types";
 
 type Props = {
   event: NonNullable<Awaited<ReturnType<typeof getEventDashboard>>>;
   latestReport: (ReportForDashboard & { rejection_reason: string | null }) | null;
+  entryComments: EntryComment[];
 };
 
 const STEPS = ["Create Report", "Adviser Review", "Sign & Archive"];
@@ -34,7 +38,7 @@ const STATUS_COPY = {
   },
 };
 
-export function TreasurerReportWorkspace({ event, latestReport }: Props) {
+export function TreasurerReportWorkspace({ event, latestReport, entryComments }: Props) {
   const workspace = getReportWorkspaceState(event.status, latestReport?.status ?? null);
   const canGenerate = workspace.step === 1;
   const copy = !canGenerate ? STATUS_COPY[workspace.state as keyof typeof STATUS_COPY] : null;
@@ -43,6 +47,7 @@ export function TreasurerReportWorkspace({ event, latestReport }: Props) {
     year: "numeric", month: "short", day: "numeric",
   });
   const pendingEntries = event.entries.filter((entry) => entry.status === "pending_approval").length;
+  const entryById = new Map(event.entries.map((entry) => [entry.id, entry]));
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-2 pb-16 pt-6 sm:px-4 sm:pt-10">
@@ -76,6 +81,38 @@ export function TreasurerReportWorkspace({ event, latestReport }: Props) {
               <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-5 text-text-inverse/80">
                 {latestReport.rejection_reason.trim()}
               </p>
+            )}
+
+            {entryComments.length > 0 && (
+              <div className="mt-4 border-t border-text-inverse/15 pt-3">
+                <p className="text-xs font-medium text-text-inverse/60">Notes on your entries</p>
+                <ul className="mt-2 flex flex-col gap-3">
+                  {entryComments.map((note) => {
+                    const entry = entryById.get(note.entry_id);
+                    return (
+                      <li key={note.id}>
+                        {entry && (
+                          <p className="break-words text-xs font-medium leading-5 text-text-inverse">
+                            {entryTitle({
+                              supplierName: entry.supplier_name,
+                              description: undefined,
+                              category: entry.category,
+                              formPayload: entry.form_payload_json,
+                              itemBreakdown: entry.item_breakdown,
+                            })}
+                            <span className="ml-1.5 font-normal tabular-nums text-text-inverse/60">
+                              {formatPHP(entry.amount)}
+                            </span>
+                          </p>
+                        )}
+                        <p className="mt-0.5 whitespace-pre-wrap break-words text-xs leading-5 text-text-inverse/80">
+                          {note.comment}
+                        </p>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
             )}
           </div>
           <LottiePlayer src="/mascot.json"
