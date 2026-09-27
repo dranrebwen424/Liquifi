@@ -68,6 +68,7 @@ const eventStatusMap: Record<string, StatusEntry> = {
 export const entryStatusMap: Record<string, StatusEntry> = {
   draft: { icon: CircleDot, variant: "info", label: "Draft" },
   ai_parsed: { icon: CircleDot, variant: "info", label: "AI Parsed" },
+  pending_ai_parse: { icon: CircleDot, variant: "info", label: "Reading Receipt" },
   treasurer_reviewed: { icon: CircleDot, variant: "info", label: "Treasurer Reviewed" },
   pending_approval: { icon: Clock, variant: "warning", label: "Pending Approval" },
   resubmitted: { icon: Clock, variant: "warning", label: "Resubmitted" },

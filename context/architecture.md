@@ -24,149 +24,116 @@
 ```
 /
 ├── AGENTS.md
-├── context/
-│   ├── project-overview.md
-│   ├── architecture.md
-│   ├── ui-tokens.md
-│   ├── ui-rules.md
-│   ├── code-standards.md
-│   ├── build-plan.md
-│   ├── ui-registry.md
-│   └── progress-tracker.md
+├── proxy.ts                                       → Session refresh + protected-route redirects
+├── context/                                       → This documentation set
+│   └── Design/                                    → Reference mockups, PDF sample transcription, ERD
 ├── app/
-│   ├── layout.tsx                                  → Root layout
-│   ├── page.tsx                                     → Landing page
-│   ├── (auth)/
-│   │   ├── login/page.tsx
-│   │   ├── signup/page.tsx
-│   │   ├── otp/page.tsx                              → OTP verify (shared: signup + password reset)
-│   │   ├── pending-approval/page.tsx
-│   │   ├── forgot-password/page.tsx
-│   │   └── change-password/page.tsx                  → Set new password (password reset only)
+│   ├── layout.tsx                                  → Root layout (Poppins, no auth guard)
+│   ├── page.tsx                                    → Landing page
+│   ├── (auth)/                                    → Public: login, signup, otp, pending-approval,
+│   │                                                forgot-password, change-password (reset only)
 │   ├── treasurer/
-│   │   ├── home/page.tsx                            → Events list
-│   │   ├── events/
-│   │   │   ├── new/page.tsx                         → Event creation form
-│   │   │   └── [eventId]/
-│   │   │       └── page.tsx                         → Event dashboard (Log Entry = LogEntryModal on this page)
-│   │   ├── reports/
-│   │   │   ├── page.tsx
-│   │   │   └── [eventId]/page.tsx
+│   │   ├── layout.tsx                              → requireLayoutRole("treasurer")
+│   │   ├── home/page.tsx                           → Events list
+│   │   ├── events/page.tsx                         → All Events browser
+│   │   ├── events/[eventId]/page.tsx               → Event dashboard (Log Entry = LogEntryModal)
+│   │   ├── events/[eventId]/budget-history/page.tsx
+│   │   ├── reports/page.tsx
+│   │   ├── reports/[eventId]/page.tsx              → Guided report workspace
+│   │   ├── reports/[eventId]/{budget-history,spending-summary,previous-revisions}/page.tsx
 │   │   ├── notifications/page.tsx
 │   │   └── profile/page.tsx
 │   ├── adviser/
+│   │   ├── layout.tsx                              → requireLayoutRole("adviser")
 │   │   ├── home/page.tsx
-│   │   ├── events/[eventId]/page.tsx                → View-only
-│   │   ├── approvals/page.tsx                       → Tabs: Pending Expenses | Pending Users
-│   │   ├── reports/
-│   │   │   ├── page.tsx
-│   │   │   └── [eventId]/page.tsx
+│   │   ├── events/page.tsx                         → View-all destination
+│   │   ├── events/[eventId]/page.tsx               → View-only
+│   │   ├── approvals/page.tsx                      → Tabs: Pending Expenses | Pending Users
+│   │   ├── reports/page.tsx
+│   │   ├── reports/[eventId]/page.tsx
 │   │   ├── notifications/page.tsx
 │   │   └── profile/page.tsx
 │   ├── admin/
-│   │   ├── departments/
-│   │   │   ├── page.tsx
-│   │   │   ├── new/page.tsx
-│   │   │   └── [deptId]/
-│   │   │       ├── page.tsx
-│   │   │       ├── events/page.tsx
-│   │   │       ├── events/[eventId]/page.tsx
-│   │   │       ├── reports/page.tsx
-│   │   │       ├── reports/[eventId]/page.tsx
-│   │   │       ├── audit-logs/page.tsx
-│   │   │       └── users/page.tsx
+│   │   ├── layout.tsx                              → requireLayoutRole("admin")
+│   │   ├── departments/page.tsx                    → NO guard of its own — relies on this layout
+│   │   ├── departments/new/page.tsx
+│   │   ├── departments/[departmentId]/page.tsx      → Workspace (?tab=events|reports|users|audit)
+│   │   ├── departments/[departmentId]/events/page.tsx
+│   │   ├── departments/[departmentId]/events/[eventId]/page.tsx
+│   │   ├── departments/[departmentId]/reports/page.tsx
+│   │   ├── departments/[departmentId]/reports/[eventId]/page.tsx
+│   │   ├── departments/[departmentId]/audit-logs/page.tsx
+│   │   ├── departments/[departmentId]/users/page.tsx
+│   │   ├── departments/[departmentId]/users/{treasurers,advisers}/page.tsx
+│   │   ├── departments/[departmentId]/users/[userId]/page.tsx  → Member profile
 │   │   ├── approvals/page.tsx
 │   │   └── profile/page.tsx
-│   ├── profile/
-│   │   └── change-password/
-│   │       ├── layout.tsx                              → Active-role guard + in-memory flow state
-│   │       ├── page.tsx                                 → Collect passwords and verify current password
-│   │       ├── otp/page.tsx                             → Session-bound reset OTP + mutation
-│   │       └── success/page.tsx                         → Success, 10s redirect, Return to Home
+│   ├── profile/change-password/                   → layout = active-role guard + in-memory password state
+│   │   ├── page.tsx / otp/page.tsx / success/page.tsx
 │   └── api/
 │       ├── entries/
-│       │   ├── receipt/route.ts                     → Gemini receipt parse + Entry creation
-│       │   ├── manual/route.ts                       → Manual entry creation
-│       │   ├── [entryId]/void/route.ts
-│       │   └── [entryId]/approve/route.ts             → Batchable no-receipt approval
+│       │   ├── receipt/route.ts                   → Gemini parse + Entry creation
+│       │   ├── receipt/[entryId]/route.ts         → Retry parse of an existing pending_ai_parse row
+│       │   ├── manual/photo/route.ts               → Manual-entry photo upload (server action cannot carry a File)
+│       │   └── [entryId]/image/route.ts           → Session-authed receipt blob proxy (?i=N)
 │       ├── reports/
-│       │   ├── generate/route.ts                      → PDF generation + fs_document_number assignment
-│       │   ├── [reportId]/approve/route.ts             → Overspend resolution + approval + Polygon anchor
+│       │   ├── generate/route.tsx                  → PDF generation + fs_document_number assignment
+│       │   ├── [reportId]/approve/route.ts         → Overspend resolution + approval + Polygon anchor
 │       │   ├── [reportId]/reject/route.ts
-│       │   └── [reportId]/cancel/route.ts
-│       ├── events/
-│       │   ├── [eventId]/archive/route.ts             → Signed-document upload + AI completeness check
-│       ├── profile/
-│       │   └── avatar/route.ts                         → Authenticated avatar upload/remove
-│   ├── auth/
-│   │   ├── otp/send/route.ts                          → OTP send (signup + password-reset + authenticated change intents)
-│   │   ├── otp/verify/route.ts                         → OTP verify (signup + password-reset + authenticated change intents)
-│   │   └── change-password/
-│   │       ├── route.ts                                → Public password reset token mutation
-│   │       └── verify/route.ts                         → Authenticated current-password check + change OTP
-│       ├── approvals/
-│       │   ├── adviser/route.ts                        → Admin approves/rejects adviser signups
-│       │   └── treasurer/route.ts                      → Adviser approves/rejects treasurer signups
-│       └── notifications/
-│           └── subscribe/route.ts                      → Web Push subscription
+│       │   ├── [reportId]/cancel/route.ts
+│       │   └── [reportId]/pdf/route.ts             → Private PDF proxy (?dl=1 → attachment)
+│       ├── events/[eventId]/archive/route.ts       → Signed-document upload + AI completeness check
+│       ├── proofs/
+│       │   ├── route.ts                            → Initial budget + verified increase
+│       │   └── [proofId]/image/route.ts            → Proof blob proxy (?i=N)
+│       ├── profile/avatar/route.ts                 → Authenticated avatar upload/remove
+│       ├── departments/route.ts                    → Department list (public read for signup picker)
+│       ├── notifications/subscribe/route.ts        → Web Push subscription
+│       └── auth/
+│           ├── signup/route.ts                     → Validation-only gate (no account, no email)
+│           ├── signup/complete/route.ts            → Sole account-creation point + OTP email
+│           ├── create-profile/route.ts             → users row + approver notification (post-OTP)
+│           ├── login/route.ts / logout/route.ts
+│           ├── status/route.ts                     → Account-status polling for pending-approval
+│           ├── refresh/route.ts                    → createRefreshAuthRouter
+│           ├── otp/send/route.ts                   → OTP send (signup / reset / change intents)
+│           ├── otp/verify/route.ts
+│           └── change-password/
+│               ├── route.ts                        → Public reset-token mutation
+│               └── verify/route.ts                 → Session + current-password check + change OTP
 ├── agent/
-│   ├── receipt-parser.ts                             → Gemini OCR + field extraction
-│   ├── document-verifier.ts                          → Signed-document completeness check
-│   ├── report-anchor.ts                              → Polygon hash-anchoring
+│   ├── receipt-parser.ts                          → Gemini OCR + field extraction
+│   ├── budget-proof-parser.ts                     → Budget proof amount extraction
+│   ├── document-verifier.ts                       → Signed-document completeness check
+│   ├── report-anchor.ts                           → Polygon hash-anchoring (the ONLY tx in the app)
 │   └── types.ts
 ├── actions/
-│   ├── events.ts                                     → Create event
-│   ├── entries.ts                                     → Confirm/discard receipt entry, submit manual entry
-│   ├── reports.ts                                     → Signatory setup, cancel report
-│   └── departments.ts                                 → Admin department CRUD
-├── hooks/
-│   └── usePeopleReuse.ts                              → localStorage witness name persistence
+│   ├── events.ts / entries.ts / departments.ts
+│   ├── approvals.ts                               → Batch approve, reject, withdraw, user signup decisions
+│   └── notifications.ts                           → Mark read / mark all read
+├── hooks/usePeopleReuse.ts                        → localStorage witness name persistence
 ├── components/
-│   ├── ui/                                            → shadcn/ui components only
-│   ├── layout/
-│   │   ├── Sidebar.tsx
-│   │   └── BottomNav.tsx
-│   ├── auth/
-│   │   ├── SignupForm.tsx
-│   │   ├── OtpInput.tsx
-│   │   └── LoginForm.tsx
-│   ├── events/
-│   │   ├── EventCard.tsx
-│   │   ├── EventForm.tsx
-│   │   └── BudgetSummary.tsx
-│   ├── entries/
-│   │   ├── ReceiptUpload.tsx
-│   │   ├── ReceiptReview.tsx
-│   │   ├── FloatingInput.tsx
-│   │   ├── manual-categories.ts
-│   │   ├── ManualCategoryPicker.tsx
-│   │   ├── ManualQuickForm.tsx
-│   │   ├── EntryList.tsx
-│   │   ├── EntryRow.tsx
-│   │   └── VoidEntryModal.tsx
-│   ├── reports/
-│   │   ├── SignatorySetup.tsx
-│   │   ├── FinancialReportPDF.tsx (was ReportPdf.tsx)      → @react-pdf/renderer template
-│   │   ├── ReportReview.tsx
-│   │   ├── OverspendPanel.tsx
-│   │   └── SignedUploadModal.tsx
-│   ├── approvals/
-│   │   ├── PendingExpensesTab.tsx
-│   │   └── PendingUsersTab.tsx
-│   └── admin/
-│       ├── DepartmentForm.tsx
-│       └── AuditLogTable.tsx
+│   ├── ui/          → Primitives only (StatusBadge, EmptyState, FadeIn, ImageViewer, CssBottomSheet, …)
+│   ├── layout/      → Sidebar, NavItem, MobileBottomNav, MobileTopBar family, SidebarShell
+│   ├── auth/ events/ entries/ reports/            → Feature components
+│   ├── admin/ adviser/ treasurer/                  → Role-scoped components
+│   ├── landing/ notifications/ profile/
+│   └── (no nested ui/ — all primitives live in components/ui/)
 ├── lib/
-│   ├── insforge-client.ts                            → InsForge browser client
-│   ├── insforge-server.ts                            → InsForge server client
-│   ├── gemini.ts                                     → Google Gemini client (receipt parsing + document verification)
-│   ├── web-push.ts                                    → Push notification sending
-│   ├── polygon.ts                                     → Hash-anchoring transaction submission
-│   ├── auth-guard.ts                                  → Server-side role × department × state checks
-│   └── utils.ts                                       → MATCH-style shared constants, formatters
-└── types/
-    └── index.ts                                        → Global TypeScript types
+│   ├── insforge-client.ts / insforge-server.ts    → The two clients
+│   ├── auth-guard.ts / layout-guard.ts            → requireRole / requireLayoutRole — the security boundary
+│   ├── gemini.ts / web-push.ts / push-client.ts / email.ts / storage.ts / session.ts
+│   ├── queries/{events,reports,budget-proofs}.ts  → React-cached department-scoped reads
+│   ├── format.ts / limits.ts / rate-limit.ts / password-change.ts
+│   ├── budget-lock.ts / overspend.ts / spending-breakdown.ts / report-number.ts
+│   ├── bottom-sheet-drag.ts / motion-variants.ts / image.ts / image-keys.ts
+│   ├── audit-log-view.ts / notifications.ts / event-route.ts / *-routes.ts
+│   └── (no polygon.ts — anchoring lives in agent/report-anchor.ts)
+├── scripts/                                        → sql/ migrations + assert-based check scripts
+└── types/index.ts                                 → Global TypeScript types
 ```
+
+**Role-guard rule:** every role route group's `layout.tsx` calls `requireLayoutRole`. Pages are **not** individually guarded — never import a role page from outside its route group, or it renders without the layout guard.
 
 ---
 
@@ -470,6 +437,31 @@ UNIQUE(department_id) WHERE role = 'treasurer' AND account_status = 'active'
 | metadata_json   | jsonb       |       |
 | created_at      | timestamptz |       |
 
+### `budget_proofs`
+
+Every budget figure is backed by an uploaded document. `events.budget_total` is
+never edited directly — it starts from a `type = initial` proof and grows only
+through a `matched` `type = increase` proof. Applied from
+`scripts/sql/budget-proofs.sql`.
+
+| Column                   | Type          | Notes                                                        |
+| ------------------------ | ------------- | ------------------------------------------------------------ |
+| id                       | uuid          |                                                              |
+| event_id                 | uuid          | FK, CASCADE                                                   |
+| department_id            | uuid          |                                                              |
+| uploaded_by              | uuid          | → `auth.users`                                                |
+| uploaded_at              | timestamptz   |                                                              |
+| type                     | text          | CHECK `initial` / `increase`                                  |
+| claimed_amount           | decimal(12,2) | What the treasurer claims                                     |
+| proof_url                | jsonb         | Array of storage keys (nullable)                              |
+| ai_extracted_amount      | decimal(12,2) | What Gemini read off the document                             |
+| verification_status      | text          | CHECK `pending` / `matched` / `mismatch`                      |
+| resulting_budget_total   | decimal(12,2) | CHECK — non-null whenever `matched`                           |
+
+A `mismatch` proof is still recorded (auditable) but does not move
+`budget_total`. An `initial` mismatch rejects the event outright — the row and
+its blobs are rolled back. Increases are gated on `is_locked = false`.
+
 ---
 
 ## InsForge Storage
@@ -517,35 +509,39 @@ Two separate InsForge instances — never mix them:
 ```typescript
 // lib/insforge-client.ts
 // Browser-side — used in client components for auth state
-import { createBrowserClient } from "@insforge/ssr";
-export const insforge = createBrowserClient(
-  process.env.NEXT_PUBLIC_INSFORGE_URL!,
-  process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
-);
+import { createClient } from "@insforge/sdk";
+export const insforge = createClient({
+  baseUrl: process.env.NEXT_PUBLIC_INSFORGE_URL!,
+  anonKey: process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
+});
 
 // lib/insforge-server.ts
 // Server-side — used in API routes, Server Actions, agent code
-import { createServerClient } from "@insforge/ssr";
+import { createServerClient } from "@insforge/sdk/ssr";
 import { cookies } from "next/headers";
 
 export const createInsforgeServer = async () => {
   const cookieStore = await cookies();
-  return createServerClient(
-    process.env.NEXT_PUBLIC_INSFORGE_URL!,
-    process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => cookieStore.getAll(),
-        setAll: (cookiesToSet) => {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options),
-          );
-        },
-      },
-    },
-  );
+  return createServerClient({
+    baseUrl: process.env.NEXT_PUBLIC_INSFORGE_URL!,
+    anonKey: process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
+    cookies: {
+      get: (name: string) => cookieStore.get(name)?.value ?? null,
+      // The SDK's CreateServerClientOptions only declares `cookies.get`, but
+      // set/remove work at runtime — hence the `as any` cast in the real file.
+      set: (name, value, options) => cookieStore.set(name, value, options),
+      remove: (name) => cookieStore.delete(name),
+    } as never,
+  });
 };
 ```
+
+**Verified against `@insforge/sdk@1.4.4`:**
+
+- There is no `@insforge/ssr` package. The only published subpaths are `.`, `./ssr`, and `./ssr/middleware`.
+- `InsForgeClient` exposes `auth`, `database`, `storage`, `ai`, `functions`, `realtime`, `emails`, `payments` — **no top-level `from()`**. Every query goes through `insforge.database.from(...)`.
+- Auth reads use `insforge.auth.getCurrentUser()` → `{ data: { user }, error }`. `getUser()` is a *different*, synchronous in-memory session getter returning a bare `UserSchema | null` — not a drop-in replacement.
+- The browser client is the full `createClient`, not `createBrowserClient`. Token refresh is handled by the explicit `POST /api/auth/refresh` route plus `updateSession` in `proxy.ts`, not by the SDK's `refreshUrl` cookie flow.
 
 ---
 
@@ -577,13 +573,19 @@ A failed or malformed parse **never creates an Entry row** — the image stays c
 ## Report PDF Pattern
 
 ```typescript
-// components/reports/FinancialReportPDF.tsx (was ReportPdf.tsx)
-// Single fixed template — not per-department customizable
-// Mabini Colleges letterhead → Department + Event name + fs_document_number (top-right) →
-// date range → itemized entry table (Date, Description/Category, Document Type, Document #, Amount) →
-// totals block (Budget / Total Spent / Remaining) →
-// signatory block rendered dynamically from ReportSignatory, ordered by sort_order
-// Overspend entries get a row tint as a disclosure marker
+// components/reports/FinancialReportPDF.tsx
+// Single fixed template — not per-department customizable. Transcribed from
+// public/FS-TEMPLATE/Financial_Report.docx; that DOCX is the ground truth.
+// `fixed` header View (letterhead + title + event + SY line + fs_document_number) repeats on every page →
+// expense table, 6 columns: DATE | ITEM | QUANTITY | UNIT PRICE | TOTAL AMOUNT | OR NUMBER
+//   (one row per deducted entry; ITEM stacks line items; DATE blanked on same-date
+//    continuation rows by the route; OR = document_number → witness → "---") →
+// TOTAL EXPENSES row → balance lines: Beginning Balance / Total Collection / Cash On-hand
+//   (Beginning Balance = first matched initial proof, legacy fallback event.budget_total;
+//    Total Collection = event.budget_total; Cash On-hand = collection − spent) →
+// "Prepared and certified correct by:" + 4 signatory columns ordered by sort_order
+// Overspend entries get a muted-blue row tint as a disclosure marker
+// revision_count is audit-only and is never rendered
 ```
 
 ---
@@ -626,4 +628,4 @@ Rules the AI agent must never violate:
 - `Notification` rows are cleaned up on a 1-year retention job; `AuditLog` rows are never deleted.
 - Always scope InsForge queries to the current user's `department_id` (or unrestricted for admin) — never query without this filter.
 - Partial unique indexes on `users` are the source of truth for the one-active-adviser/one-active-treasurer rule — application logic must not assume it alone enforces this.
-rces this.
+- `budget_total` is never written by a direct `events.update({ budget_total })`. It only ever moves through a `budget_proofs` row that verifies as `matched`.

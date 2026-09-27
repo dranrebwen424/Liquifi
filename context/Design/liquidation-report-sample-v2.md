@@ -44,7 +44,8 @@ Prepared and certified correct by:
 
 ## Notes (deviations from DOCX, by user decision)
 
-- **Balance lines dropped** — the DOCX has Beginning Balance / Total Collection / Cash On-hand lines; Liquifi tracks no collections data, so only **Total Expenses** renders (user decision, 2026-09-15).
+- **Balance lines ARE rendered** — Beginning Balance / Total Collection / Cash On-hand, after TOTAL EXPENSES. `components/reports/FinancialReportPDF.tsx` takes `beginningBalance` / `totalCollection` / `cashOnHand` as props and `app/api/reports/generate/route.tsx` sources them (initial matched proof → `budget_total`; collection = `event.budget_total`; on-hand = collection − spent).
+  > **Correction (2026-09-27):** an earlier revision of this file claimed these lines were dropped. That claim was written in the same commit (`9edbe58`) that added them and was never implemented — the shipped template has always rendered them. Verified against the template and the generate route.
 - **OR NUMBER column** = receipt `document_number`, else **witness name** for manual no-OR expenses, else `---`. The DOCX also shows freeform entries like `w/ signature`, `Gcash to Ryan Romano`.
 - **ITEM cell** stacks line items with `* ` prefix (7.5pt); DOCX prints `*` attached.
 - **DATE** repeats per row group only (blank on same-day rows).

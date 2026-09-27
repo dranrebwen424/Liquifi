@@ -211,6 +211,7 @@ One shared `<StatusBadge>` component drives every state-machine field — never 
 | Event | `open` | `CircleCheckBig` | `success` | `var(--color-success)` |
 | Event | `archived` | `CircleMinus` | `neutral` | `var(--color-neutral)` |
 | Entry | `ai_parsed` / `treasurer_reviewed` / `draft` | `CircleDot` | `info` | `var(--color-info)` |
+| Entry | `pending_ai_parse` | `CircleDot` | `info` | `var(--color-info)` |
 | Entry | `pending_approval` / `resubmitted` | `Clock` | `warning` | `var(--color-warning)` |
 | Entry | `approved` / `deducted` | `CircleCheckBig` | `success` | `var(--color-success)` |
 | Entry | `rejected` / `discarded` / `voided` | `CircleX` | `error` | `var(--color-error)` |

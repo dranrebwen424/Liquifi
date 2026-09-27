@@ -434,12 +434,14 @@ Approved dependencies for this project:
 
 | Dependency | Purpose | Notes |
 |---|---|---|
-| `@insforge/sdk` | InsForge client (auth, DB, storage, realtime) | SSR subpath `@insforge/sdk/ssr` |
+| `@insforge/sdk` | InsForge client (auth, DB, storage, realtime) | SSR subpath `@insforge/sdk/ssr`, middleware at `@insforge/sdk/ssr/middleware`. There is **no** `@insforge/ssr` package, and the query builder is `insforge.database.from(...)` — never `insforge.from(...)` |
 | none (plain fetch) | Gemini receipt OCR | Direct via `lib/gemini.ts`, free tier — no SDK |
 | `web-push` | Web Push notification sending | Server-side only |
+| `nodemailer` | Transactional email (welcome mail, OTP-adjacent notices) | `lib/email.ts`, server-side only |
 | `@react-pdf/renderer` | Financial Report PDF generation | Server-side only, `renderToBuffer` |
 | `ethers` | Polygon hash-anchoring | v6 API, `JsonRpcProvider` |
 | `zod` | Schema validation | Use `safeParse`, never `parse` |
+| `pdfjs-dist` | **Dev-only** — `scripts/check-signatory-wrap.mjs` inspects the generated PDF | Not imported by app code. Not Node-safe for SSR (`DOMMatrix` at module scope) — never import it from a component or route |
 | `framer-motion` | Micro-interactions — spring, stagger, layout animations | Tier 2 in animation selection |
 | `gsap` | Heavy/timeline animation — ScrollTrigger, SVG, complex sequences | Tier 3, reserved for advanced use |
 | `lottie-web` | Lottie JSON animation rendering | Loading states only |

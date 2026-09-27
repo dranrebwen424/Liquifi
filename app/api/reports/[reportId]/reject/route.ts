@@ -67,9 +67,12 @@ export async function POST(request: Request, { params }: Props) {
     }
 
     // Race-safe rejection — only if still pending_adviser_approval.
+    // `rejection_reason` must be written in this same statement: the treasurer's
+    // feedback card and the previous-revisions list read it off the report row,
+    // and a separate update would leave a rejected row with a null reason.
     const { data: updated, error: updateError } = await insforge.database
       .from("reports")
-      .update({ status: "rejected" })
+      .update({ status: "rejected", rejection_reason })
       .eq("id", reportId)
       .eq("status", "pending_adviser_approval")
       .select("id");

@@ -62,7 +62,7 @@ Files: components/auth/* · 2026-07-14 (Figma-matched restyle). Centered form on
 - **LottiePlayer** — `lottie-web` via dynamic `import()` in `useEffect` (NOT `lottie-react` — React-19 peer-dep conflict); destroys on unmount. Used on login + pending-approval.
 
 ### StatusBadge
-File: components/ui/StatusBadge.tsx · 2026-07-30 — bare Lucide icon (no bg/border/text), semantic variant tokens (`success/warning/error/info/neutral`→`text-*`, default `text-accent`), `size={20}`, `aria-label`+`title`. Exports mappers: `AccountStatusBadge`, `EventStatusBadge`, `RoleBadge`, `entryStatusMap`, `reportStatusMap`. Icons: CircleCheckBig/Clock/CircleDot/CircleX/CircleMinus/Shield/BookOpen/Landmark.
+File: components/ui/StatusBadge.tsx · 2026-07-30 (2026-09-27: added `pending_ai_parse`) — bare Lucide icon (no bg/border/text), semantic variant tokens (`success/warning/error/info/neutral`→`text-*`, default `text-accent`), `size={20}`, `aria-label`+`title`. Exports mappers: `AccountStatusBadge`, `EventStatusBadge`, `RoleBadge`, `entryStatusMap`, `reportStatusMap`. Icons: CircleCheckBig/Clock/CircleDot/CircleX/CircleMinus/Shield/BookOpen/Landmark. **`pending_ai_parse` → CircleDot / info / "Reading Receipt"** — the provisional row a transient Gemini failure leaves behind; without a map entry the raw enum string leaked into the badge label (callers fall back to `?? status`, so it degrades rather than crashes). `entryStatusMap` is `Record<string, StatusEntry>`, so an unmapped status is a silent label bug, not a type error.
 
 ### EmptyState
 File: components/ui/EmptyState.tsx — no chrome; `py-12 gap-2`; title `text-sm font-medium`, description `text-sm text-text-muted`; props `icon?/title/description?/action?`.

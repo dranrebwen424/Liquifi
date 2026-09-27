@@ -36,35 +36,33 @@ Two separate instances — never mix them:
 
 ```typescript
 // lib/insforge-client.ts — browser context only
-import { createBrowserClient } from "@insforge/ssr";
+import { createClient } from "@insforge/sdk";
 
-export const insforge = createBrowserClient(
-  process.env.NEXT_PUBLIC_INSFORGE_URL!,
-  process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
-);
+export const insforge = createClient({
+  baseUrl: process.env.NEXT_PUBLIC_INSFORGE_URL!,
+  anonKey: process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
+});
 ```
 
 ```typescript
 // lib/insforge-server.ts — server context only
-import { createServerClient } from "@insforge/ssr";
+import { createServerClient } from "@insforge/sdk/ssr";
 import { cookies } from "next/headers";
 
 export const createInsforgeServer = async () => {
   const cookieStore = await cookies();
-  return createServerClient(
-    process.env.NEXT_PUBLIC_INSFORGE_URL!,
-    process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => cookieStore.getAll(),
-        setAll: (cookiesToSet) => {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options),
-          );
-        },
-      },
-    },
-  );
+  return createServerClient({
+    baseUrl: process.env.NEXT_PUBLIC_INSFORGE_URL!,
+    anonKey: process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
+    cookies: {
+      get: (name: string) => cookieStore.get(name)?.value ?? null,
+      set: (name: string, value: string, options?: Record<string, unknown>) =>
+        cookieStore.set(name, value, options as never),
+      remove: (name: string) => cookieStore.delete(name),
+    // The SDK's CreateServerClientOptions declares only `cookies.get`; set/remove
+    // work at runtime. That cast is load-bearing — removing it breaks server writes.
+    } as never,
+  });
 };
 ```
 
@@ -74,6 +72,12 @@ export const createInsforgeServer = async () => {
 - Server client — Server Components, API routes, Server Actions, agent functions
 - Never use browser client in server context
 - Never use server client in browser context
+
+**Verified against `@insforge/sdk@1.4.4`:**
+
+- There is no `@insforge/ssr` package. The only published subpaths are `.`, `./ssr`, `./ssr/middleware`. Anything importing `@insforge/ssr` is broken.
+- The SDK does export `createBrowserClient`, but this project uses the full `createClient` in the browser and handles refresh itself via `POST /api/auth/refresh` + `updateSession` in `proxy.ts`. Don't "fix" this to `createBrowserClient` — that is a behaviour change, not a correction.
+- The query builder is on `insforge.database`, not the client root.
 
 ---
 
@@ -85,8 +89,13 @@ const insforge = await createInsforgeServer();
 const {
   data: { user },
   error,
-} = await insforge.auth.getUser();
+} = await insforge.auth.getCurrentUser();
 if (!user) redirect("/login");
+
+// In this project prefer the cached wrapper, which also resolves the `users`
+// row and throws instead of returning null: `import { getCurrentUser } from "@/lib/auth-guard"`.
+// Do NOT use `insforge.auth.getUser()` — that is a *synchronous* in-memory
+// session getter returning a bare `UserSchema | null`, with no `{ data, error }`.
 ```
 
 OTP flow (defined in `architecture.md` and `build-plan.md`):
@@ -100,17 +109,19 @@ OTP flow (defined in `architecture.md` and `build-plan.md`):
 ### DB Queries
 
 ```typescript
-// Read — always scope to department_id
-const { data, error } = await insforge
+// Read — always scope to department_id.
+// `insforge.database.from(...)`, never `insforge.from(...)` — there is no
+// top-level `from()` on InsForgeClient and calling it throws at runtime.
+const { data, error } = await insforge.database
   .from("events")
   .select("*")
   .eq("department_id", session.department_id)
   .order("created_at", { ascending: false });
 
-// Insert
-const { data, error } = await insforge
+// Insert — takes an array
+const { data, error } = await insforge.database
   .from("events")
-  .insert({ name, department_id, created_by: user.id, budget_total })
+  .insert([{ name, department_id, created_by: user.id, budget_total }])
   .select()
   .single();
 
@@ -173,29 +184,34 @@ storage/
 ### Realtime Subscriptions
 
 ```typescript
-// Department-scoped only — never subscribe globally
-const channel = insforge.channel(`entries:${departmentId}`);
-
-channel.on(
-  "postgres_changes",
-  {
-    event: "INSERT",
-    schema: "public",
-    table: "entries",
-    filter: `department_id=eq.${departmentId}`,
-  },
-  (payload) => {
-    // handle new entry
-  },
-);
-
-channel.subscribe();
+// The InsForge SDK has NO `insforge.channel()` and no `"postgres_changes"` event —
+// that is the Supabase API. The real surface is `insforge.realtime`:
+//
+//   connect()                              → open the socket
+//   subscribe(topic)                       → returns { ok, error? }
+//   unsubscribe(topic)
+//   on("changed", cb) / off("changed", cb)
+//   disconnect()
+//
+// Working pattern — components/events/EventLiveRefresh.tsx:
+//   insforge.realtime.on("changed", refresh);
+//   await insforge.realtime.connect();
+//   await insforge.realtime.subscribe(`event:${eventId}`);
 ```
+
+**How it actually works here:**
+
+- Topics are per **event**, not per department: `event:{eventId}`, fed by Postgres
+  triggers (`notify_event_changed()`, SECURITY DEFINER) on `entries` and `reports`.
+- The payload is deliberately empty (`'{}'::jsonb`). Topics are readable with the
+  anon key, so the broadcast is only ever "something changed" — never row data.
+  Real data still comes from the authenticated, RLS-scoped server query.
+- The handler is just `router.refresh()` behind a global 2s throttle.
 
 **Rules:**
 
-- Realtime channels are always scoped per department — never subscribe without a department filter
-- Used for live budget counter updates on the Event Dashboard
+- Never subscribe without a topic, and never use the Supabase `channel().on("postgres_changes")` shape — it does not exist on this SDK
+- Keep the payload data-free; never widen it
 - Never use realtime for auth state — that goes through InsForge's built-in `onAuthStateChange`
 
 ---

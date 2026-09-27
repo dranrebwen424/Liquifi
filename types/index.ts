@@ -14,6 +14,9 @@ export type EventStatus = "open" | "archived";
 export type EntryStatus =
   | "draft"
   | "ai_parsed"
+  // Provisional row written when Gemini fails transiently — the receipt retry
+  // route re-parses this same entryId. Never a settled state.
+  | "pending_ai_parse"
   | "treasurer_reviewed"
   | "pending_approval"
   | "approved"

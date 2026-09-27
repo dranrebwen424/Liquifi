@@ -91,6 +91,14 @@ async function main() {
       assert(html.includes("lucide-trash-2"));
     }
   }
+  // A rejected row with no reason is only reachable for rows written before the
+  // reject route persisted `rejection_reason`. The card must never claim the
+  // adviser withheld a message — a reason is required by the API.
+  const legacyRejection = workspace(event, { ...report, status: "rejected", rejection_reason: null });
+  assert(legacyRejection.includes("Adviser feedback"));
+  assert(legacyRejection.includes("check your notifications"));
+  assert(!legacyRejection.includes("without a message"));
+
   const archived = workspace({ ...event, status: "archived" }, { ...report, status: "approved" });
   assert(!archived.includes("Generate Report"));
   assert(!archived.includes(">Cancel</button>"));

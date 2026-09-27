@@ -182,15 +182,16 @@ export const { POST } = createRefreshAuthRouter();
 Always scope to the current user's `department_id` (admin is unrestricted) — never query without this filter.
 
 ```typescript
-// Read
-const { data, error } = await insforge
+// Read — the query builder hangs off `insforge.database`, NOT the client root.
+// There is no top-level `insforge.from(...)`; calling it throws at runtime.
+const { data, error } = await insforge.database
   .from("events")
   .select("*")
   .eq("department_id", session.department_id)
   .order("created_at", { ascending: false });
 
 // Insert — takes an array
-const { data, error } = await insforge
+const { data, error } = await insforge.database
   .from("events")
   .insert([{ name, department_id, created_by: user.id, budget_total }])
   .select()
@@ -264,7 +265,7 @@ UNIQUE(department_id) WHERE role = 'treasurer' AND account_status = 'active'
 | id | uuid | |
 | event_id | uuid | |
 | type | text | receipt / manual |
-| status | text | draft / ai_parsed / deducted / pending_approval / approved / rejected / voided / discarded |
+| status | text | draft / ai_parsed / pending_ai_parse / treasurer_reviewed / pending_approval / approved / rejected / resubmitted / voided / deducted / discarded |
 | amount | decimal(12,2) | |
 | document_type_raw | text | Verbatim printed label |
 | document_number | text | Tied to `document_type_raw` label |
@@ -272,6 +273,8 @@ UNIQUE(department_id) WHERE role = 'treasurer' AND account_status = 'active'
 | causes_overspend / overspend_explanation | boolean / text | |
 
 Entry status transitions: see `project-overview.md` → Logging Expenses and Voiding Entries.
+
+`status` is CHECK-constrained in Postgres — the constraint is authoritative, not this list and not `types/index.ts`. `pending_ai_parse` is a real, written value: the receipt route inserts it when Gemini fails transiently so the retry route can re-parse the same `entryId`. `treasurer_reviewed` is typed but unused; `discarded` is unreachable (discard is a hard delete).
 
 ### `reports`
 | Column | Type | Notes |
@@ -326,28 +329,20 @@ const blob = await getReceiptBlob(entryId);
 
 ## Realtime Subscriptions
 
-Department-scoped only — never subscribe globally.
+This SDK has no `insforge.channel()` and no `"postgres_changes"` event — that is the Supabase API. Use `insforge.realtime`.
 
 ```typescript
-const channel = insforge.channel(`entries:${departmentId}`);
-
-channel.on(
-  "postgres_changes",
-  {
-    event: "INSERT",
-    schema: "public",
-    table: "entries",
-    filter: `department_id=eq.${departmentId}`,
-  },
-  (payload) => { /* handle */ },
-);
-
-channel.subscribe();
+// Working pattern — components/events/EventLiveRefresh.tsx
+insforge.realtime.on("changed", refresh);
+await insforge.realtime.connect();
+await insforge.realtime.subscribe(`event:${eventId}`);
+// cleanup: off("changed"), unsubscribe(topic), disconnect()
 ```
 
 **Rules:**
-- Channels always scoped per department — never without a department filter
-- Used for live budget counter updates on the Event Dashboard
+- Topics are per event (`event:{eventId}`), fed by Postgres triggers on `entries`/`reports` — never subscribe globally
+- The payload is empty `'{}'::jsonb` on purpose: topics are readable by the anon key, so the broadcast is only "something changed". Real data comes from the authenticated RLS-scoped query
+- The handler is `router.refresh()` behind a 2s throttle — never widen the payload
 - Never use realtime for auth state — use InsForge's built-in `onAuthStateChange`
 
 ---

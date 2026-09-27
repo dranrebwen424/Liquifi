@@ -73,7 +73,8 @@ export function TreasurerReportWorkspace({ event, latestReport }: Props) {
               {event.name} <span className="text-error">rejected</span>
             </h2>
             <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-5 text-text-inverse/80">
-              {latestReport?.rejection_reason?.trim() || "Your adviser returned this report without a message."}
+              {latestReport?.rejection_reason?.trim() ||
+                "Your adviser rejected this report. Their note isn't shown here — check your notifications."}
             </p>
           </div>
           <LottiePlayer src="/mascot.json" autoplay={false} loop={false}
