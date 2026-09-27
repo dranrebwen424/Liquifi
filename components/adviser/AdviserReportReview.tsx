@@ -99,8 +99,8 @@ export function AdviserReportReview({ event, report }: Props) {
         </Link>
         <div className="min-w-0 flex-1 pt-2">
           <h1 className="break-words text-lg font-semibold leading-6 text-text-primary sm:text-2xl">{event.name}</h1>
-          <p className="mt-2 text-xs text-text-secondary">By: {event.created_by_name}</p>
-          <p className="mt-1 text-xs text-text-secondary">Created {new Date(event.created_at).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })}</p>
+          <p className="mt-2 text-[10px] leading-4 text-text-secondary sm:text-xs sm:leading-5">By: {event.created_by_name}</p>
+          <p className="mt-1 text-[10px] leading-4 text-text-secondary sm:text-xs sm:leading-5">Created {new Date(event.created_at).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })}</p>
         </div>
         <Link href={`/adviser/events/${event.id}`} prefetch
           className="mt-1 inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-border-strong px-3 text-xs font-medium text-text-primary transition-colors hover:bg-surface focus-visible:outline-2 focus-visible:outline-accent sm:px-4">
@@ -151,9 +151,6 @@ export function AdviserReportReview({ event, report }: Props) {
             <button ref={rejectButton} type="button" onClick={() => openDecision("reject")} disabled={busy}
               className="min-h-11 rounded-full border border-error/70 px-4 py-3 text-sm font-medium text-error transition-colors hover:bg-error/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-error disabled:opacity-50">Reject</button>
           </div>
-        )}
-        {displayStatus === "rejected" && (reason || report.rejection_reason) && (
-          <p className="mt-4 whitespace-pre-wrap break-words border-t border-text-inverse/15 pt-4 text-xs leading-5 text-text-inverse/80">{reason || report.rejection_reason}</p>
         )}
       </section>
 

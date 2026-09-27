@@ -90,10 +90,22 @@ async function main() {
     assert(html.includes("/api/reports/report-1/pdf?dl=1"));
     assert.equal(html.includes(">Approve</button>"), status === "pending_adviser_approval");
     assert.equal(html.includes(">Reject</button>"), status === "pending_adviser_approval");
+    // The Control Number panel is report identity only — the adviser's own
+    // rejection reason must not render inside it, even on a rejected report.
+    assert(!html.includes("Correct the receipt."), "rejection reason must stay out of the Control Number panel");
+    // Event metadata scales down on mobile, matching the treasurer workspace.
+    assert(html.includes("By: Sample Treasurer"), "event creator must still render");
+    assert(html.includes("text-[10px] leading-4 text-text-secondary sm:text-xs sm:leading-5"), "event metadata must use the compact mobile scale");
     for (const destination of ["expenses", "budget-history", "spending-summary", "previous-revisions"]) {
       assert(html.includes(`href="/adviser/reports/event-1/${destination}"`));
     }
   }
+  // A rejected report still surfaces its stored reason on Previous Revisions,
+  // which is where the treasurer/audviser history belongs.
+  const rejectedWithReason = render(React.createElement(AdviserReportReview, {
+    event, report: { ...report, status: "rejected", rejection_reason: "Correct the receipt." },
+  }));
+  assert(!rejectedWithReason.includes("Correct the receipt."), "rejection reason must not render on the report page itself");
   const flaggedHtml = render(React.createElement(AdviserReportReview, { event: flagged, report }));
   assert(flaggedHtml.includes("overspend-title"));
   assert(flaggedHtml.includes("Additional &lt;paper&gt; was needed."));

@@ -95,6 +95,13 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Decisions Made During Build
 
+### 2026-09-27 - Adviser report page: identity panel and mobile metadata scale
+
+- **The Control Number panel no longer carries the rejection reason.** It renders FS number, subtitle, PDF View/Download, status and the Approve/Reject actions only. The reason an adviser typed is a review artefact, not report identity: the adviser reads it back on `previous-revisions`, and the treasurer reads their copy in the treasurer rejection card. This is the second placement correction to this string today — the first was that the reject route never persisted it at all.
+- **Event metadata scales down on mobile** to the treasurer workspace's established treatment, `text-[10px] leading-4 sm:text-xs sm:leading-5`, so `By:` and `Created …` no longer compete with the event title at 390px. Desktop is unchanged. The colour still differs from the treasurer page (`text-text-secondary` here vs `text-text-muted` there) — not changed, since only the size was in scope.
+- **Regression guard added** to `check-adviser-report-ui.cjs`: a rejected report rendered with an explicit `rejection_reason` must not contain that text, and the compact metadata classes must be present. The reason string had already broken in two different ways this session.
+- Verification: `tsc --noEmit`, scoped ESLint (0 errors), `next build`, and all 17 check scripts pass. No browser available, so the rendered result is unverified.
+
 ### 2026-09-27 - Adviser report approval reference redesign
 
 - `AdviserReportReview` follows the supplied images (the Figma link was inaccessible): event metadata and View Event, conditional unresolved overspend with animated `LottiePlayer`, control number/status/PDF icon actions, Expenses and Budget History folders, and Spending Summary/Previous Revisions rows. The existing Home `FolderCard` artwork and press animation are reused. The mascot retains the shared reduced-motion behavior.
