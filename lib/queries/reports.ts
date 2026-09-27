@@ -17,6 +17,11 @@ export type ReportForDashboard = {
  * a regenerated report is a new row with revision_count+1, so the full stack
  * is the event's report history (rejected/cancelled/approved all present).
  *
+ * `rejection_reason` is coalesced from `audit_logs` for any rejected row whose
+ * own column is empty. The reject route writes both, but rows rejected before
+ * it persisted the column only reached the audit log — the treasurer's feedback
+ * card must still show the adviser's note for those.
+ *
  * cache(): dedupes identical same-function calls within a render pass — guards
  * against nested Server Components re-fetching the same report in one request tree.
  */
@@ -39,7 +44,29 @@ export const getAllReportsByEvent = cache(async function getAllReportsByEvent(
     console.error("[queries/reports] fetch failed:", error);
     throw new Error("Unable to load reports. Please try again.");
   }
-  return data ?? [];
+
+  const reports = data ?? [];
+  const missing = reports
+    .filter((r) => r.status === "rejected" && !r.rejection_reason?.trim())
+    .map((r) => r.id);
+  if (missing.length === 0) return reports;
+
+  const { data: audits } = await insforge.database
+    .from("audit_logs")
+    .select("target_id, metadata_json")
+    .eq("action", "report.rejected")
+    .in("target_id", missing);
+
+  const fromAudit = new Map<string, string>();
+  for (const row of audits ?? []) {
+    const reason = (row.metadata_json as { rejection_reason?: unknown } | null)?.rejection_reason;
+    if (typeof reason === "string" && reason.trim()) fromAudit.set(row.target_id, reason.trim());
+  }
+  if (fromAudit.size === 0) return reports;
+
+  return reports.map((r) =>
+    r.rejection_reason?.trim() ? r : { ...r, rejection_reason: fromAudit.get(r.id) ?? null },
+  );
 });
 
 export const getLatestReportByEvent = cache(async function getLatestReportByEvent(

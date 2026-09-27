@@ -33,11 +33,15 @@ export default function LottiePlayer({
     (async () => {
       const lottie = (await import("lottie-web")).default;
       if (cancelled || !ref.current) return;
+      // Reduced motion: render the same first frame, just don't play it.
+      // ponytail: matchMedia read once per mount — a `change` listener would be
+      // nicer but nothing here animates long enough for a live toggle to matter.
+      const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       anim = lottie.loadAnimation({
         container: ref.current,
         renderer: "svg",
-        loop,
-        autoplay,
+        loop: still ? false : loop,
+        autoplay: still ? false : autoplay,
         path: src,
       });
 

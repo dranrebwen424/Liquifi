@@ -72,12 +72,13 @@ export function TreasurerReportWorkspace({ event, latestReport }: Props) {
             <h2 className="break-words text-xs font-medium leading-5 sm:text-sm">
               {event.name} <span className="text-error">rejected</span>
             </h2>
-            <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-5 text-text-inverse/80">
-              {latestReport?.rejection_reason?.trim() ||
-                "Your adviser rejected this report. Their note isn't shown here — check your notifications."}
-            </p>
+            {latestReport?.rejection_reason?.trim() && (
+              <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-5 text-text-inverse/80">
+                {latestReport.rejection_reason.trim()}
+              </p>
+            )}
           </div>
-          <LottiePlayer src="/mascot.json" autoplay={false} loop={false}
+          <LottiePlayer src="/mascot.json"
             className="pointer-events-none absolute -bottom-3 -right-2 h-28 w-28 sm:right-0 sm:h-32 sm:w-32" />
         </aside>
       )}
