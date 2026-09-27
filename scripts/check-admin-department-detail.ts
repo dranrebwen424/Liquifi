@@ -71,4 +71,31 @@ for (const route of reportSubRoutes) {
 const workspace = readFileSync("app/admin/departments/[departmentId]/page.tsx", "utf8");
 assert.match(workspace, /tab === "reports"/, "the department workspace must accept ?tab=reports");
 
+// ── Adviser and admin event views share one component ─────────────────
+// The two read-only event pages must render the same ReadOnlyEventView so the
+// department workspace cannot drift from the adviser view, and each must keep
+// its own role guard and link targets.
+for (const page of [
+  "app/adviser/events/[eventId]/page.tsx",
+  "app/admin/departments/[departmentId]/events/[eventId]/page.tsx",
+]) {
+  const source = readFileSync(page, "utf8");
+  assert.match(source, /<ReadOnlyEventView/, `${page} must render the shared ReadOnlyEventView`);
+  assert.match(source, /reportHref=/, `${page} must pass its own reportHref`);
+  assert.match(source, /backHref=/, `${page} must pass its own backHref`);
+}
+assert.match(
+  readFileSync("app/adviser/events/[eventId]/page.tsx", "utf8"),
+  /requireRole\("adviser"\)/,
+);
+assert.match(
+  readFileSync("app/admin/departments/[departmentId]/events/[eventId]/page.tsx", "utf8"),
+  /requireRole\("admin"\)/,
+);
+// The shared view must stay read-only.
+const shared = readFileSync("components/events/ReadOnlyEventView.tsx", "utf8");
+assert.match(shared, /readOnly/, "the shared view must pass readOnly");
+assert.doesNotMatch(shared, /canMutate=\{true\}/, "the shared view must never allow mutation");
+assert.match(shared, /ViewReportPill/, "the shared view must keep the View Report pill");
+
 console.log("admin department detail check: all assertions passed");

@@ -95,6 +95,15 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Decisions Made During Build
 
+### 2026-09-28 - Adviser and admin event views share one component
+
+- **The department-workspace event page was the adviser page minus most of it.** Admin rendered only the desktop layout at every width, wrapped in a single `FadeIn`, with no mobile header, no `mobileOnly` budget card, no staggered entrance and no "View Report" pill — so mobile admin got a desktop-shaped page. Fixed by extraction, not by copying.
+- **`components/events/ReadOnlyEventView.tsx`** now owns the whole read-only event dashboard: mobile header (back + truncated title + 10px By/Created + pill), `mobileOnly` `BudgetSummary`, locked/archived banner, desktop two-column budget + spending breakdown, expenses section, and the per-element `FadeIn` stagger. Both `app/adviser/events/[eventId]` and `app/admin/departments/[deptId]/events/[eventId]` render it, passing only `backHref` and `reportHref`. The two pages can no longer drift.
+- **Admin gains a "View Report" pill** pointing at `/admin/departments/[deptId]/reports/[eventId]`, which exists as of the previous commit; with no report the shared `ViewReportPill` opens the existing "No report yet" notice instead of navigating to a 404. Admin also gains `EventLiveRefresh`, which the adviser page already had — so the tracker's old note that only the treasurer page subscribes is now doubly stale: treasurer, adviser and admin event pages all do.
+- **Each page keeps its own guard.** Adviser `requireRole("adviser")` + cross-department `notFound()`; admin `requireRole("admin")` + the URL-consistency guard. The shared view itself only ever passes `readOnly` / `canMutate={false}`.
+- **Net line count went down** — two ~250-line near-duplicate pages replaced by two ~35-line route files plus one shared component.
+- Verification: `tsc --noEmit`, scoped ESLint (0 problems), `next build`, and all 17 check scripts pass. `check-admin-department-detail.ts` gained assertions that both event pages render the shared view, pass their own hrefs, keep their own role guard, and that the shared view never enables mutation. No browser available, so the mobile admin event page in particular is unverified — it is the surface that changed most.
+
 ### 2026-09-28 - Admin gets the full report destination set
 
 - **Follow-up to the admin report parity work:** the destination links that were deliberately omitted are now backed by real routes. `/admin/departments/[deptId]/reports/[eventId]/` gains `expenses`, `budget-history`, `spending-summary`, `previous-revisions` and `signed-report`, so the admin report page shows the same Expenses + Budget History folder cards and Spending Summary / Previous Revisions / Signed Report rows as the adviser.
