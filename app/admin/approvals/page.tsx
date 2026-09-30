@@ -3,6 +3,7 @@ import { requireRole } from "@/lib/auth-guard";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { AdminApprovalsClient } from "@/components/admin/AdminApprovalsClient";
+import { ADMIN_CONTENT } from "@/lib/admin-content";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +33,7 @@ export default async function AdminApprovalsPage() {
     })) ?? [];
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-10 pt-2">
+    <div className={`flex w-full flex-col gap-6 pb-10 pt-2 ${ADMIN_CONTENT}`}>
       <Link
         href="/admin/departments"
         className="flex w-fit items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"

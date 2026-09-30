@@ -9,6 +9,8 @@ import { CssBottomSheet } from "@/components/ui/CssBottomSheet";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DepartmentCard } from "@/components/admin/DepartmentCard";
 import { filterDepartments, type DepartmentSummary } from "@/lib/admin-departments";
+import { ADMIN_CONTENT } from "@/lib/admin-content";
+import { cn } from "@/lib/utils";
 
 // ─── Animation variants ───────────────────────────────────────────────
 const staggerContainer = {
@@ -127,7 +129,7 @@ export function DepartmentsListClient({ initialDepartments, loadError }: Props) 
   const isSearching = searchParams.get("search") === "1";
 
   return (
-    <div className="flex flex-1 flex-col">
+    <div className={cn("flex flex-1 flex-col", ADMIN_CONTENT)}>
       <div className={`relative pt-1 md:pt-3 lg:pt-6 ${isSearching ? "hidden lg:block" : ""}`}>
         <h1 className="text-center text-base font-bold uppercase text-text-primary md:text-xl lg:text-2xl lg:font-medium lg:normal-case">
           Welcome Back!

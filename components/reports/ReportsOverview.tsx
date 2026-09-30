@@ -142,7 +142,14 @@ export function ReportsOverview({ role, items, basePath, embedded }: Props) {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-7 pb-10">
+    <div
+      className={cn(
+        "flex flex-col gap-7",
+        // Embedded in the admin department workspace, which owns the page
+        // margin and bottom padding itself — a second cap here would nest.
+        !embedded && "mx-auto w-full max-w-6xl pb-10",
+      )}
+    >
       {!embedded && (
         <FadeIn delay={0}>
           <header>

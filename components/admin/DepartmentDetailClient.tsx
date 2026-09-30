@@ -17,6 +17,7 @@ import {
   type DepartmentAuditActor,
 } from "@/components/admin/DepartmentAuditTab";
 import { cn } from "@/lib/utils";
+import { ADMIN_CONTENT } from "@/lib/admin-content";
 
 const TABS = ["Events", "Reports", "Users", "Audit Logs"] as const;
 export type DepartmentTab = (typeof TABS)[number];
@@ -99,7 +100,7 @@ export function DepartmentDetailClient({
   };
 
   return (
-    <div className="flex flex-col gap-6 pb-24 md:pb-10">
+    <div className={cn("flex flex-col gap-6 pb-24 md:pb-10", ADMIN_CONTENT)}>
       <div className="relative flex min-h-11 items-center justify-center md:hidden">
         <Link
           href="/admin/departments"
