@@ -27,7 +27,7 @@ export const getCurrentUser = cache(async function getCurrentUser(): Promise<Aut
 
   const { data: profile, error: profileError } = await insforge.database
     .from("users")
-    .select("role, department_id, account_status, avatar_key")
+    .select("role, department_id, account_status, avatar_key, first_name, last_name")
     .eq("id", data.user.id)
     .maybeSingle();
 
@@ -40,6 +40,7 @@ export const getCurrentUser = cache(async function getCurrentUser(): Promise<Aut
     departmentId: profile.department_id,
     accountStatus: profile.account_status,
     avatarKey: profile.avatar_key,
+    displayName: [profile.first_name, profile.last_name].filter(Boolean).join(" "),
   };
 });
 

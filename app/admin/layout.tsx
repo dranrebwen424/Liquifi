@@ -27,7 +27,7 @@ export default async function AdminLayout({
     <div className="min-h-screen bg-background">
       <PushSubscriber />
 
-      <AdminSidebar />
+      <AdminSidebar account={{ name: user.displayName || user.email, email: user.email, avatarUrl: adminAvatarUrl }} />
 
       <AdminMobileTopBar
         adminInitial={adminInitial}

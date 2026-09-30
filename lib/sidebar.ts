@@ -9,6 +9,12 @@
  */
 export const SIDEBAR_COLLAPSED_KEY = "liquifi:sidebar-collapsed";
 
+export type SidebarAccount = {
+  name: string;
+  email: string;
+  avatarUrl: string | null;
+};
+
 /**
  * Runs before first paint, in <head>.
  *

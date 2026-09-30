@@ -1,5 +1,6 @@
 import { requireLayoutRole } from "@/lib/layout-guard";
 import { createInsforgeServer } from "@/lib/insforge-server";
+import { getAvatarUrl } from "@/lib/storage";
 import { AdviserSidebar } from "@/components/adviser/AdviserSidebar";
 import { AdviserLayoutShell } from "@/components/adviser/AdviserLayoutShell";
 import { PushSubscriber } from "@/components/notifications/PushSubscriber";
@@ -21,13 +22,18 @@ export default async function AdviserLayout({
     .eq("user_id", user.id)
     .eq("read", false);
   const unreadCount = unreadRows?.length ?? 0;
+  const account = {
+    name: user.displayName || user.email,
+    email: user.email,
+    avatarUrl: getAvatarUrl(user.avatarKey, insforge),
+  };
 
   return (
     <div className="min-h-screen bg-background">
       <PushSubscriber />
       <PushEnableToast />
-      <AdviserSidebar unreadCount={unreadCount} />
-      <AdviserLayoutShell unreadCount={unreadCount}>{children}</AdviserLayoutShell>
+      <AdviserSidebar unreadCount={unreadCount} account={account} />
+      <AdviserLayoutShell unreadCount={unreadCount} account={account}>{children}</AdviserLayoutShell>
     </div>
   );
 }

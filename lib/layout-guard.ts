@@ -23,5 +23,6 @@ export async function requireLayoutRole(requiredRole: Role) {
     email: user.email ?? "",
     role: user.role,
     avatarKey: user.avatarKey,
+    displayName: user.displayName,
   };
 }

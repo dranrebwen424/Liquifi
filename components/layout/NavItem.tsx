@@ -88,16 +88,18 @@ export function NavItem({ label, href, icon: Icon, isActive, variant, badge = 0,
     return (
       <Link
         href={href}
+        aria-label={label}
+        aria-current={isActive ? "page" : undefined}
         title={collapsed ? label : undefined}
         className={cn(
-          "group relative flex items-center rounded-xl text-sm font-medium transition-colors duration-200",
+          "group relative flex min-h-11 items-center rounded-md text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text-inverse/70 motion-reduce:transition-none",
           collapsed ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2.5",
           isActive
             ? "bg-nav-active text-text-inverse"
-            : "text-text-muted hover:bg-nav-hover hover:text-text-inverse",
+            : "text-text-inverse/70 hover:bg-nav-hover hover:text-text-inverse",
         )}
       >
-        <span className="relative z-10 transition-transform duration-200 group-hover:scale-110">
+        <span className="relative z-10 shrink-0" aria-hidden="true">
           {renderIcon()}
         </span>
         {!collapsed && (

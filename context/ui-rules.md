@@ -28,9 +28,10 @@ The `--font-sans` variable is declared in `@theme` in `globals.css`. Apply the f
 - **Web:** sidebar nav, fixed width 240px, full viewport height, left-aligned
 - **Mobile:** bottom nav bar, fixed height 64px, icons + labels
 - Nav items are role-scoped per the architecture doc — never render a nav item the current role/route group doesn't own:
-  - Treasurer → Home, Notifications, Reports, Profile
-  - Adviser → Home, Approvals, Notifications, Reports, Profile
-  - Admin → Departments, Approvals, Profile
+  - Treasurer desktop → Home, Reports, Notifications; mobile drawer → Home, Reports
+  - Adviser desktop → Home, Approvals, Reports, Notifications; mobile drawer → Home, Approvals, Reports
+  - Admin → Departments, Approvals
+  - Profile lives in the bottom account menu for every sidebar. Treasurer/adviser mobile Notifications lives in the top-bar bell.
 - Role checks that gate a page are server-side (route group layout); the nav itself is cosmetic only — never rely on hiding a nav item as access control
 
 ---
@@ -43,6 +44,7 @@ The `--font-sans` variable is declared in `@theme` in `globals.css`. Apply the f
 - Inactive item: `color: var(--color-text-secondary)` (web sidebar uses `text-text-muted` on dark), font-weight 500, 14px
 - No underline — active state is icon fill + color change only
 - Unread notification count shows as a small pill badge on the Notifications nav item, never as a raw dot with no count
+- **Sidebar account menu (2026-09-30)** — bottom avatar/name/role trigger, real stored profile image with initials fallback. Exactly two actions: Profile and Log out. Dark `bg-nav-active` popup with `rounded-xl`, subtle token border, full text labels, and 44px action rows. Expanded desktop/mobile opens above the trigger; collapsed desktop opens to its right outside the sidebar. Use a portal and viewport collision handling, keyboard navigation, Escape/outside dismissal, and restored focus. No standalone sidebar logout button or duplicate Profile nav link.
 
 ---
 
