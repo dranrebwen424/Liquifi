@@ -66,13 +66,15 @@ async function main() {
   for (const [role, title] of [["treasurer", "Treasurer"], ["adviser", "Adviser"]]) {
     const Sidebar = require("../components/" + role + "/" + title + "Sidebar.tsx")[title + "Sidebar"];
     const Shell = require("../components/" + role + "/" + title + "LayoutShell.tsx")[title + "LayoutShell"];
-    const desktop = Sidebar({ account, unreadCount: 7 }).props.navItems;
+    const desktop = Sidebar({ account, unreadCount: 7, pendingCount: 4 }).props.navItems;
     assert(!desktop.some((item) => item.label === "Profile"));
     assert.equal(desktop.find((item) => item.label === "Notifications").badge, 7);
+    assert.equal(desktop.find((item) => item.label === "Approvals")?.badge ?? 0, role === "adviser" ? 4 : 0, "adviser Approvals badge must carry the pending approval count");
     cursor = 0; refCursor = 0; state = []; refs = [];
-    const mobile = find(Shell({ account, unreadCount: 7 }), (n) => n.type === MobileSidebarDrawer);
+    const mobile = find(Shell({ account, unreadCount: 7, pendingCount: 4 }), (n) => n.type === MobileSidebarDrawer);
     assert(!mobile.props.navItems.some((item) => ["Profile", "Notifications"].includes(item.label)));
     assert.equal(mobile.props.account, account);
+    assert.equal(mobile.props.navItems.find((item) => item.label === "Approvals")?.badge ?? 0, role === "adviser" ? 4 : 0, "adviser drawer Approvals badge must match the sidebar");
   }
   state = []; refs = [];
   let calls = 0, resolveRequest, navigated;
@@ -95,6 +97,6 @@ async function main() {
   global.fetch = async () => ({ ok: true });
   await find(render(), (n) => n.type === Menu.Item).props.onClick();
   assert.equal(navigated, "/login");
-  console.log("Sidebar account checks passed: role links, mobile/desktop navigation, avatar fallback, portal placement, logout failure/retry and duplicate protection.");
+  console.log("Sidebar account checks passed: role links, mobile/desktop navigation, approvals badge, avatar fallback, portal placement, logout failure/retry and duplicate protection.");
 }
 main().catch((error) => { console.error(error); process.exitCode = 1; });

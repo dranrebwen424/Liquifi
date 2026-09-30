@@ -30,6 +30,7 @@ The `--font-sans` variable is declared in `@theme` in `globals.css`. Apply the f
 - Nav items are role-scoped per the architecture doc — never render a nav item the current role/route group doesn't own:
   - Treasurer desktop → Home, Reports, Notifications; mobile drawer → Home, Reports
   - Adviser desktop → Home, Approvals, Reports, Notifications; mobile drawer → Home, Approvals, Reports
+    - Approvals carries a count badge at both sizes (see below)
   - Admin → Departments, Approvals
   - Profile lives in the bottom account menu for every sidebar. Treasurer/adviser mobile Notifications lives in the top-bar bell.
 - Role checks that gate a page are server-side (route group layout); the nav itself is cosmetic only — never rely on hiding a nav item as access control
@@ -44,6 +45,7 @@ The `--font-sans` variable is declared in `@theme` in `globals.css`. Apply the f
 - Inactive item: `color: var(--color-text-secondary)` (web sidebar uses `text-text-muted` on dark), font-weight 500, 14px
 - No underline — active state is icon fill + color change only
 - Unread notification count shows as a small pill badge on the Notifications nav item, never as a raw dot with no count
+- **Approvals count badge (2026-09-30)** — the adviser Approvals nav item (desktop sidebar and mobile drawer) shows a count badge in the same `NavItem` pill as Notifications. The number is the total pending on the Approvals page: pending treasurer applicants + pending manual entries (`pending_approval` / `resubmitted`) in the department's non-archived events. Counted server-side in `app/adviser/layout.tsx` via `countPendingApprovals()`; the badge and the queue can never disagree. Reports awaiting approval are not in this count — they are approved from Reports.
 - **Sidebar account menu (2026-09-30)** — bottom avatar/name/role trigger, real stored profile image with initials fallback. Exactly two actions: Profile and Log out. Dark `bg-nav-active` popup with `rounded-xl`, subtle token border, full text labels, and 44px action rows. Expanded desktop/mobile opens above the trigger; collapsed desktop opens to its right outside the sidebar. Use a portal and viewport collision handling, keyboard navigation, Escape/outside dismissal, and restored focus. No standalone sidebar logout button or duplicate Profile nav link.
 
 ---

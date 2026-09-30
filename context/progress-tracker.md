@@ -97,6 +97,17 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Decisions Made During Build
 
+### 2026-09-30 - Adviser Approvals nav badge
+
+- **The Approvals page already had a `NavItemConfig.badge` slot unused.** `NavItem` renders the count pill; only the data was missing. No new badge component.
+- **Count = pending treasurer applicants + pending manual entries**, i.e. exactly the two queues `app/adviser/approvals/page.tsx` renders. Reports awaiting approval are approved from Reports, so they stay out of the number.
+- **`countPendingApprovals()` in `lib/adviser-approval-inbox.ts` mirrors the page's filters** (role/dept for applicants; `status IN (pending_approval, resubmitted)` + `type = manual` + non-archived department events for entries). The badge and the queue must never disagree, so the filters live in one named place with the page named in the doc comment. A failed query logs and contributes 0 rather than throwing — a missing badge beats a broken layout.
+- **`entries` has no `department_id`**, so entry counting needs the department's non-archived event ids first; applicants and events run concurrently, then entries. 2 round trips, not 3.
+- **Counted in the layout, not the page** — the sidebar renders on every adviser route, so the number has to be layout-level. Added `departmentId` to `requireLayoutRole`'s return (`lib/layout-guard.ts`); it was already on the `AuthUser` the guard reads.
+- **Both sizes get the badge** — desktop sidebar and the mobile drawer, since the drawer spreads the same `NavItemConfig` into `NavItem`.
+- **Verified:** `node scripts/check-sidebar-account.cjs` (asserts the badge on Approvals in both the sidebar and the drawer, and 0 for treasurer), scoped eslint, `next build`.
+- **SDK note:** `select(cols, { count: "exact", head: true })` is documented in `@insforge/sdk@1.4.4`'s `.d.ts` but the shipped `dist` never sends a `Prefer` header, so the count comes back undefined. Counting is `select("id")` + `.length`, matching the existing notification count.
+
 ### 2026-09-28 - Adviser and admin event views share one component
 
 - **The department-workspace event page was the adviser page minus most of it.** Admin rendered only the desktop layout at every width, wrapped in a single `FadeIn`, with no mobile header, no `mobileOnly` budget card, no staggered entrance and no "View Report" pill — so mobile admin got a desktop-shaped page. Fixed by extraction, not by copying.

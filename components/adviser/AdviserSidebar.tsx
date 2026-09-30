@@ -5,16 +5,21 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import type { NavItemConfig } from "@/components/layout/NavItem";
 import type { SidebarAccount } from "@/lib/sidebar";
 
-const baseNavItems: NavItemConfig[] = [
+const sidebarNavItems = (unreadCount: number, pendingCount: number): NavItemConfig[] => [
   { label: "Home", href: "/adviser/home", icon: Home },
-  { label: "Approvals", href: "/adviser/approvals", icon: CircleCheckBig },
+  { label: "Approvals", href: "/adviser/approvals", icon: CircleCheckBig, badge: pendingCount },
   { label: "Reports", href: "/adviser/reports", icon: FileText },
-  { label: "Notifications", href: "/adviser/notifications", icon: Bell },
+  { label: "Notifications", href: "/adviser/notifications", icon: Bell, badge: unreadCount },
 ];
 
-export function AdviserSidebar({ unreadCount = 0, account }: { unreadCount?: number; account: SidebarAccount }) {
-  const navItems = baseNavItems.map((item) =>
-    item.href === "/adviser/notifications" ? { ...item, badge: unreadCount } : item,
-  );
-  return <Sidebar navItems={navItems} role="adviser" account={account} />;
+export function AdviserSidebar({
+  unreadCount = 0,
+  pendingCount = 0,
+  account,
+}: {
+  unreadCount?: number;
+  pendingCount?: number;
+  account: SidebarAccount;
+}) {
+  return <Sidebar navItems={sidebarNavItems(unreadCount, pendingCount)} role="adviser" account={account} />;
 }
