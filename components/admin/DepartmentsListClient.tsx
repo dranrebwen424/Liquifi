@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Plus, Building2, SearchX, FolderPlus, Loader2 } from "lucide-react";
+import { Plus, Building2, Search, SearchX, FolderPlus, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { createDepartment } from "@/actions/departments";
 import { CssBottomSheet } from "@/components/ui/CssBottomSheet";
@@ -42,7 +42,7 @@ export function DepartmentsListClient({ initialDepartments, loadError }: Props) 
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
 
-  // Search lives in the top bars (desktop AdminTopBar / mobile AdminMobileTopBar), both write ?q=.
+  // Desktop search and the mobile top bar share the URL query.
   const search = searchParams.get("q") ?? "";
 
   const filtered = useMemo(
@@ -51,6 +51,15 @@ export function DepartmentsListClient({ initialDepartments, loadError }: Props) 
   );
 
   const clearSearch = () => router.replace("/admin/departments", { scroll: false });
+
+  function updateSearch(query: string): void {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("search");
+    if (query) params.set("q", query);
+    else params.delete("q");
+    const suffix = params.toString();
+    window.history.replaceState(null, "", suffix ? `/admin/departments?${suffix}` : "/admin/departments");
+  }
 
   const closeCreate = () => {
     setCreateView(null);
@@ -119,11 +128,21 @@ export function DepartmentsListClient({ initialDepartments, loadError }: Props) 
 
   return (
     <div className="flex flex-1 flex-col">
-      {!isSearching && (
-      <div className="relative pt-1 md:pt-3">
-        <h1 className="text-center text-base font-bold uppercase text-text-primary md:text-xl">
+      <div className={`relative pt-1 md:pt-3 lg:pt-6 ${isSearching ? "hidden lg:block" : ""}`}>
+        <h1 className="text-center text-base font-bold uppercase text-text-primary md:text-xl lg:text-2xl lg:font-medium lg:normal-case">
           Welcome Back!
         </h1>
+        <div role="search" className="mx-auto mt-6 hidden w-full max-w-3xl items-center gap-3 rounded-full bg-surface-dept px-5 focus-within:ring-2 focus-within:ring-accent lg:flex">
+          <Search className="size-5 shrink-0 text-text-secondary" aria-hidden="true" />
+          <input
+            type="search"
+            aria-label="Search departments"
+            placeholder="Search departments"
+            value={search}
+            onChange={(event) => updateSearch(event.target.value)}
+            className="h-12 min-w-0 flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-secondary"
+          />
+        </div>
         <div className="mt-10 flex items-end justify-between gap-3 md:mt-14">
           <div>
             <h2 className="text-base font-medium text-text-primary md:text-xl">Departments</h2>
@@ -140,7 +159,6 @@ export function DepartmentsListClient({ initialDepartments, loadError }: Props) 
           </button>
         </div>
       </div>
-      )}
 
       {/* ── Query failure banner ─────────────────────────────────── */}
       {loadError && (
@@ -183,7 +201,7 @@ export function DepartmentsListClient({ initialDepartments, loadError }: Props) 
             variants={staggerContainer}
             initial="hidden"
             animate="show"
-            className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-5 xl:grid-cols-3"
+            className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-5 lg:grid-cols-3 xl:grid-cols-5 xl:gap-4"
           >
             {filtered.map((dept) => (
               <motion.div key={dept.id} variants={fadeUpItem}>

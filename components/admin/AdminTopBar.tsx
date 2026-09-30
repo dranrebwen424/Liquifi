@@ -19,14 +19,14 @@ export function AdminTopBar({ adminInitial, adminAvatarUrl, pendingApprovalsCoun
   const router = useRouter();
   const searchParams = useSearchParams();
   const topBarVisible = useAutoHideTopBar();
-  const hidden = isImmersivePage(pathname);
+  const hidden = pathname === "/admin/departments" || isImmersivePage(pathname);
   const isSearching = searchParams.get("search") === "1";
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ponytail: debounce URL sync so router.replace doesn't fire on every keystroke
   useEffect(() => {
-    if (!isSearching) return;
+    if (hidden || !isSearching) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       const params = new URLSearchParams({ search: "1" });
@@ -36,7 +36,7 @@ export function AdminTopBar({ adminInitial, adminAvatarUrl, pendingApprovalsCoun
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [isSearching, query, router]);
+  }, [hidden, isSearching, query, router]);
 
   if (hidden) return null;
 

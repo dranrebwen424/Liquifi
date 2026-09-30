@@ -13,18 +13,18 @@ export function DepartmentCard({ department }: Props) {
     <Link
       href={`/admin/departments/${department.id}`}
       prefetch
-      className="group flex min-h-32 w-full flex-col rounded-lg border border-border bg-surface p-4 shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent md:min-h-48 md:p-5"
+      className="group relative flex min-h-32 w-full flex-col rounded-lg border border-border bg-surface p-4 shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent md:min-h-48 md:p-5 xl:p-4"
     >
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-4 xl:block">
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase text-text-muted">
+          <p className="text-[11px] font-semibold uppercase text-text-muted xl:pr-10">
             {department.code}
           </p>
-          <h2 className="mt-2 line-clamp-2 text-base font-bold leading-snug text-text-primary md:text-lg">
+          <h2 className="mt-2 line-clamp-2 text-base font-bold leading-snug text-text-primary md:text-lg xl:mt-4 xl:line-clamp-3 xl:text-base">
             {department.name}
           </h2>
         </div>
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface-secondary text-text-primary transition-colors duration-200 group-hover:bg-accent group-hover:text-accent-foreground">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface-secondary text-text-primary transition-colors duration-200 group-hover:bg-accent group-hover:text-accent-foreground xl:absolute xl:right-3 xl:top-3 xl:size-8">
           <ChevronRight className="h-5 w-5" strokeWidth={2.5} />
         </span>
       </div>
