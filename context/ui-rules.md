@@ -32,6 +32,7 @@ The `--font-sans` variable is declared in `@theme` in `globals.css`. Apply the f
   - Adviser desktop → Home, Approvals, Reports, Notifications; mobile drawer → Home, Approvals, Reports
     - Approvals carries a count badge at both sizes (see below)
   - Admin → Departments, Approvals
+  - The admin **desktop** top bar is chrome only: it renders on `/admin/profile` and nowhere else. Never restore it to the approvals queue or the department workspace — both own their own back header, and the sidebar already carries every destination it linked to. `AdminMobileTopBar` is a separate component and always stays.
   - Profile lives in the bottom account menu for every sidebar. Treasurer/adviser mobile Notifications lives in the top-bar bell.
 - Role checks that gate a page are server-side (route group layout); the nav itself is cosmetic only — never rely on hiding a nav item as access control
 

@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, UserRoundCheck } from "lucide-react";
 import { useAutoHideTopBar } from "@/hooks/useAutoHideTopBar";
-import { isImmersivePage } from "@/lib/event-route";
+import { isAdminTopBarHiddenPage, isImmersivePage } from "@/lib/event-route";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -19,7 +19,7 @@ export function AdminTopBar({ adminInitial, adminAvatarUrl, pendingApprovalsCoun
   const router = useRouter();
   const searchParams = useSearchParams();
   const topBarVisible = useAutoHideTopBar();
-  const hidden = pathname === "/admin/departments" || isImmersivePage(pathname);
+  const hidden = isAdminTopBarHiddenPage(pathname) || isImmersivePage(pathname);
   const isSearching = searchParams.get("search") === "1";
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);

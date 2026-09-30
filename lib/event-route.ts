@@ -25,6 +25,24 @@ export function isReportDetailPage(pathname: string): boolean {
 }
 
 /**
+ * Admin routes that drop the desktop top bar.
+ *
+ * The admin sidebar already carries Departments, Approvals and Profile, and
+ * the departments list owns its own search field, so the bar is redundant
+ * chrome across the whole department workspace and the approvals queue —
+ * including its sub-pages, which would otherwise pop the bar back in one
+ * click deeper. Only /admin/profile keeps it.
+ *
+ * Events and reports under a department were already immersive, so this rule
+ * does not need to name them.
+ *
+ * admin: /admin/approvals, /admin/departments, /admin/departments/[deptId]/**
+ */
+export function isAdminTopBarHiddenPage(pathname: string): boolean {
+  return pathname === "/admin/approvals" || pathname.startsWith("/admin/departments");
+}
+
+/**
  * Pages that go immersive on mobile: chrome (top bar + bottom nav) slides
  * away and content fills the screen. Event + report detail pages, the
  * treasurer Active Events list (it owns its own top bar w/ back arrow),
