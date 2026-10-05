@@ -7,6 +7,7 @@ import AuthCard from "@/components/auth/AuthCard";
 import AuthOtpInput from "@/components/auth/AuthOtpInput";
 import AuthButton from "@/components/auth/AuthButton";
 import AuthLink from "@/components/auth/AuthLink";
+import { PasswordFlowProgress } from "@/components/auth/PasswordFlowProgress";
 
 const RESEND_SECONDS = 60;
 /** sessionStorage key shared with signup for the per-email persistent resend cooldown. */
@@ -151,8 +152,9 @@ function OtpPageInner() {
     <AuthShell
       top
       backHref={isReset ? "/forgot-password" : "/signup"}
+      progress={isReset ? <PasswordFlowProgress flow="reset" step={2} /> : undefined}
     >
-      <div className="pt-4">
+      <div className={isReset ? undefined : "pt-4"}>
       <AuthCard
         title="Verify your email"
         subtitle={
@@ -164,7 +166,7 @@ function OtpPageInner() {
         <form onSubmit={handleVerify} noValidate className="flex flex-col gap-6">
           <AuthOtpInput value={code} onChange={(v) => { setCode(v); if (apiError) setApiError(""); }} error={submitted && !code} />
           {apiError && (
-            <p className="text-sm text-red-500 text-center">{apiError}</p>
+            <p role="alert" className="text-sm text-error-dark text-center">{apiError}</p>
           )}
           <AuthButton type="submit" loading={loading}>Verify</AuthButton>
           <button

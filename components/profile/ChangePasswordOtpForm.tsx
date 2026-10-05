@@ -11,6 +11,7 @@ import AuthShell from "@/components/auth/AuthShell";
 import AuthCard from "@/components/auth/AuthCard";
 import AuthOtpInput from "@/components/auth/AuthOtpInput";
 import AuthButton from "@/components/auth/AuthButton";
+import { PasswordFlowProgress } from "@/components/auth/PasswordFlowProgress";
 import { usePendingNewPassword } from "@/components/profile/PasswordChangeProvider";
 import { PASSWORD_CHANGE_OTP_SENT_KEY } from "@/lib/password-change";
 
@@ -150,7 +151,7 @@ export function ChangePasswordOtpForm({ email }: Props): ReactElement | null {
   if (!newPassword && !otpVerified) return null;
 
   return (
-    <AuthShell top onBack={restart}>
+    <AuthShell onBack={restart} progress={<PasswordFlowProgress flow="change" step={2} />}>
       {otpVerified ? (
         <AuthCard title="Start again" subtitle="The password update could not finish.">
           {apiError && (
@@ -163,7 +164,7 @@ export function ChangePasswordOtpForm({ email }: Props): ReactElement | null {
           </AuthButton>
         </AuthCard>
       ) : (
-        <div className="pt-4">
+        <div>
           <AuthCard
             title="Verify your email"
             subtitle={`We sent a 6-digit code to ${email}.`}

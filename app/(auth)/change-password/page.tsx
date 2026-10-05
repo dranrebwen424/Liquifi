@@ -8,6 +8,7 @@ import AuthInput from "@/components/auth/AuthInput";
 import AuthButton from "@/components/auth/AuthButton";
 import AuthLink from "@/components/auth/AuthLink";
 import LottiePlayer from "@/components/LottiePlayer";
+import { PasswordFlowProgress } from "@/components/auth/PasswordFlowProgress";
 
 function ChangePasswordPageInner() {
   const router = useRouter();
@@ -58,7 +59,7 @@ function ChangePasswordPageInner() {
 
   return (
     <AuthShell
-      subtitle="Reset your password."
+      progress={<PasswordFlowProgress flow="reset" step={3} complete={success} />}
       backHref={email ? `/otp?intent=reset&email=${encodeURIComponent(email)}` : "/login"}
     >
       {success ? (

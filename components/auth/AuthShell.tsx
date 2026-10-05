@@ -35,6 +35,7 @@ export default function AuthShell({
   top,
   backHref,
   onBack,
+  progress,
 }: {
   children: React.ReactNode;
   subtitle?: string;
@@ -43,16 +44,18 @@ export default function AuthShell({
   backHref?: string;
   /** Optional function back — renders a button instead of the href Link (used by multi-step wizards). */
   onBack?: () => void;
+  progress?: React.ReactNode;
 }) {
   return (
-    <main className={`flex min-h-full ${top ? "items-start pt-0" : "items-center py-12"} justify-center bg-background px-4 font-sans`}>
+    <main className={`flex min-h-full ${progress ? "items-start pt-6 pb-12" : top ? "items-start pt-0" : "items-center py-12"} justify-center bg-background px-4 font-sans`}>
       <div className="w-full max-w-sm">
+        {progress && <div className="mb-6">{progress}</div>}
         {onBack ? (
           <button
             type="button"
             onClick={onBack}
             aria-label="Go back"
-            className="mb-4 inline-flex h-9 w-9 items-center justify-center rounded-lg text-text-muted outline-none transition-colors hover:bg-surface hover:text-text-primary"
+            className={`mb-4 inline-flex items-center justify-center rounded-lg outline-none transition-colors hover:bg-surface hover:text-text-primary ${progress ? "h-11 w-11 text-text-secondary focus-visible:ring-2 focus-visible:ring-accent" : "h-9 w-9 text-text-muted"}`}
           >
             <BackIcon />
           </button>
@@ -60,12 +63,12 @@ export default function AuthShell({
           <Link
             href={backHref}
             aria-label="Go back"
-            className="mb-4 inline-flex h-9 w-9 items-center justify-center rounded-lg text-text-muted outline-none transition-colors hover:bg-surface hover:text-text-primary"
+            className={`mb-4 inline-flex items-center justify-center rounded-lg outline-none transition-colors hover:bg-surface hover:text-text-primary ${progress ? "h-11 w-11 text-text-secondary focus-visible:ring-2 focus-visible:ring-accent" : "h-9 w-9 text-text-muted"}`}
           >
             <BackIcon />
           </Link>
         ) : null}
-        {!hideLogo && (
+        {!hideLogo && !progress && (
           <Link
             href="/"
             className={`mb-8 flex items-center justify-center gap-2 ${top && !backHref && !onBack ? "mt-8" : ""}`}
@@ -75,7 +78,7 @@ export default function AuthShell({
             <span className="text-[20px] font-bold leading-7 text-text-primary">Liquifi</span>
           </Link>
         )}
-        {subtitle && (
+        {subtitle && !progress && (
           <p className="mb-6 text-center text-sm font-normal text-text-muted">{subtitle}</p>
         )}
         {children}

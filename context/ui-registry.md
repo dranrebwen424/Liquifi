@@ -63,7 +63,7 @@ Public route: Features ×3 / How it works ×3 (accent `01/02/03` labels) / singl
 
 ### Auth pages
 Files: components/auth/* · 2026-07-14 (Figma-matched restyle). Centered form on white; real wiring (login/signup/OTP/pending/forgot/change-password); signup role selector excludes Admin.
-- **AuthShell** (server) — `min-h-full items-center justify-center bg-background px-4 py-12`, inner `max-w-sm`; props `hideLogo?` + `top?` (login uses both).
+- **AuthShell** (server) — `min-h-full items-center justify-center bg-background px-4 py-12`, inner `max-w-sm`; props `hideLogo?` + `top?` (login uses both). Optional `progress` replaces the logo and shell subtitle, uses `items-start pt-6 pb-12` (24px from the page top at every width), and sits above the back control with `mb-6`. Progress flows have a 44px back target and visible keyboard focus.
 - **AuthCard** — no chrome; title `text-[28px] font-bold leading-9`, subtitle `text-sm text-text-secondary`.
 - **AuthInput** — floating label (Material): centered at rest, floats `scale-90 text-xs` to `top-2` via `peer-focus:`/`peer-[:not(:placeholder-shown)]:`; `pt-6 pb-2 pl-4 pr-10 rounded-lg border-border-strong bg-surface`, focus `border-accent ring-1 ring-accent`; `placeholder=" "`. Password: **persistent** eye toggle at `right-3`. Error: `border-error focus:ring-error` + `aria-invalid` + red `!` badge (`right-3`; password `pr-16`) + "Please enter your <name>." notice; forms `noValidate` + `submitted` flag.
 - **AuthOtpInput** — 6 boxes `h-14 w-12 rounded-lg text-xl font-semibold`; auto-advance, Backspace moves back, arrows navigate, paste distributes. Error: all boxes `border-error` (no `!` badge — threw the row off).
@@ -112,6 +112,26 @@ Files: `components/profile/{ChangePasswordButton,ChangePasswordForm,ChangePasswo
 - `/profile/change-password/success` shows the success Lottie, a ten-second countdown, and a Return to Home button. It redirects to the role home route.
 - A hard refresh on the OTP page loses the in-memory new password and restarts the flow. The password is never written to cookies, the URL, or browser storage.
 - `/profile` is protected by `proxy.ts` and the nested layout; forgot-password remains a separate public flow.
+
+### PasswordFlowProgress
+
+File: `components/auth/PasswordFlowProgress.tsx`
+Last updated: 2026-10-05
+
+| Property | Class |
+| --- | --- |
+| Background | No card surface, inherits `bg-background` from AuthShell |
+| Border | None |
+| Border radius | `rounded-full` rails |
+| Text, pending/current | `text-text-primary`, `font-normal` / `font-semibold` |
+| Text, completed | `text-success-foreground` |
+| Label size | `text-[11px] leading-4` |
+| Spacing | `gap-2`, labels `mt-2`, shell `mb-6` |
+| Status colors | `bg-success` completed, `bg-accent` remaining |
+| Hover state | None, steps are informational |
+| Shadow | None |
+
+**Pattern notes:** Three equal rails mirror the supplied reference. Reset labels are Your email / Verify email / New password; profile change labels are New password / Verify email / Complete. `step` identifies the current screen, `complete` makes every rail green only after success. Semantic ordered list, `aria-current="step"`, and hidden completed/current/upcoming descriptions communicate status without relying on color. Shared across public forgot/reset, reset OTP only (signup keeps its shell), profile change, profile OTP, and success screens. Password forms, verification, and redirects retain their existing behavior.
 
 ### Treasurer layout
 Files: components/treasurer/* — TreasurerSidebar mirrors AdminSidebar (Home, Reports, Notifications, Profile); TreasurerMobileBottomNav `fixed inset-x-0 bottom-0 z-40 md:hidden bg-surface border-t border-border`, active `text-accent`, labels `text-[11px]`, route-aware via shared `MobileBottomNav`.
