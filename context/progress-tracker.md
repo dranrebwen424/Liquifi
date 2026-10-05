@@ -6,6 +6,8 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Current Status
 
+**Password UI refinement (2026-10-05):** The back control is now first, 24px from the page top, followed by progress and the form. This supersedes the progress first ordering below. Password form subheaders opt into `AuthCard.compactSubtitle` (`text-xs leading-5 sm:text-sm`), giving 12px mobile copy and the existing 14px desktop copy. Public recovery, reset OTP, and profile password/OTP screens use the same scale; signup keeps its existing typography.
+
 **Latest password UI update (2026-10-05):** Public forgot password and signed in profile password change now use the shared `PasswordFlowProgress` in `AuthShell`. The progress rails replace the Liquifi logo and shell subtitle, begin 24px from the page top, and update through each flow's OTP and success states. Completed rails are green, remaining rails ink, with readable labels and screen reader state descriptions. Back controls in these flows are 44px with visible focus. TypeScript, render checks across both flows/all steps/success states, the existing profile password check, and production build pass; scoped ESLint has no errors and one existing unused `resetToken` warning in the shared OTP page. The build required network access for the existing Poppins font download. Live visual QA is unavailable because no browser is connected.
 
 **Latest admin margin update (2026-09-30):** Admin home, the approvals queue and the department workspace now share one content margin so their edges line up on wide monitors. The width lives in a single constant, `ADMIN_CONTENT` in `lib/admin-content.ts` (`lg:mx-auto lg:max-w-6xl`, 1152px), applied to three content roots: `DepartmentsListClient`, `app/admin/approvals/page.tsx` and `DepartmentDetailClient` — the last covering the dark department header and all four tabs, which were previously uncapped. Desktop only, per the user's call: below `lg` the content area is already narrower than the cap, so mobile is untouched. `max-w-6xl` was chosen as the narrowest value that still fits the home grid's five columns plus four gaps (~217px per card, three-line department name). The approvals page widened from `max-w-3xl` to the shared cap. `ReportsOverview` now drops its own `mx-auto max-w-6xl pb-10` when `embedded`, fixing the tab being narrower than its sibling tabs past ~1488px and the doubled 80px bottom padding on that tab alone. `/admin/profile` was left out — `ProfileView` is a form surface on `max-w-xl`, not a content column. Verified: the six existing admin/report check scripts still pass, scoped ESLint clean, production build passes. **Not covered by an executable check** — this change is Tailwind class strings, and a check would have to grep source rather than assert behavior, so none was added. Not visually verified: no browser is connected.
@@ -104,6 +106,13 @@ Update this file after every completed feature. Any AI agent reading this should
 ---
 
 ## Decisions Made During Build
+
+### 2026-10-05 - Back control first and smaller mobile password subheaders
+
+- Moved the progress slot after both back control variants in `AuthShell`, preserving `pt-6`, 44px targets, and visible focus. Order is back control, progress, title, subheader, form.
+- Added optional `compactSubtitle` to `AuthCard` and enabled it for password screens and the reset branch of the shared OTP screen. Supporting copy below the title uses 12px with 20px line height on mobile and 14px at `sm` and above.
+- Supersedes the progress first placement in the initial password UI entry. Password behavior is unchanged.
+- Verification: TypeScript, the existing profile password flow check, and render checks for back first ordering in both control variants, 24px padding, compact subtitles, and ordinary auth typography pass. Scoped ESLint has no errors and the existing shared OTP unused variable warning. Live visual QA remains unavailable because no browser is connected.
 
 ### 2026-10-05 - Compact password progress header
 

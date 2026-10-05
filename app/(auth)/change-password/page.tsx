@@ -74,7 +74,7 @@ function ChangePasswordPageInner() {
           </div>
         </AuthCard>
       ) : (
-        <AuthCard title="Set a new password" subtitle="Choose a password you don't reuse elsewhere.">
+        <AuthCard title="Set a new password" subtitle="Choose a password you don't reuse elsewhere." compactSubtitle>
           <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
           <AuthInput
             id="new-password"

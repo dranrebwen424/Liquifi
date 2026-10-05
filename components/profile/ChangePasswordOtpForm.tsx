@@ -153,7 +153,7 @@ export function ChangePasswordOtpForm({ email }: Props): ReactElement | null {
   return (
     <AuthShell onBack={restart} progress={<PasswordFlowProgress flow="change" step={2} />}>
       {otpVerified ? (
-        <AuthCard title="Start again" subtitle="The password update could not finish.">
+        <AuthCard title="Start again" subtitle="The password update could not finish." compactSubtitle>
           {apiError && (
             <p role="alert" className="text-sm text-error-dark">
               {apiError}
@@ -167,6 +167,7 @@ export function ChangePasswordOtpForm({ email }: Props): ReactElement | null {
         <div>
           <AuthCard
             title="Verify your email"
+            compactSubtitle
             subtitle={`We sent a 6-digit code to ${email}.`}
           >
             <form onSubmit={handleVerify} noValidate className="flex flex-col gap-6">

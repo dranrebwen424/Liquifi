@@ -43,7 +43,7 @@ export default function ForgotPasswordPage() {
 
   return (
     <AuthShell backHref="/login" progress={<PasswordFlowProgress flow="reset" step={1} />}>
-      <AuthCard title="Forgot password" subtitle="We'll send a reset code to your email.">
+      <AuthCard title="Forgot password" subtitle="We'll send a reset code to your email." compactSubtitle>
         <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
           <AuthInput
             id="email"

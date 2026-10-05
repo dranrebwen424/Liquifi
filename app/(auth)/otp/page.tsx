@@ -157,6 +157,7 @@ function OtpPageInner() {
       <div className={isReset ? undefined : "pt-4"}>
       <AuthCard
         title="Verify your email"
+        compactSubtitle={isReset}
         subtitle={
           isReset
             ? `We sent a 6-digit code to ${email || "your email"}.`

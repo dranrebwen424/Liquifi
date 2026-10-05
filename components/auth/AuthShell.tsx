@@ -49,7 +49,6 @@ export default function AuthShell({
   return (
     <main className={`flex min-h-full ${progress ? "items-start pt-6 pb-12" : top ? "items-start pt-0" : "items-center py-12"} justify-center bg-background px-4 font-sans`}>
       <div className="w-full max-w-sm">
-        {progress && <div className="mb-6">{progress}</div>}
         {onBack ? (
           <button
             type="button"
@@ -68,6 +67,7 @@ export default function AuthShell({
             <BackIcon />
           </Link>
         ) : null}
+        {progress && <div className="mb-6">{progress}</div>}
         {!hideLogo && !progress && (
           <Link
             href="/"

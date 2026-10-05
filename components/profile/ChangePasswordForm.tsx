@@ -81,6 +81,7 @@ export function ChangePasswordForm({ profileHref }: Props): ReactElement {
     <AuthShell backHref={profileHref} progress={<PasswordFlowProgress flow="change" step={1} />}>
       <AuthCard
         title="Change password"
+        compactSubtitle
         subtitle="Confirm your current password, then verify the new one with an email code."
       >
         <form onSubmit={handleSubmit} noValidate aria-busy={busy}>
