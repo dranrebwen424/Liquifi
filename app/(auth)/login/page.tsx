@@ -13,7 +13,9 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [submitted, setSubmitted] = useState(0);
+  const [emailError, setEmailError] = useState("");
+  const [credentialsInvalid, setCredentialsInvalid] = useState(false);
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState("");
   const [softLocked, setSoftLocked] = useState(false);
@@ -29,9 +31,16 @@ export default function LoginPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setSubmitted(true);
+    setSubmitted((attempt) => attempt + 1);
     setApiError("");
-    if (!email || !password) return;
+    setCredentialsInvalid(false);
+    const emailError = !email.trim()
+      ? "Please enter your email."
+      : e.currentTarget.querySelector<HTMLInputElement>("#email")?.validity.typeMismatch
+        ? "Enter a valid email address."
+        : "";
+    setEmailError(emailError);
+    if (emailError || !password) return;
     setLoading(true);
     try {
       const res = await fetch("/api/auth/login", {
@@ -41,6 +50,7 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
+        setCredentialsInvalid(res.status === 401);
         setSoftLocked(Boolean(data.softLocked));
         setApiError(data.error || "Invalid email or password.");
         return;
@@ -68,9 +78,10 @@ export default function LoginPage() {
             label="Email"
             autoComplete="email"
             value={email}
-            onChange={setEmail}
+            onChange={(value) => { setEmail(value); setEmailError(""); setCredentialsInvalid(false); }}
             required
-            error={submitted && !email}
+            error={emailError || (credentialsInvalid ? "Check your email and password." : false)}
+            validationAttempt={submitted}
           />
           <AuthInput
             id="password"
@@ -78,12 +89,13 @@ export default function LoginPage() {
             label="Password"
             autoComplete="current-password"
             value={password}
-            onChange={setPassword}
+            onChange={(value) => { setPassword(value); setCredentialsInvalid(false); }}
             required
-            error={submitted && !password}
+            error={credentialsInvalid ? "Check your email and password." : submitted > 0 && !password}
+            validationAttempt={submitted}
           />
           {apiError && (
-            <p className="text-sm text-red-500 text-center">{apiError}</p>
+            <p role="alert" className="text-sm text-error-dark text-center">{apiError}</p>
           )}
           <AuthButton type="submit" loading={loading}>
             Sign in

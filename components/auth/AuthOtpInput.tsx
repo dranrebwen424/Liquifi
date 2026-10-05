@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef } from "react";
+import { useId, useRef } from "react";
+import { useInvalidFieldShake } from "@/components/auth/useInvalidFieldShake";
 
 type Props = {
   length?: number;
@@ -9,7 +10,8 @@ type Props = {
   /** Display name for the error notice (defaults to "verification code"). */
   name?: string;
   autoComplete?: string;
-  error?: boolean;
+  error?: boolean | string;
+  validationAttempt?: number;
 };
 
 export default function AuthOtpInput({
@@ -19,8 +21,11 @@ export default function AuthOtpInput({
   name = "verification code",
   autoComplete = "one-time-code",
   error = false,
+  validationAttempt = 0,
 }: Props) {
   const refs = useRef<(HTMLInputElement | null)[]>([]);
+  const errorId = useId();
+  const fieldRef = useInvalidFieldShake(Boolean(error), validationAttempt);
   const digits = Array.from({ length }, (_, i) => value[i] ?? "");
 
   const focusBox = (i: number) => {
@@ -83,7 +88,7 @@ export default function AuthOtpInput({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-end justify-between gap-2">
+      <div ref={fieldRef} className="flex items-end justify-between gap-2">
         {digits.map((d, i) => (
           <input
             key={i}
@@ -98,7 +103,8 @@ export default function AuthOtpInput({
             autoComplete={i === 0 ? autoComplete : "off"}
             maxLength={1}
             aria-label={`Digit ${i + 1}`}
-            aria-invalid={error}
+            aria-invalid={Boolean(error)}
+            aria-describedby={error ? errorId : undefined}
             className={`h-14 w-12 rounded-lg border bg-surface text-center text-xl font-semibold text-text-primary outline-none transition-colors ${
               error
                 ? "border-error focus:border-error focus:ring-1 focus:ring-error"
@@ -109,8 +115,8 @@ export default function AuthOtpInput({
       </div>
 
       {error && (
-        <p className="text-sm text-error" role="alert">
-          Please enter your {name}.
+        <p id={errorId} className="text-sm text-error" role="alert">
+          {typeof error === "string" ? error : `Please enter your ${name}.`}
         </p>
       )}
     </div>

@@ -12,15 +12,22 @@ import { AuthFlowProgress } from "@/components/auth/AuthFlowProgress";
 export default function ForgotPasswordPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [submitted, setSubmitted] = useState(0);
+  const [emailError, setEmailError] = useState("");
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setSubmitted(true);
+    setSubmitted((attempt) => attempt + 1);
     setApiError("");
-    if (!email) return;
+    const emailError = !email.trim()
+      ? "Please enter your email."
+      : e.currentTarget.querySelector<HTMLInputElement>("#email")?.validity.typeMismatch
+        ? "Enter a valid email address."
+        : "";
+    setEmailError(emailError);
+    if (emailError) return;
     setLoading(true);
     try {
       const res = await fetch("/api/auth/otp/send", {
@@ -51,9 +58,10 @@ export default function ForgotPasswordPage() {
             type="email"
             autoComplete="email"
             value={email}
-            onChange={setEmail}
+            onChange={(value) => { setEmail(value); setEmailError(""); }}
             required
-            error={submitted && !email}
+            error={emailError}
+            validationAttempt={submitted}
           />
           {apiError && (
             <p role="alert" className="text-sm text-error-dark text-center">{apiError}</p>

@@ -51,7 +51,8 @@ function OtpPageInner() {
     return Math.max(0, RESEND_SECONDS - elapsed);
   });
   const [code, setCode] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [submitted, setSubmitted] = useState(0);
+  const [codeInvalid, setCodeInvalid] = useState(false);
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState("");
   const [resetToken, setResetToken] = useState("");
@@ -64,9 +65,10 @@ function OtpPageInner() {
 
   async function handleVerify(e: React.FormEvent) {
     e.preventDefault();
-    setSubmitted(true);
+    setSubmitted((attempt) => attempt + 1);
     setApiError("");
-    if (!code) return;
+    setCodeInvalid(false);
+    if (code.length !== 6) return;
     setLoading(true);
     try {
       const res = await fetch("/api/auth/otp/verify", {
@@ -76,6 +78,7 @@ function OtpPageInner() {
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
+        setCodeInvalid(res.status === 400);
         setApiError(data.error || "Verification failed.");
         return;
       }
@@ -129,6 +132,7 @@ function OtpPageInner() {
   async function handleResend() {
     setSecondsLeft(RESEND_SECONDS);
     setApiError("");
+    setCodeInvalid(false);
     try {
       const res = await fetch("/api/auth/otp/send", {
         method: "POST",
@@ -166,7 +170,12 @@ function OtpPageInner() {
         }
       >
         <form onSubmit={handleVerify} noValidate className="flex flex-col gap-6">
-          <AuthOtpInput value={code} onChange={(v) => { setCode(v); if (apiError) setApiError(""); }} error={submitted && !code} />
+          <AuthOtpInput
+            value={code}
+            onChange={(v) => { setCode(v); setCodeInvalid(false); if (apiError) setApiError(""); }}
+            error={codeInvalid ? "Check your verification code or request a new one." : submitted > 0 && code.length !== 6 && "Enter the complete 6-digit code."}
+            validationAttempt={submitted}
+          />
           {apiError && (
             <p role="alert" className="text-sm text-error-dark text-center">{apiError}</p>
           )}

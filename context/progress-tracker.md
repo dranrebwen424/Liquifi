@@ -6,6 +6,8 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Current Status
 
+**Auth field outline and error feedback (2026-10-05):** The password visibility control in shared `AuthInput` is now transparent and inset, so it cannot cover the red rounded outline. It keeps a 44px target, keyboard focus ring, and pressed state. Invalid fields receive a repeatable 250ms shake, disabled for reduced motion. Login, public recovery/reset, profile change, and associated OTP forms now connect empty and incorrect values to field feedback. Specific messages and linked alerts replace misleading required notices for filled invalid fields. The new Node regression check, existing profile password check, TypeScript, and production build pass; scoped lint has no errors and the existing shared OTP unused token warning. The build required network access for the existing Poppins font download. Live visual QA remains unavailable.
+
 **Auth alignment and labels refinement (2026-10-05):** Signup and password flow headings/subheaders now align left on mobile and remain centered at `md` and above. Titles use `font-bold`. Progress step labels are visible at both sizes with accessible state descriptions retained. Desktop vertical centering, mobile 24px top spacing, back-first ordering, and form behavior are unchanged. TypeScript, scoped component lint, all flow/step render checks, and the existing profile password check pass. Live visual QA remains unavailable because no browser is connected. This supersedes the centered mobile headings and hidden labels in the earlier auth entries.
 
 **Auth layout and hierarchy update (2026-10-05):** Signup and password flows now center vertically on desktop (`md` and above) using a full viewport height shell and a wider 448px column. Mobile keeps its 24px top spacing. Back remains first, followed by unlabeled rails, a centered heading and compact subheader, then the form. Heading, form, and submit spacing are increased at both sizes. Render checks across all flow steps, the existing profile password flow check, and the production build with its TypeScript check pass. Compiled CSS includes the responsive centering, width, typography, and submit spacing rules. Lint retains the pre-existing signup effect error and shared OTP warning. No browser provider is connected for live visual QA.
@@ -112,6 +114,13 @@ Update this file after every completed feature. Any AI agent reading this should
 ---
 
 ## Decisions Made During Build
+
+### 2026-10-05 - Password outline fix and invalid field feedback
+
+- Root cause: the password visibility button used `inset-y-0` with `bg-surface` when invalid, painting over the rounded input border. `AuthInput` now uses a transparent vertically centered 44px button inside the border. Padding and badge spacing reserve room for both icons; keyboard focus and `aria-pressed` are explicit.
+- Shared `useInvalidFieldShake` uses native browser animation, 250ms and at most 4px horizontal travel, with cleanup and reduced motion support. AuthInput and AuthOtpInput animate their existing wrappers, not remounted fields. Both accept specific error strings and submission counters, with linked accessible alerts.
+- Form feedback covers required values, native email format validation, password length and confirmation, reused profile passwords, rejected login credentials and current passwords, and incomplete or rejected OTPs. Repeated invalid submissions replay feedback. Server errors and throttling remain form messages; no API routes, session guards, endpoints, password storage, or redirect behavior were changed.
+- Added `scripts/check-auth-field-feedback.mjs` using installed React/TypeScript and Node assertions, and saved the existing lightweight check convention in `test-preferences.json`. It covers rendered controls/alerts/value preservation, animation/replay/cleanup/reduced motion at the browser boundary, and static flow wiring. The baseline render confirms the opaque full height button classes rejected by the new regression check. Full browser interaction and pixel verification remain uncovered because no browser is connected. Existing profile password guards, TypeScript, and production build pass. Scoped lint has no errors and the existing OTP unused token warning. The build needed network access for the existing Poppins font download.
 
 ### 2026-10-05 - Left aligned mobile auth headings and restored progress labels
 

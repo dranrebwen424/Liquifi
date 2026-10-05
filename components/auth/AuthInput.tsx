@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useInvalidFieldShake } from "@/components/auth/useInvalidFieldShake";
 
 type Props = {
   id: string;
@@ -14,7 +15,8 @@ type Props = {
   autoComplete?: string;
   inputMode?: "numeric" | "text" | "email" | "tel";
   required?: boolean;
-  error?: boolean;
+  error?: boolean | string;
+  validationAttempt?: number;
 };
 
 function EyeIcon({ open }: { open: boolean }) {
@@ -62,19 +64,21 @@ export default function AuthInput({
   inputMode,
   required,
   error = false,
+  validationAttempt = 0,
 }: Props) {
   const [show, setShow] = useState(false);
+  const fieldRef = useInvalidFieldShake(Boolean(error), validationAttempt);
   const isPassword = type === "password";
   const lowerName = name ?? label ?? "";
   const lowerNameText = lowerName ? lowerName.toLowerCase() : "this field";
 
   // Right padding reserves room for the trailing icon(s): eye (password) and,
   // when errored, the red "!" badge sits just left of the eye.
-  const rightPad = isPassword ? (error ? "pr-16" : "pr-10") : error ? "pr-10" : "pr-4";
+  const rightPad = isPassword ? (error ? "pr-20" : "pr-14") : error ? "pr-10" : "pr-4";
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="relative">
+      <div ref={fieldRef} className="relative">
         <input
           id={id}
           type={isPassword ? (show ? "text" : "password") : type}
@@ -84,7 +88,8 @@ export default function AuthInput({
           autoComplete={autoComplete}
           inputMode={inputMode}
           required={required}
-          aria-invalid={error}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? `${id}-error` : undefined}
           className={`peer w-full rounded-lg border bg-surface pb-2 pl-4 pt-6 text-sm text-text-primary outline-none transition-colors ${rightPad} ${
             error
               ? "border-error focus:border-error focus:ring-1 focus:ring-error"
@@ -103,10 +108,10 @@ export default function AuthInput({
 
         {error && (
           <span
-            className={`pointer-events-none absolute inset-y-0 ${isPassword ? "right-10" : "right-3"} flex items-center justify-center`}
+            className={`pointer-events-none absolute inset-y-0 ${isPassword ? "right-14" : "right-3"} flex items-center justify-center`}
             aria-hidden
           >
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-error text-[11px] font-bold leading-none text-white">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-error text-[11px] font-bold leading-none text-text-inverse">
               !
             </span>
           </span>
@@ -117,9 +122,8 @@ export default function AuthInput({
             type="button"
             onClick={() => setShow((s) => !s)}
             aria-label={show ? "Hide password" : "Show password"}
-            className={`absolute inset-y-0 right-3 z-20 flex items-center justify-center text-text-muted outline-none transition-colors hover:text-text-primary ${
-              error ? "bg-surface" : ""
-            }`}
+            aria-pressed={show}
+            className="absolute right-1 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-md text-text-muted outline-none transition-colors hover:text-text-primary focus-visible:ring-2 focus-visible:ring-accent"
           >
             <EyeIcon open={show} />
           </button>
@@ -127,8 +131,8 @@ export default function AuthInput({
       </div>
 
       {error && (
-        <p className="text-sm text-error" role="alert">
-          Please enter your {lowerNameText}.
+        <p id={`${id}-error`} className="text-sm text-error" role="alert">
+          {typeof error === "string" ? error : `Please enter your ${lowerNameText}.`}
         </p>
       )}
     </div>

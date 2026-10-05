@@ -22,7 +22,8 @@ export function ChangePasswordForm({ profileHref }: Props): ReactElement {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPasswordValue] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [submitted, setSubmitted] = useState(0);
+  const [currentPasswordInvalid, setCurrentPasswordInvalid] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const submitting = useRef(false);
@@ -31,8 +32,9 @@ export function ChangePasswordForm({ profileHref }: Props): ReactElement {
     event.preventDefault();
     if (submitting.current) return;
 
-    setSubmitted(true);
+    setSubmitted((attempt) => attempt + 1);
     setError("");
+    setCurrentPasswordInvalid(false);
     if (!currentPassword || !newPassword || !confirmPassword) return;
     if (newPassword.length < MIN_PASSWORD_LENGTH) {
       setError(`Use at least ${MIN_PASSWORD_LENGTH} characters for your new password.`);
@@ -58,6 +60,7 @@ export function ChangePasswordForm({ profileHref }: Props): ReactElement {
       const data = await response.json().catch(() => null);
 
       if (!response.ok || !data?.success) {
+        setCurrentPasswordInvalid(response.status === 400 && typeof data?.error === "string" && data.error.startsWith("Current password is incorrect."));
         setError(data?.error || "We couldn't verify your password. Please try again.");
         return;
       }
@@ -94,9 +97,10 @@ export function ChangePasswordForm({ profileHref }: Props): ReactElement {
               type="password"
               autoComplete="current-password"
               value={currentPassword}
-              onChange={setCurrentPassword}
+              onChange={(value) => { setCurrentPassword(value); setCurrentPasswordInvalid(false); }}
               required
-              error={submitted && !currentPassword}
+              error={currentPasswordInvalid ? "Current password is incorrect." : submitted > 0 && !currentPassword}
+              validationAttempt={submitted}
             />
             <AuthInput
               id="new-password"
@@ -106,7 +110,8 @@ export function ChangePasswordForm({ profileHref }: Props): ReactElement {
               value={newPassword}
               onChange={setNewPasswordValue}
               required
-              error={submitted && !newPassword}
+              error={submitted > 0 && (!newPassword || (newPassword.length < MIN_PASSWORD_LENGTH ? `Use at least ${MIN_PASSWORD_LENGTH} characters.` : currentPassword === newPassword && "Choose a different password from your current one."))}
+              validationAttempt={submitted}
             />
             <AuthInput
               id="confirm-password"
@@ -116,7 +121,8 @@ export function ChangePasswordForm({ profileHref }: Props): ReactElement {
               value={confirmPassword}
               onChange={setConfirmPassword}
               required
-              error={submitted && !confirmPassword}
+              error={submitted > 0 && (!confirmPassword || (newPassword !== confirmPassword && "Your new passwords don't match."))}
+              validationAttempt={submitted}
             />
             {error && (
               <p role="alert" className="text-center text-sm text-error-dark">

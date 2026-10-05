@@ -50,7 +50,8 @@ export function ChangePasswordOtpForm({ email }: Props): ReactElement | null {
     return Math.max(0, RESEND_SECONDS - Math.floor((Date.now() - sentAt) / 1000));
   });
   const [code, setCode] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [submitted, setSubmitted] = useState(0);
+  const [codeInvalid, setCodeInvalid] = useState(false);
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState("");
   const [otpVerified, setOtpVerified] = useState(false);
@@ -101,9 +102,10 @@ export function ChangePasswordOtpForm({ email }: Props): ReactElement | null {
 
   async function handleVerify(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-    setSubmitted(true);
+    setSubmitted((attempt) => attempt + 1);
     setApiError("");
-    if (!code) return;
+    setCodeInvalid(false);
+    if (code.length !== 6) return;
 
     setLoading(true);
     try {
@@ -115,6 +117,7 @@ export function ChangePasswordOtpForm({ email }: Props): ReactElement | null {
       const data = await response.json().catch(() => null);
 
       if (!response.ok || !data?.success) {
+        setCodeInvalid(response.status === 400);
         setApiError(data?.error || "Verification failed. Please try again.");
         return;
       }
@@ -130,6 +133,7 @@ export function ChangePasswordOtpForm({ email }: Props): ReactElement | null {
   async function handleResend(): Promise<void> {
     setSecondsLeft(RESEND_SECONDS);
     setApiError("");
+    setCodeInvalid(false);
     try {
       const response = await fetch("/api/auth/otp/send", {
         method: "POST",
@@ -176,9 +180,11 @@ export function ChangePasswordOtpForm({ email }: Props): ReactElement | null {
                 value={code}
                 onChange={(value) => {
                   setCode(value);
+                  setCodeInvalid(false);
                   if (apiError) setApiError("");
                 }}
-                error={submitted && !code}
+                error={codeInvalid ? "Check your verification code or request a new one." : submitted > 0 && code.length !== 6 && "Enter the complete 6-digit code."}
+                validationAttempt={submitted}
               />
               {apiError && (
                 <p role="alert" className="text-center text-sm text-error-dark">

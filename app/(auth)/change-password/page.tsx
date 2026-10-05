@@ -17,7 +17,7 @@ function ChangePasswordPageInner() {
   const token = searchParams.get("token") ?? "";
   const [newPassword, setNewPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [submitted, setSubmitted] = useState(0);
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -26,7 +26,7 @@ function ChangePasswordPageInner() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setSubmitted(true);
+    setSubmitted((attempt) => attempt + 1);
     setApiError("");
     if (!newPassword || !confirm) return;
     if (newPassword !== confirm) {
@@ -84,7 +84,8 @@ function ChangePasswordPageInner() {
             value={newPassword}
             onChange={setNewPassword}
             required
-            error={submitted && !newPassword}
+            error={submitted > 0 && (!newPassword || (newPassword.length < MIN_PASSWORD_LENGTH && `Use at least ${MIN_PASSWORD_LENGTH} characters.`))}
+            validationAttempt={submitted}
           />
           <AuthInput
             id="confirm-password"
@@ -94,10 +95,11 @@ function ChangePasswordPageInner() {
             value={confirm}
             onChange={setConfirm}
             required
-            error={submitted && !confirm}
+            error={submitted > 0 && (!confirm || (newPassword !== confirm && "Passwords don't match."))}
+            validationAttempt={submitted}
           />
           {apiError && (
-            <p className="text-sm text-error-dark text-center">{apiError}</p>
+            <p role="alert" className="text-sm text-error-dark text-center">{apiError}</p>
           )}
           <AuthButton type="submit" loading={loading}>Reset password</AuthButton>
           <p className="text-center text-sm font-normal text-text-secondary">
