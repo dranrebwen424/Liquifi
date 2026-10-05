@@ -20,9 +20,11 @@ export function AuthFlowProgress({ flow, step, complete = false }: Props): React
         const current = !complete && index + 1 === step;
 
         return (
-          <li key={label} aria-current={current ? "step" : undefined} className="min-w-0">
+          <li key={label} aria-current={current ? "step" : undefined} className="min-w-0 text-center">
             <div aria-hidden="true" className={`h-1 rounded-full ${done ? "bg-success" : "bg-accent"}`} />
-            <span className="sr-only">{label}{done ? ", completed" : current ? ", current step" : ", upcoming"}</span>
+            <p className={`mt-2 text-[11px] leading-4 ${done ? "text-success-foreground" : "text-text-primary"} ${current ? "font-semibold" : "font-normal"}`}>
+              {label}<span className="sr-only">{done ? ", completed" : current ? ", current step" : ", upcoming"}</span>
+            </p>
           </li>
         );
       })}
