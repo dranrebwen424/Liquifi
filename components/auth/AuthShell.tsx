@@ -47,14 +47,14 @@ export default function AuthShell({
   progress?: React.ReactNode;
 }) {
   return (
-    <main className={`flex min-h-full ${progress ? "items-start pt-6 pb-12" : top ? "items-start pt-0" : "items-center py-12"} justify-center bg-background px-4 font-sans`}>
-      <div className="w-full max-w-sm">
+    <main className={`flex bg-background px-4 font-sans ${progress ? "min-h-dvh flex-col items-center justify-start pt-6 pb-12 sm:px-6 md:justify-center md:py-12" : `min-h-full justify-center ${top ? "items-start pt-0" : "items-center py-12"}`}`}>
+      <div className={`w-full ${progress ? "max-w-sm md:max-w-md" : "max-w-sm"}`}>
         {onBack ? (
           <button
             type="button"
             onClick={onBack}
             aria-label="Go back"
-            className={`mb-4 inline-flex items-center justify-center rounded-lg outline-none transition-colors hover:bg-surface hover:text-text-primary ${progress ? "h-11 w-11 text-text-secondary focus-visible:ring-2 focus-visible:ring-accent" : "h-9 w-9 text-text-muted"}`}
+            className={`inline-flex items-center justify-center rounded-lg outline-none transition-colors hover:bg-surface hover:text-text-primary ${progress ? "mb-6 h-11 w-11 text-text-secondary focus-visible:ring-2 focus-visible:ring-accent" : "mb-4 h-9 w-9 text-text-muted"}`}
           >
             <BackIcon />
           </button>
@@ -62,12 +62,12 @@ export default function AuthShell({
           <Link
             href={backHref}
             aria-label="Go back"
-            className={`mb-4 inline-flex items-center justify-center rounded-lg outline-none transition-colors hover:bg-surface hover:text-text-primary ${progress ? "h-11 w-11 text-text-secondary focus-visible:ring-2 focus-visible:ring-accent" : "h-9 w-9 text-text-muted"}`}
+            className={`inline-flex items-center justify-center rounded-lg outline-none transition-colors hover:bg-surface hover:text-text-primary ${progress ? "mb-6 h-11 w-11 text-text-secondary focus-visible:ring-2 focus-visible:ring-accent" : "mb-4 h-9 w-9 text-text-muted"}`}
           >
             <BackIcon />
           </Link>
         ) : null}
-        {progress && <div className="mb-6">{progress}</div>}
+        {progress && <div className="mb-8">{progress}</div>}
         {!hideLogo && !progress && (
           <Link
             href="/"

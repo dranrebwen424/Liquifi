@@ -7,7 +7,7 @@ import AuthCard from "@/components/auth/AuthCard";
 import AuthOtpInput from "@/components/auth/AuthOtpInput";
 import AuthButton from "@/components/auth/AuthButton";
 import AuthLink from "@/components/auth/AuthLink";
-import { PasswordFlowProgress } from "@/components/auth/PasswordFlowProgress";
+import { AuthFlowProgress } from "@/components/auth/AuthFlowProgress";
 
 const RESEND_SECONDS = 60;
 /** sessionStorage key shared with signup for the per-email persistent resend cooldown. */
@@ -152,12 +152,13 @@ function OtpPageInner() {
     <AuthShell
       top
       backHref={isReset ? "/forgot-password" : "/signup"}
-      progress={isReset ? <PasswordFlowProgress flow="reset" step={2} /> : undefined}
+      progress={isReset ? <AuthFlowProgress flow="reset" step={2} /> : undefined}
     >
       <div className={isReset ? undefined : "pt-4"}>
       <AuthCard
         title="Verify your email"
         compactSubtitle={isReset}
+        flow={isReset}
         subtitle={
           isReset
             ? `We sent a 6-digit code to ${email || "your email"}.`

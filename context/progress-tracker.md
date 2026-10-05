@@ -6,6 +6,10 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Current Status
 
+**Auth layout and hierarchy update (2026-10-05):** Signup and password flows now center vertically on desktop (`md` and above) using a full viewport height shell and a wider 448px column. Mobile keeps its 24px top spacing. Back remains first, followed by unlabeled rails, a centered heading and compact subheader, then the form. Heading, form, and submit spacing are increased at both sizes. Render checks across all flow steps, the existing profile password flow check, and the production build with its TypeScript check pass. Compiled CSS includes the responsive centering, width, typography, and submit spacing rules. Lint retains the pre-existing signup effect error and shared OTP warning. No browser provider is connected for live visual QA.
+
+**Latest auth progress update (2026-10-05):** All password progress bars now have no visible labels; step names and states remain available to screen readers. Renamed the shared component to `AuthFlowProgress` and reused it above Get Started on all three signup wizard stages. Signup now has 24px top padding; its existing back controls remain first on steps two and three. TypeScript, all flow/step render checks, and the existing profile password check pass. Scoped lint reports the existing signup draft restoration effect error and shared OTP unused variable warning. Live browser QA remains unavailable.
+
 **Password UI refinement (2026-10-05):** The back control is now first, 24px from the page top, followed by progress and the form. This supersedes the progress first ordering below. Password form subheaders opt into `AuthCard.compactSubtitle` (`text-xs leading-5 sm:text-sm`), giving 12px mobile copy and the existing 14px desktop copy. Public recovery, reset OTP, and profile password/OTP screens use the same scale; signup keeps its existing typography.
 
 **Latest password UI update (2026-10-05):** Public forgot password and signed in profile password change now use the shared `PasswordFlowProgress` in `AuthShell`. The progress rails replace the Liquifi logo and shell subtitle, begin 24px from the page top, and update through each flow's OTP and success states. Completed rails are green, remaining rails ink, with readable labels and screen reader state descriptions. Back controls in these flows are 44px with visible focus. TypeScript, render checks across both flows/all steps/success states, the existing profile password check, and production build pass; scoped ESLint has no errors and one existing unused `resetToken` warning in the shared OTP page. The build required network access for the existing Poppins font download. Live visual QA is unavailable because no browser is connected.
@@ -106,6 +110,19 @@ Update this file after every completed feature. Any AI agent reading this should
 ---
 
 ## Decisions Made During Build
+
+### 2026-10-05 - Centered desktop auth and roomier hierarchy
+
+- Progress enabled `AuthShell` uses `min-h-dvh flex-col items-center justify-start pt-6 pb-12 md:justify-center md:py-12`, centering the flow on desktop while allowing tall content to scroll. Inner width is `max-w-sm md:max-w-md`. Mobile stays at 24px from the top; desktop safety padding is 48px.
+- Back stays first with a 44px target and 24px gap before the rails. Progress to heading spacing is 32px. `AuthCard.flow` centers only the heading group, with 24px mobile / 30px desktop semibold titles, 12px mobile supporting copy, 12px title/subheader gap, 32px before the form, and an extra 8px before submit buttons. Field and footer layouts retain their existing behavior.
+- Signup, public recovery/reset, reset OTP, and profile change/OTP/success use the shared hierarchy. Ordinary login and signup OTP retain their existing presentation. This supersedes desktop top alignment in the earlier entries.
+- Render checks cover every step of all three flows, responsive shell classes, heading/spacing classes, compact subheaders, rail states, back first ordering, and ordinary auth isolation. Existing profile password checks, diff checks, and the production build including TypeScript pass. Compiled CSS includes the viewport height, desktop centering/width, responsive title, and submit spacing rules. Lint findings remain the previously verified signup draft restoration effect error and OTP unused token warning. Live browser QA is unavailable.
+
+### 2026-10-05 - Label free progress and signup wizard rails
+
+- `AuthFlowProgress` supersedes `PasswordFlowProgress`, with `sr-only` step descriptions instead of visible labels. Existing password states retain their completed rail colors and current step semantics.
+- Signup passes its existing step state into the same three rails, corresponding to name, account, and council. The progress slot sits directly above Get Started, removes the old logo shell, and applies `pt-6`; the extra signup `pt-4` wrapper spacing is removed. Existing wizard back navigation remains first on steps two and three.
+- TypeScript, render checks for all three flows and success states, the existing profile password flow check, and diff checks pass. Lint findings are pre-existing: signup restores its saved step synchronously in an effect, and shared OTP has an unused reset token variable. Signup handlers and draft restoration are unchanged.
 
 ### 2026-10-05 - Back control first and smaller mobile password subheaders
 

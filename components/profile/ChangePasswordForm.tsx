@@ -6,7 +6,7 @@ import AuthShell from "@/components/auth/AuthShell";
 import AuthCard from "@/components/auth/AuthCard";
 import AuthInput from "@/components/auth/AuthInput";
 import AuthButton from "@/components/auth/AuthButton";
-import { PasswordFlowProgress } from "@/components/auth/PasswordFlowProgress";
+import { AuthFlowProgress } from "@/components/auth/AuthFlowProgress";
 import { usePendingNewPassword } from "@/components/profile/PasswordChangeProvider";
 import { PASSWORD_CHANGE_OTP_SENT_KEY } from "@/lib/password-change";
 
@@ -78,10 +78,11 @@ export function ChangePasswordForm({ profileHref }: Props): ReactElement {
   }
 
   return (
-    <AuthShell backHref={profileHref} progress={<PasswordFlowProgress flow="change" step={1} />}>
+    <AuthShell backHref={profileHref} progress={<AuthFlowProgress flow="change" step={1} />}>
       <AuthCard
         title="Change password"
         compactSubtitle
+        flow
         subtitle="Confirm your current password, then verify the new one with an email code."
       >
         <form onSubmit={handleSubmit} noValidate aria-busy={busy}>

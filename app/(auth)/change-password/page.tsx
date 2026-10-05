@@ -8,7 +8,7 @@ import AuthInput from "@/components/auth/AuthInput";
 import AuthButton from "@/components/auth/AuthButton";
 import AuthLink from "@/components/auth/AuthLink";
 import LottiePlayer from "@/components/LottiePlayer";
-import { PasswordFlowProgress } from "@/components/auth/PasswordFlowProgress";
+import { AuthFlowProgress } from "@/components/auth/AuthFlowProgress";
 
 function ChangePasswordPageInner() {
   const router = useRouter();
@@ -59,11 +59,11 @@ function ChangePasswordPageInner() {
 
   return (
     <AuthShell
-      progress={<PasswordFlowProgress flow="reset" step={3} complete={success} />}
+      progress={<AuthFlowProgress flow="reset" step={3} complete={success} />}
       backHref={email ? `/otp?intent=reset&email=${encodeURIComponent(email)}` : "/login"}
     >
       {success ? (
-        <AuthCard title="Password Changed!" center>
+        <AuthCard title="Password Changed!" center flow>
           <div className="flex flex-col items-center mt-8">
             <LottiePlayer
               src="/Auth%20pages/success.json"
@@ -74,7 +74,7 @@ function ChangePasswordPageInner() {
           </div>
         </AuthCard>
       ) : (
-        <AuthCard title="Set a new password" subtitle="Choose a password you don't reuse elsewhere." compactSubtitle>
+        <AuthCard title="Set a new password" subtitle="Choose a password you don't reuse elsewhere." compactSubtitle flow>
           <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
           <AuthInput
             id="new-password"

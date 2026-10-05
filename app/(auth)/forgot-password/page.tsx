@@ -7,7 +7,7 @@ import AuthCard from "@/components/auth/AuthCard";
 import AuthInput from "@/components/auth/AuthInput";
 import AuthButton from "@/components/auth/AuthButton";
 import AuthLink from "@/components/auth/AuthLink";
-import { PasswordFlowProgress } from "@/components/auth/PasswordFlowProgress";
+import { AuthFlowProgress } from "@/components/auth/AuthFlowProgress";
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -42,8 +42,8 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <AuthShell backHref="/login" progress={<PasswordFlowProgress flow="reset" step={1} />}>
-      <AuthCard title="Forgot password" subtitle="We'll send a reset code to your email." compactSubtitle>
+    <AuthShell backHref="/login" progress={<AuthFlowProgress flow="reset" step={1} />}>
+      <AuthCard title="Forgot password" subtitle="We'll send a reset code to your email." compactSubtitle flow>
         <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
           <AuthInput
             id="email"

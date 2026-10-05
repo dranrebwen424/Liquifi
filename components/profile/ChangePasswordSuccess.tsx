@@ -6,7 +6,7 @@ import AuthShell from "@/components/auth/AuthShell";
 import AuthCard from "@/components/auth/AuthCard";
 import AuthButton from "@/components/auth/AuthButton";
 import LottiePlayer from "@/components/LottiePlayer";
-import { PasswordFlowProgress } from "@/components/auth/PasswordFlowProgress";
+import { AuthFlowProgress } from "@/components/auth/AuthFlowProgress";
 
 const REDIRECT_SECONDS = 10;
 
@@ -28,8 +28,8 @@ export default function ChangePasswordSuccess({ homeHref }: Props): ReactElement
   }, [homeHref, router, secondsLeft]);
 
   return (
-    <AuthShell backHref={homeHref} progress={<PasswordFlowProgress flow="change" step={3} complete />}>
-      <AuthCard title="Password changed" center>
+    <AuthShell backHref={homeHref} progress={<AuthFlowProgress flow="change" step={3} complete />}>
+      <AuthCard title="Password changed" center flow>
         <div className="flex flex-col items-center gap-6">
           <LottiePlayer
             src="/Auth%20pages/success.json"

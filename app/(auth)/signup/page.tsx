@@ -8,6 +8,7 @@ import AuthInput from "@/components/auth/AuthInput";
 import AuthSelect from "@/components/auth/AuthSelect";
 import AuthButton from "@/components/auth/AuthButton";
 import AuthLink from "@/components/auth/AuthLink";
+import { AuthFlowProgress } from "@/components/auth/AuthFlowProgress";
 
 const FALLBACK_DEPARTMENTS = [
   { code: "CCS", name: "Computer Studies" },
@@ -278,9 +279,9 @@ export default function SignupPage() {
     step === 2 ? () => setStep(1) : step === 3 ? () => setStep(2) : undefined;
 
   return (
-    <AuthShell top onBack={back}>
-      <div className="pt-4">
-        <AuthCard title="Get Started" subtitle="Request an account for your council.">
+    <AuthShell onBack={back} progress={<AuthFlowProgress flow="signup" step={step} />}>
+      <div>
+        <AuthCard title="Get Started" subtitle="Request an account for your council." compactSubtitle flow>
         <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
           {step === 1 && (
             <>
