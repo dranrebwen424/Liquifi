@@ -6,6 +6,10 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Current Status
 
+**Desktop Home controls and archive refinement (2026-10-06):** Home active events now stay in folder view with View all, without a view toggle. Filter chips are centered below search. Desktop Archive is an initially open native details disclosure with a left rotating chevron, keeping its sort, grouped tables, empty state and pagination inside. Shared desktop EventTable rows now have a named clickable right chevron. Mobile Home markup and the prior Notifications margin alignment remain. Render checks, sidebar checks, scoped lint, TypeScript and production build pass. The build required network access for the existing Poppins font. Live visual and keyboard QA is unavailable.
+
+**Treasurer home horizontal margin refinement (2026-10-06):** Removed only Treasurer Home's extra desktop width cap so it fills the same SidebarShell content area as Notifications, with 48px gutters from the sidebar and right edge. The shared Adviser home keeps its cap; mobile spacing, centered search width and all event behavior remain unchanged. Focused rendered checks, scoped lint and TypeScript pass. Live visual QA remains unavailable.
+
 **Desktop Treasurer home and shared event browsing (2026-10-06):** Treasurer desktop home now shows Welcome Back and the Admin-style persistent rounded search. New Event lives above navigation in the Treasurer sidebar and opens the existing lazy-loaded dialog; expanded and collapsed targets are accessible. Desktop event grids reuse the mobile FolderCard across Treasurer, Adviser and Admin event browsers. List mode and year-grouped archives use a shared six-column table without Status. Existing mobile layouts, read-only permissions, recent-four selection and archive pagination remain. Render checks, sidebar checks, scoped lint and the production build with TypeScript pass. The build required network access for the existing Poppins font. Live visual/keyboard QA remains unavailable because no browser is connected.
 
 **Login credential notice refinement (2026-10-05):** Rejected login credentials now use only the shared server error alert, without duplicate "Check your email and password." notices below the fields. Both fields retain red outlines, shake feedback, and accessible links to the shared alert. Required and malformed email messages remain unchanged. Other auth flows are untouched.
@@ -118,6 +122,18 @@ Update this file after every completed feature. Any AI agent reading this should
 ---
 
 ## Decisions Made During Build
+
+### 2026-10-06 - Centered chips, folder only Home and collapsible desktop Archive
+
+- Removed Home's ViewToggle import, state and alternate active table branch. Active events retain the recent four folder cards and View all destination. The desktop filter row adds `justify-center`; mobile JSX is untouched.
+- Desktop Archive uses native `details` and `summary`, initially open, with a 44px focusable summary and rotating left chevron. Sort is aligned at the right of the header inside the disclosed body, so collapsing also hides sort, tables, empty state and See more. No custom disclosure state or new dependency. Shared Home consumers receive the desktop treatment; dedicated Events page toggles remain.
+- `EventTable` adds a final action column with a 44px right chevron link and an accessible Open plus event name label. Existing data columns, currency, dates and role paths are unchanged; Status stays absent. All table consumers are desktop presentations.
+- Extended `scripts/check-desktop-events.mjs` for absent Home view controls, native open Archive markup and empty archive content, and per row arrow links across role paths. Existing search, margin, mobile markup and sidebar checks still pass; scoped lint, TypeScript and production build pass. The build required network access for the existing Poppins font. Live native disclosure interaction and visual layout remain manual checks because no browser is connected.
+
+### 2026-10-06 - Treasurer home aligns with Notifications gutters
+
+- `TreasurerHomeClient` now applies `lg:mx-auto lg:max-w-6xl` only to its read-only Adviser consumer. Treasurer Home uses `flex w-full flex-col`, inheriting Notifications' existing SidebarShell desktop gutters without changing the shell, mobile spacing or the search's own width. This supersedes the Treasurer page-width cap recorded in the desktop redesign below.
+- Extended `scripts/check-desktop-events.mjs` with root-class assertions for the uncapped Treasurer and unchanged Adviser layouts. The new assertion failed before the fix and passed afterward; existing mobile markup/search/event checks, scoped lint and TypeScript pass. No live visual verification was available.
 
 ### 2026-10-06 - Desktop Treasurer home, folders and event tables
 

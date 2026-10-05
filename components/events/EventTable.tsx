@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Folder } from "lucide-react";
+import { ChevronRight, Folder } from "lucide-react";
 import { formatPHP } from "@/lib/format";
 import type { EventWithMeta } from "@/lib/queries/events";
 
@@ -22,6 +22,7 @@ export function EventTable({ events, basePath, caption }: Props) {
             <th scope="col" className="px-4 py-3 text-right font-normal">Budget</th>
             <th scope="col" className="px-4 py-3 text-right font-normal">Spent</th>
             <th scope="col" className="px-4 py-3 text-right font-normal">Entries</th>
+            <th scope="col" className="w-11 px-4 py-3"><span className="sr-only">Open event</span></th>
           </tr>
         </thead>
         <tbody>
@@ -42,6 +43,11 @@ export function EventTable({ events, basePath, caption }: Props) {
               <td className="whitespace-nowrap px-4 py-4 text-right tabular-nums text-text-primary">{formatPHP(event.budget_total)}</td>
               <td className="whitespace-nowrap px-4 py-4 text-right font-semibold tabular-nums text-text-primary">{formatPHP(event.total_spent)}</td>
               <td className="px-4 py-4 text-right tabular-nums text-text-secondary">{event.num_entries}</td>
+              <td className="px-4 py-4">
+                <Link href={`${basePath}/${event.id}`} prefetch aria-label={`Open ${event.name}`} className="flex size-11 items-center justify-center rounded-md text-text-secondary transition-colors hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+                  <ChevronRight className="size-4" aria-hidden="true" />
+                </Link>
+              </td>
             </tr>
           ))}
         </tbody>

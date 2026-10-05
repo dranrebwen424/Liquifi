@@ -38,7 +38,7 @@ const events = Array.from({ length: 7 }, (_, index) => ({
 }));
 for (const basePath of ["/treasurer/events", "/adviser/events", "/admin/departments/department-1/events"]) {
   const html = render(React.createElement(EventTable, { events, basePath, caption: "Department events" }));
-  assert.equal((html.match(/scope="col"/g) || []).length, 6);
+  assert.equal((html.match(/scope="col"/g) || []).length, 7, "Six data columns plus the event link affordance");
   assert.equal((html.match(/scope="row"/g) || []).length, events.length);
   assert.match(html, /<caption class="sr-only">Department events<\/caption>/);
   assert.doesNotMatch(html, />Status<|EventStatusBadge/);
@@ -46,7 +46,11 @@ for (const basePath of ["/treasurer/events", "/adviser/events", "/admin/departme
   assert.match(html, /₱0\.00/);
   assert.match(html, /₱1,643\.48/);
   assert.match(html, /<time dateTime="2026-10-01T02:00:00Z">Oct 1, 2026<\/time>/);
-  for (const event of events) assert.ok(html.includes(`href="${basePath}/${event.id}"`));
+  assert.equal((html.match(/lucide-chevron-right/g) || []).length, events.length, "Every table row has a trailing chevron");
+  for (const event of events) {
+    assert.ok(html.includes(`href="${basePath}/${event.id}"`));
+    assert.ok(html.includes(`aria-label="Open ${event.name}"`), "Trailing event links have accessible names");
+  }
 }
 
 const { TreasurerHomeClient } = load("app/treasurer/home/client.tsx");
@@ -61,10 +65,12 @@ for (const basePath of ["/treasurer/events", "/adviser/events", "/admin/departme
   assert.ok(browserHtml.includes(`href="${basePath}/event-5"`));
 }
 let html = render(React.createElement(TreasurerHomeClient, { events }));
+assert.ok(html.startsWith('<div class="flex w-full flex-col">'), "Treasurer home uses the same uncapped shell gutters as Notifications");
 assert.match(html, />Welcome Back!</);
 assert.match(html, /type="search" aria-label="Search events"/);
 assert.match(html, /caption[^>]*>Archived events from 2026/);
-assert.match(html, /aria-label="List view"/);
+assert.doesNotMatch(html, /aria-label="List view"|aria-label="Grid view"/, "Home active folders no longer have a view toggle");
+assert.match(html, /<details open=""[^>]*><summary[^>]*>.*?<h2[^>]*>Archive<\/h2><\/summary>/, "Desktop archive is an initially expanded native disclosure");
 assert.ok(!html.includes('href="/treasurer/events/event-0"'), "Home keeps the four most recently active folders");
 query = "q=Black+Friday";
 html = render(React.createElement(TreasurerHomeClient, { events }));
@@ -76,11 +82,15 @@ assert.match(html, /No events match your filters/);
 query = "";
 html = render(React.createElement(TreasurerHomeClient, { events: [] }));
 assert.match(html, /No events yet/);
+html = render(React.createElement(TreasurerHomeClient, { events: events.filter((event) => event.status === "open") }));
+assert.match(html, /<details open=""/);
+assert.match(html, /No archived events yet/);
 html = render(React.createElement(TreasurerHomeClient, { events, readOnly: true, paths: {
   home: "/adviser/home", events: "/adviser/events", event: "/adviser/events",
 } }));
 assert.doesNotMatch(html, /aria-label="New event"|>New Event<|>Welcome Back!</);
 assert.match(html, /href="\/adviser\/events\/event-4"/);
+assert.ok(html.startsWith('<div class="flex w-full flex-col lg:mx-auto lg:max-w-6xl">'), "Adviser home retains its desktop content cap");
 
 // Verify the mobile home JSX was not redesigned while changing the desktop branch.
 function jsxWithClass(source, className) {

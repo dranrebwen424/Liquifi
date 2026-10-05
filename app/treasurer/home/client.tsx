@@ -6,7 +6,6 @@ import { useDeferredValue, useMemo, useState } from "react";
 import type { ComponentType } from "react";
 import { Plus, Search, Archive, ChevronRight } from "lucide-react";
 import { EventTable } from "@/components/events/EventTable";
-import { ViewToggle } from "@/components/events/ViewToggle";
 import { FolderCard } from "@/components/events/FolderCard";
 import { ArchiveEventRow } from "@/components/events/ArchiveEventRow";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -82,7 +81,6 @@ export function TreasurerHomeClient({
 }: Props) {
   const searchParams = useSearchParams();
   const [sortBy, setSortBy] = useState("newest");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [newEventOpen, setNewEventOpen] = useState(false);
   const [NewEventModal, setNewEventModal] = useState<NewEventModalComponent | null>(null);
   // ponytail: archive "See more" pagination is per-page-state; clamping on
@@ -199,7 +197,7 @@ export function TreasurerHomeClient({
   };
 
   return (
-    <div className="flex w-full flex-col lg:mx-auto lg:max-w-6xl">
+    <div className={readOnly ? "flex w-full flex-col lg:mx-auto lg:max-w-6xl" : "flex w-full flex-col"}>
       {!isSearching && (
         <div className="px-2 pt-4 pb-10 md:hidden">
           <h1 className="text-center text-xl font-bold tracking-wide text-text-primary">
@@ -427,7 +425,7 @@ export function TreasurerHomeClient({
             <Search className="size-5 shrink-0 text-text-secondary" aria-hidden="true" />
             <input type="search" aria-label="Search events" placeholder="Search events" value={search} onChange={(e) => updateQuery(e.target.value)} className="h-12 min-w-0 flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-secondary" />
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap justify-center gap-2">
             <FilterDropdown label="Type" options={typeOptions} value={typeFilter} onChange={setTypeFilter} />
             <FilterDropdown label="Treasurer" options={treasurerOptions} value={treasurerFilter} onChange={setTreasurerFilter} />
             <FilterDropdown label="Date" options={MODIFIED_OPTIONS} value={modifiedFilter} onChange={setModifiedFilter} />
@@ -470,8 +468,6 @@ export function TreasurerHomeClient({
                       Total of {allActive.length} {allActive.length === 1 ? "Event" : "Events"}
                     </p>
                   </div>
-                  <div className="flex items-center gap-4">
-                  <ViewToggle value={viewMode} onChange={setViewMode} />
                   <Link
                     href={paths.events}
                     prefetch={false}
@@ -480,9 +476,8 @@ export function TreasurerHomeClient({
                     View all
                     <ChevronRight className="h-4 w-4" />
                   </Link>
-                  </div>
                 </div>
-                {viewMode === "grid" ? <div
+                <div
                   key={`desktop-active-grid-${recentActive.length}`}
                   className="grid grid-cols-2 gap-x-5 gap-y-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
                 >
@@ -491,58 +486,65 @@ export function TreasurerHomeClient({
                       <FolderCard id={event.id} name={event.name} href={`${paths.event}/${event.id}`} />
                     </FadeIn>
                   ))}
-                </div> : <EventTable events={recentActive} basePath={paths.event} caption="Recent active events" />}
+                </div>
               </section>
             )}
 
-            {/* ── Archive (always shown; empty state if none) ── */}
+            {/* ── Desktop archive disclosure ── */}
             <section className="pt-12">
-              <div className="mb-6 flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-text-primary">Archive</h2>
-                <FilterDropdown
-                  label="Sort"
-                  options={SORT_OPTIONS}
-                  value={sortBy}
-                  onChange={setSortBy}
-                  align="right"
-                />
-              </div>
-
-              {archivedEvents.length === 0 ? (
-                <EmptyState
-                  icon={<Archive className="h-10 w-10 text-text-muted" />}
-                  title="No archived events yet"
-                  description="Events you archive will appear here."
-                />
-              ) : (
-                <>
-                  <div className="flex flex-col gap-5">
-                    {archivedByYear.map(([year, yearEvents]) => {
-                      const visibleYear = yearEvents.filter((e) => visibleArchived.some((v) => v.id === e.id));
-                      if (visibleYear.length === 0) return null;
-                      return (
-                        <div key={year}>
-                          <p className="mb-3 text-xs font-medium uppercase tracking-wide text-text-muted">{year}</p>
-                          <EventTable events={visibleYear} basePath={paths.event} caption={`Archived events from ${year}`} />
-                        </div>
-                      );
-                    })}
+              <details open className="group/archive relative">
+                <summary className="flex min-h-11 w-fit cursor-pointer list-none items-center gap-2 rounded-md text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-details-marker]:hidden">
+                  <ChevronRight className="size-5 shrink-0 transition-transform group-open/archive:rotate-90 motion-reduce:transition-none" aria-hidden="true" />
+                  <h2 className="text-xl font-semibold">Archive</h2>
+                </summary>
+                <div className="mt-6">
+                  <div className="absolute right-0 top-0 flex min-h-11 items-center">
+                    <FilterDropdown
+                      label="Sort"
+                      options={SORT_OPTIONS}
+                      value={sortBy}
+                      onChange={setSortBy}
+                      align="right"
+                    />
                   </div>
 
-                  {hasMoreArchived && (
-                    <div className="mt-6 flex justify-center">
-                      <button
-                        type="button"
-                        onClick={() => setArchiveShown((s) => s + ARCHIVE_PAGE_SIZE)}
-                        className="inline-flex items-center gap-1 rounded-full border border-border px-5 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary"
-                      >
-                        See more
-                        <ChevronRight className="h-4 w-4" />
-                      </button>
-                    </div>
+                  {archivedEvents.length === 0 ? (
+                    <EmptyState
+                      icon={<Archive className="h-10 w-10 text-text-muted" />}
+                      title="No archived events yet"
+                      description="Events you archive will appear here."
+                    />
+                  ) : (
+                    <>
+                      <div className="flex flex-col gap-5">
+                        {archivedByYear.map(([year, yearEvents]) => {
+                          const visibleYear = yearEvents.filter((e) => visibleArchived.some((v) => v.id === e.id));
+                          if (visibleYear.length === 0) return null;
+                          return (
+                            <div key={year}>
+                              <p className="mb-3 text-xs font-medium uppercase tracking-wide text-text-muted">{year}</p>
+                              <EventTable events={visibleYear} basePath={paths.event} caption={`Archived events from ${year}`} />
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {hasMoreArchived && (
+                        <div className="mt-6 flex justify-center">
+                          <button
+                            type="button"
+                            onClick={() => setArchiveShown((s) => s + ARCHIVE_PAGE_SIZE)}
+                            className="inline-flex items-center gap-1 rounded-full border border-border px-5 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary"
+                          >
+                            See more
+                            <ChevronRight className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
+                    </>
                   )}
-                </>
-              )}
+                </div>
+              </details>
             </section>
           </>
         )}
