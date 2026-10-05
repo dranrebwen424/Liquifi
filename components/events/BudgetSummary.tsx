@@ -161,7 +161,7 @@ export function BudgetSummary({
     );
   }
 
-  // ── Desktop layout (unchanged) ──
+  // ── Desktop layout ──
   return (
     <>
       <div className={cn("rounded-xl bg-surface-inverse p-4 shadow-card sm:p-6", className)}>
@@ -205,72 +205,52 @@ export function BudgetSummary({
           {/* Right: Action buttons (desktop only) — omitted entirely in read-only mode */}
           {!readOnly && (
             <div className="hidden flex-col gap-2 lg:flex">
-            <button
-              onClick={() => setLogEntryOpen(true)}
-              disabled={!canMutate}
-              className={cn(
-                "inline-flex items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium transition-[color,transform,shadow] hover:scale-[1.02]",
-                canMutate
-                  ? "bg-surface text-text-primary hover:bg-surface-secondary hover:shadow-md active:scale-[0.98]"
-                  : "cursor-not-allowed bg-white/10 text-text-inverse/50",
+              {!isArchived && (
+                <button
+                  onClick={() => setLogEntryOpen(true)}
+                  disabled={!canMutate}
+                  className={cn(
+                    "inline-flex items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium transition-[color,transform,shadow] hover:scale-[1.02]",
+                    canMutate
+                      ? "bg-surface text-text-primary hover:bg-surface-secondary hover:shadow-md active:scale-[0.98]"
+                      : "cursor-not-allowed bg-text-inverse/10 text-text-inverse/50",
+                  )}
+                  title={isLocked ? "Locked — report pending." : "Log a new expense"}
+                >
+                  <Plus className="h-4 w-4" />
+                  New Entry
+                </button>
               )}
-              title={
-                isArchived
-                  ? "Archived — read-only."
-                  : isLocked
-                    ? "Locked — report pending."
-                    : "Log a new expense"
-              }
-            >
-              <Plus className="h-4 w-4" />
-              New Entry
-            </button>
 
-            {canMutate ? (
               <Link
                 href={`/treasurer/reports/${eventId}`}
-                className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/30 px-5 py-2.5 text-sm font-medium text-text-inverse transition-[color,transform,shadow] hover:bg-white/10 hover:shadow-sm hover:scale-[1.02] active:scale-[0.98]"
-                title="Generate financial report"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-text-inverse/30 px-5 py-2.5 text-sm font-medium text-text-inverse transition-[color,transform,shadow] hover:bg-text-inverse/10 hover:shadow-sm hover:scale-[1.02] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-text-inverse"
+                title="View financial report"
               >
                 <FileText className="h-4 w-4" />
-                Generate Report
+                View Report
               </Link>
-            ) : (
-              <button
-                type="button"
-                disabled
-                className="inline-flex cursor-not-allowed items-center justify-center gap-2 rounded-lg border border-white/10 px-5 py-2.5 text-sm font-medium text-text-inverse/50"
-                title={
-                  isArchived
-                    ? "Archived — no reports."
-                    : "Report already pending."
-                }
-              >
-                <FileText className="h-4 w-4" />
-                Generate Report
-              </button>
-            )}
 
-            <button
-              onClick={() => setIncreaseBudgetOpen(true)}
-              disabled={!canIncreaseBudget}
-              className={cn(
-                "inline-flex items-center justify-center gap-2 rounded-lg border px-5 py-2.5 text-sm font-medium transition-[color,transform,shadow] hover:scale-[1.02]",
-                canIncreaseBudget
-                  ? "border-white/30 text-text-inverse hover:bg-white/10 hover:shadow-sm active:scale-[0.98]"
-                  : "cursor-not-allowed border-white/10 text-text-inverse/50",
+              {!isArchived && (
+                <button
+                  onClick={() => setIncreaseBudgetOpen(true)}
+                  disabled={!canIncreaseBudget}
+                  className={cn(
+                    "inline-flex items-center justify-center gap-2 rounded-lg border px-5 py-2.5 text-sm font-medium transition-[color,transform,shadow] hover:scale-[1.02]",
+                    canIncreaseBudget
+                      ? "border-text-inverse/30 text-text-inverse hover:bg-text-inverse/10 hover:shadow-sm active:scale-[0.98]"
+                      : "cursor-not-allowed border-text-inverse/10 text-text-inverse/50",
+                  )}
+                  title={
+                    isLocked
+                      ? "Budget can't be increased while a report is pending."
+                      : "Increase the event budget with a verified proof"
+                  }
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add Budget
+                </button>
               )}
-              title={
-                isArchived
-                  ? "Archived — read-only."
-                  : isLocked
-                    ? "Budget can't be increased while a report is pending."
-                    : "Increase the event budget with a verified proof"
-              }
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Add Budget
-            </button>
             </div>
           )}
         </div>

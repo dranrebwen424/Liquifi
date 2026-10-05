@@ -6,6 +6,10 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Current Status
 
+**Desktop archived event actions (2026-10-06):** BudgetSummary's desktop Generate Report navigation is now View Report and stays enabled for open, locked and archived events. Archived desktop events omit New Entry, Add Budget and the header Archive control rather than disabling them. The existing guarded report workspace remains the destination and owns actual generation. Mobile markup, read only role paths and server mutation guards are unchanged. Action render checks and TypeScript pass; scoped lint retains two existing unused creator prop warnings and no errors. Live visual QA remains unavailable.
+
+**Desktop event back arrow alignment (2026-10-06):** Treasurer event detail and the shared Adviser/Admin view now place an icon only back link directly beside the event name, with metadata aligned below the name. Existing role destinations, status and right Archive/View Report action remain. Mobile event markup is unchanged. Event checks, scoped lint and TypeScript pass; live visual QA remains unavailable.
+
 **Desktop Home controls and archive refinement (2026-10-06):** Home active events now stay in folder view with View all, without a view toggle. Filter chips are centered below search. Desktop Archive is an initially open native details disclosure with a left rotating chevron, keeping its sort, grouped tables, empty state and pagination inside. Shared desktop EventTable rows now have a named clickable right chevron. Mobile Home markup and the prior Notifications margin alignment remain. Render checks, sidebar checks, scoped lint, TypeScript and production build pass. The build required network access for the existing Poppins font. Live visual and keyboard QA is unavailable.
 
 **Treasurer home horizontal margin refinement (2026-10-06):** Removed only Treasurer Home's extra desktop width cap so it fills the same SidebarShell content area as Notifications, with 48px gutters from the sidebar and right edge. The shared Adviser home keeps its cap; mobile spacing, centered search width and all event behavior remain unchanged. Focused rendered checks, scoped lint and TypeScript pass. Live visual QA remains unavailable.
@@ -122,6 +126,17 @@ Update this file after every completed feature. Any AI agent reading this should
 ---
 
 ## Decisions Made During Build
+
+### 2026-10-06 - View Report remains available on archived desktop events
+
+- `BudgetSummary` replaces the conditional Generate Report link/disabled button with an always enabled View Report link in its desktop action column. Open events still expose New Entry and Add Budget under the same gates; archived events omit both. The desktop Treasurer event header omits its ArchiveEventButton when archived. Mobile branches and `EventDashboardActions` are untouched, as are Adviser/Admin read only controls.
+- Report navigation is a read action, not a mutation gate. `/treasurer/reports/[eventId]` already allows archived event reads after role and department checks. Generation and other mutations retain their existing server restrictions and remain in the report workspace; no backend or SDK changes.
+- Extended the event check to render the real desktop action JSX for open, locked, archived and contradictory mutation props, plus the read only role gate. It verifies clickable report links, absent archived mutation buttons and unchanged locked disablement. Mobile budget and both event page branches are compared with HEAD. Event checks and TypeScript pass; lint has no errors and two preexisting unused creator prop warnings. Live interaction verification remains unavailable.
+
+### 2026-10-06 - Desktop event back control beside the name
+
+- Updated only the `lg` desktop header branches in `app/treasurer/events/[eventId]/page.tsx` and `components/events/ReadOnlyEventView.tsx`. Removed the separate back link row and its title margin, and placed an accessible 44px arrow link beside the title and metadata stack using the existing report header hover and focus treatment. No new component, navigation destination, data query, permission or action changes.
+- Extended `scripts/check-desktop-events.mjs` with structural assertions for the inline desktop arrow, preserved status badge and absence of a separate visible Back to events row. Both mobile event JSX branches are compared with HEAD and remain identical. Focused checks, scoped lint and TypeScript pass. Live visual verification remains unavailable.
 
 ### 2026-10-06 - Centered chips, folder only Home and collapsible desktop Archive
 

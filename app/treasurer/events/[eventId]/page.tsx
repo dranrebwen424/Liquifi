@@ -163,39 +163,42 @@ export default async function EventDashboardPage({ params }: Props) {
         </div>
       </div>
 
-      {/* ── DESKTOP LAYOUT (unchanged) ── */}
+      {/* ── DESKTOP LAYOUT ── */}
       <div className="hidden lg:block">
-        {/* Back link */}
-        <Link
-          href="/treasurer/home"
-          className="inline-flex items-center gap-1.5 text-sm text-text-secondary transition-colors hover:text-text-primary"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to events
-        </Link>
-
         {/* Header — title left, Archive far right */}
-        <div className="mt-3 flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="min-w-0 truncate text-lg font-semibold text-text-primary sm:text-2xl md:text-[28px]">
-                {event.name}
-              </h1>
-              <EventStatusBadge status={event.status} />
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-2.5">
+            <Link
+              href="/treasurer/home"
+              aria-label="Back to events"
+              title="Back to events"
+              className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-text-primary transition-colors hover:bg-surface-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+            </Link>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="min-w-0 truncate text-lg font-semibold text-text-primary sm:text-2xl md:text-[28px]">
+                  {event.name}
+                </h1>
+                <EventStatusBadge status={event.status} />
+              </div>
+              <p className="mt-0.5 text-[11px] text-text-muted sm:text-xs">
+                Created {createdDate}
+                {event.created_by_name && event.created_by_name !== "Unknown" && (
+                  <> · by {event.created_by_name}</>
+                )}
+              </p>
             </div>
-            <p className="mt-0.5 text-[11px] text-text-muted sm:text-xs">
-              Created {createdDate}
-              {event.created_by_name && event.created_by_name !== "Unknown" && (
-                <> · by {event.created_by_name}</>
-              )}
-            </p>
           </div>
 
-          <ArchiveEventButton
-            eventId={eventId}
-            canArchive={canArchive}
-            isArchived={isArchived}
-          />
+          {!isArchived && (
+            <ArchiveEventButton
+              eventId={eventId}
+              canArchive={canArchive}
+              isArchived={isArchived}
+            />
+          )}
         </div>
 
         {/* Locked / Archived banner */}
