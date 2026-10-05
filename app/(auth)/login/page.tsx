@@ -80,7 +80,8 @@ export default function LoginPage() {
             value={email}
             onChange={(value) => { setEmail(value); setEmailError(""); setCredentialsInvalid(false); }}
             required
-            error={emailError || (credentialsInvalid ? "Check your email and password." : false)}
+            error={emailError || credentialsInvalid}
+            errorDescriptionId={credentialsInvalid ? "login-error" : undefined}
             validationAttempt={submitted}
           />
           <AuthInput
@@ -91,11 +92,12 @@ export default function LoginPage() {
             value={password}
             onChange={(value) => { setPassword(value); setCredentialsInvalid(false); }}
             required
-            error={credentialsInvalid ? "Check your email and password." : submitted > 0 && !password}
+            error={credentialsInvalid || (submitted > 0 && !password)}
+            errorDescriptionId={credentialsInvalid ? "login-error" : undefined}
             validationAttempt={submitted}
           />
           {apiError && (
-            <p role="alert" className="text-sm text-error-dark text-center">{apiError}</p>
+            <p id="login-error" role="alert" className="text-sm text-error-dark text-center">{apiError}</p>
           )}
           <AuthButton type="submit" loading={loading}>
             Sign in

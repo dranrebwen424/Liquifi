@@ -4,6 +4,8 @@ import { useDeferredValue, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Search } from "lucide-react";
 import { EventCard } from "@/components/events/EventCard";
+import { FolderCard } from "@/components/events/FolderCard";
+import { EventTable } from "@/components/events/EventTable";
 import { EventListItem } from "@/components/events/EventListItem";
 import { ViewToggle } from "@/components/events/ViewToggle";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -263,6 +265,7 @@ export function EventBrowser({
                 >
                   {activeEvents.map((event) => (
                     <motion.div key={event.id} variants={fadeUpItem}>
+                      <div className="md:hidden">
                       <EventCard
                         id={event.id}
                         name={event.name}
@@ -273,16 +276,21 @@ export function EventBrowser({
                         createdByName={event.created_by_name}
                         href={`${basePath}/${event.id}`}
                       />
+                      </div>
+                      <div className="hidden md:block">
+                        <FolderCard id={event.id} name={event.name} href={`${basePath}/${event.id}`} />
+                      </div>
                     </motion.div>
                   ))}
                 </motion.div>
               ) : (
+                <>
                 <motion.div
                   key={`active-list-${activeEvents.length}`}
                   variants={staggerContainer}
                   initial="hidden"
                   animate="show"
-                  className="flex flex-col gap-2"
+                  className="flex flex-col gap-2 md:hidden"
                 >
                   {activeEvents.map((event) => (
                     <motion.div key={event.id} variants={fadeUpItem}>
@@ -299,6 +307,10 @@ export function EventBrowser({
                     </motion.div>
                   ))}
                 </motion.div>
+                <div className="hidden md:block">
+                  <EventTable events={activeEvents} basePath={basePath} caption="Active events" />
+                </div>
+                </>
               )}
             </section>
           )}
@@ -330,7 +342,7 @@ export function EventBrowser({
                       variants={staggerContainer}
                       initial="hidden"
                       animate="show"
-                      className="flex flex-col gap-2"
+                      className="flex flex-col gap-2 md:hidden"
                     >
                       {yearEvents.map((event) => (
                         <motion.div key={event.id} variants={fadeUpItem}>
@@ -347,6 +359,9 @@ export function EventBrowser({
                         </motion.div>
                       ))}
                     </motion.div>
+                    <div className="hidden md:block">
+                      <EventTable events={yearEvents} basePath={basePath} caption={`Archived events from ${year}`} />
+                    </div>
                   </div>
                 ))}
               </div>

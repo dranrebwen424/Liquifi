@@ -46,6 +46,17 @@ for (const error of [false, true, "Passwords don't match."]) {
     assert.doesNotMatch(html, /role="alert"|aria-describedby/);
   }
 }
+const credentialError = renderToStaticMarkup(React.createElement("form", null,
+  ...["email", "password"].map((id) => React.createElement(AuthInput, {
+    key: id, id, label: id, type: id, value: "filled", onChange: () => {},
+    error: true, errorDescriptionId: "login-error", validationAttempt: 1,
+  })),
+  React.createElement("p", { id: "login-error", role: "alert" }, "Invalid email or password."),
+));
+assert.equal((credentialError.match(/role="alert"/g) || []).length, 1, "Rejected credentials have one shared notice");
+assert.equal((credentialError.match(/aria-describedby="login-error"/g) || []).length, 2, "Both fields link to the shared notice");
+assert.equal((credentialError.match(/aria-invalid="true"/g) || []).length, 2, "Both fields retain invalid feedback");
+assert.doesNotMatch(credentialError, /Please enter|Check your email and password/);
 const AuthOtpInput = load("components/auth/AuthOtpInput.tsx").default;
 const otp = renderToStaticMarkup(React.createElement(AuthOtpInput, {
   value: "12", onChange: () => {}, error: "Enter the complete 6-digit code.",
@@ -116,6 +127,8 @@ for (const path of ["app/(auth)/login/page.tsx", "app/(auth)/forgot-password/pag
   assert.match(read(path), /!email\.trim\(\)/, "Whitespace only email is rejected");
 }
 assert.match(read("app/(auth)/login/page.tsx"), /setCredentialsInvalid\(res\.status === 401\)/);
+assert.doesNotMatch(read("app/(auth)/login/page.tsx"), /Check your email and password/);
+assert.equal((read("app/(auth)/login/page.tsx").match(/errorDescriptionId=\{credentialsInvalid \? "login-error" : undefined\}/g) || []).length, 2);
 assert.match(read("components/profile/ChangePasswordForm.tsx"), /Current password is incorrect\./);
 for (const path of ["app/(auth)/change-password/page.tsx", "components/profile/ChangePasswordForm.tsx"]) {
   assert.match(read(path), /error=\{submitted > 0 && \(!newPassword \|\| \(newPassword\.length < MIN_PASSWORD_LENGTH/);

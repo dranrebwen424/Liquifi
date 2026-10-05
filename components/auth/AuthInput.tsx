@@ -16,6 +16,8 @@ type Props = {
   inputMode?: "numeric" | "text" | "email" | "tel";
   required?: boolean;
   error?: boolean | string;
+  /** Existing shared alert to describe the error instead of a field notice. */
+  errorDescriptionId?: string;
   validationAttempt?: number;
 };
 
@@ -64,6 +66,7 @@ export default function AuthInput({
   inputMode,
   required,
   error = false,
+  errorDescriptionId,
   validationAttempt = 0,
 }: Props) {
   const [show, setShow] = useState(false);
@@ -89,7 +92,7 @@ export default function AuthInput({
           inputMode={inputMode}
           required={required}
           aria-invalid={Boolean(error)}
-          aria-describedby={error ? `${id}-error` : undefined}
+          aria-describedby={error ? errorDescriptionId ?? `${id}-error` : undefined}
           className={`peer w-full rounded-lg border bg-surface pb-2 pl-4 pt-6 text-sm text-text-primary outline-none transition-colors ${rightPad} ${
             error
               ? "border-error focus:border-error focus:ring-1 focus:ring-error"
@@ -130,7 +133,7 @@ export default function AuthInput({
         )}
       </div>
 
-      {error && (
+      {error && !errorDescriptionId && (
         <p id={`${id}-error`} className="text-sm text-error" role="alert">
           {typeof error === "string" ? error : `Please enter your ${lowerNameText}.`}
         </p>

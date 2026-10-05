@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useDeferredValue, useMemo, useState } from "react";
 import type { ComponentType } from "react";
-import { Plus, Search, Archive, ArrowLeft, ChevronRight } from "lucide-react";
-import { EventCard } from "@/components/events/EventCard";
-import { EventListItem } from "@/components/events/EventListItem";
+import { Plus, Search, Archive, ChevronRight } from "lucide-react";
+import { EventTable } from "@/components/events/EventTable";
+import { ViewToggle } from "@/components/events/ViewToggle";
 import { FolderCard } from "@/components/events/FolderCard";
 import { ArchiveEventRow } from "@/components/events/ArchiveEventRow";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -80,9 +80,9 @@ export function TreasurerHomeClient({
   readOnly = false,
   paths = TREASURER_PATHS,
 }: Props) {
-const router = useRouter();
   const searchParams = useSearchParams();
   const [sortBy, setSortBy] = useState("newest");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [newEventOpen, setNewEventOpen] = useState(false);
   const [NewEventModal, setNewEventModal] = useState<NewEventModalComponent | null>(null);
   // ponytail: archive "See more" pagination is per-page-state; clamping on
@@ -95,14 +95,8 @@ const router = useRouter();
   const [budgetFilter, setBudgetFilter] = useState("all");
 
   const isSearching = searchParams.get("search") === "1";
-  const [search, setSearch] = useState(searchParams.get("q") ?? "");
+  const search = searchParams.get("q") ?? "";
   const deferredSearch = useDeferredValue(search);
-
-  // Sync search from URL changes (mobile top bar debounces URL writes)
-  useEffect(() => {
-    const q = searchParams.get("q") ?? "";
-    setSearch(q);
-  }, [searchParams]);
 
   const treasurerOptions = useMemo(() => {
     const seen = new Map<string, string>();
@@ -187,13 +181,13 @@ const router = useRouter();
     setBudgetFilter("all");
   };
 
-  const exitSearch = () => {
-    clearFilters();
-    router.replace(paths.home);
-  };
-
   const updateQuery = (value: string) => {
-    setSearch(value);
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("search");
+    if (value) params.set("q", value);
+    else params.delete("q");
+    const suffix = params.toString();
+    window.history.replaceState(null, "", suffix ? `${paths.home}?${suffix}` : paths.home);
   };
 
   const openNewEvent = async () => {
@@ -205,7 +199,7 @@ const router = useRouter();
   };
 
   return (
-    <div className="flex flex-col">
+    <div className="flex w-full flex-col lg:mx-auto lg:max-w-6xl">
       {!isSearching && (
         <div className="px-2 pt-4 pb-10 md:hidden">
           <h1 className="text-center text-xl font-bold tracking-wide text-text-primary">
@@ -214,7 +208,7 @@ const router = useRouter();
         </div>
       )}
 
-      <div className="hidden md:block">
+      <div className={readOnly ? "hidden md:block" : "hidden md:block lg:hidden"}>
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-xl font-semibold text-text-primary md:text-2xl">Events</h1>
@@ -232,6 +226,10 @@ const router = useRouter();
           )}
         </div>
       </div>
+
+      {!readOnly && <div className="hidden pt-6 lg:block">
+        <h1 className="text-center text-2xl font-medium text-text-primary">Welcome Back!</h1>
+      </div>}
 
       {/* ═══════════════════════════════════════════════════════════
           MOBILE LAYOUT — Figma "treasurer home page" design
@@ -424,65 +422,21 @@ const router = useRouter();
           ═══════════════════════════════════════════════════════════ */}
       <div className="hidden md:block">
         {/* Search + Filters */}
-        <div className="flex flex-col gap-3">
-          {!isSearching ? (
-            <div className="flex justify-center">
-              <div
-                className="flex w-full max-w-[480px] items-center gap-3 rounded-xl border border-border bg-surface px-3 py-2.5 transition-colors focus-within:border-accent focus-within:ring-1 focus-within:ring-accent"
-                onClick={() => router.push("?search=1")}
-              >
-                <Search className="h-4 w-4 shrink-0 text-text-muted" />
-                <span className="flex-1 text-sm text-text-muted">Search events...</span>
-              </div>
-            </div>
-          ) : (
-            <>
-              <div className="flex justify-center">
-                <div className="flex w-full max-w-[480px] items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2.5 focus-within:border-accent focus-within:ring-1 focus-within:ring-accent">
-                  <button
-                    type="button"
-                    onClick={exitSearch}
-                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-text-secondary hover:bg-surface-secondary"
-                    aria-label="Exit search"
-                  >
-                    <ArrowLeft className="h-4 w-4" />
-                  </button>
-                  <input
-                    type="text"
-                    placeholder="Search events..."
-                    value={search}
-                    onChange={(e) => updateQuery(e.target.value)}
-                    autoFocus
-                    className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-muted focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-wrap justify-center gap-2">
-                <FilterDropdown label="Type" options={typeOptions} value={typeFilter} onChange={setTypeFilter} />
-                <FilterDropdown label="Treasurer" options={treasurerOptions} value={treasurerFilter} onChange={setTreasurerFilter} />
-                <FilterDropdown label="Date" options={MODIFIED_OPTIONS} value={modifiedFilter} onChange={setModifiedFilter} />
-                <FilterDropdown label="Budget" options={BUDGET_OPTIONS} value={budgetFilter} onChange={setBudgetFilter} />
-              </div>
-
-              {hasActiveFilters && (
-                <>
-                  <div className="h-px bg-border" />
-                  <p className="text-xs font-medium text-text-muted">Search Results</p>
-                </>
-              )}
-            </>
-          )}
+        <div className="mb-10 flex flex-col gap-6">
+          <div role="search" className="mx-auto mt-6 flex w-full max-w-3xl items-center gap-3 rounded-full bg-surface-dept px-5 focus-within:ring-2 focus-within:ring-accent">
+            <Search className="size-5 shrink-0 text-text-secondary" aria-hidden="true" />
+            <input type="search" aria-label="Search events" placeholder="Search events" value={search} onChange={(e) => updateQuery(e.target.value)} className="h-12 min-w-0 flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-secondary" />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <FilterDropdown label="Type" options={typeOptions} value={typeFilter} onChange={setTypeFilter} />
+            <FilterDropdown label="Treasurer" options={treasurerOptions} value={treasurerFilter} onChange={setTreasurerFilter} />
+            <FilterDropdown label="Date" options={MODIFIED_OPTIONS} value={modifiedFilter} onChange={setModifiedFilter} />
+            <FilterDropdown label="Budget" options={BUDGET_OPTIONS} value={budgetFilter} onChange={setBudgetFilter} />
+          </div>
         </div>
 
-        {/* Events — hidden when searching with no filters */}
-        {isSearching && !hasActiveFilters ? (
-          <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-            <Search className="h-10 w-10 text-text-muted" />
-            <p className="text-sm font-medium text-text-primary">Search events</p>
-            <p className="text-xs text-text-muted">Type a name or use filters above to find events.</p>
-          </div>
-        ) : filtered.length === 0 ? (
+        {/* Desktop active and archived events */}
+        {filtered.length === 0 ? (
           <EmptyState
             icon={<Archive className="h-10 w-10 text-text-muted" />}
             title={hasActiveFilters ? "No events match your filters" : "No events yet"}
@@ -496,21 +450,12 @@ const router = useRouter();
             action={
               hasActiveFilters ? (
                 <button
-                  onClick={clearFilters}
+                  onClick={() => { clearFilters(); updateQuery(""); }}
                   className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium text-text-secondary hover:bg-surface-secondary"
                 >
                   Clear filters
                 </button>
-              ) : readOnly ? undefined : (
-                <button
-                  type="button"
-                  onClick={openNewEvent}
-                  className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-[color,transform,shadow] hover:bg-accent-hover hover:shadow-lg hover:scale-[1.04] active:scale-[0.98]"
-                >
-                  <Plus className="h-4 w-4" />
-                  New Event
-                </button>
-              )
+              ) : undefined
             }
           />
         ) : (
@@ -525,6 +470,8 @@ const router = useRouter();
                       Total of {allActive.length} {allActive.length === 1 ? "Event" : "Events"}
                     </p>
                   </div>
+                  <div className="flex items-center gap-4">
+                  <ViewToggle value={viewMode} onChange={setViewMode} />
                   <Link
                     href={paths.events}
                     prefetch={false}
@@ -533,26 +480,18 @@ const router = useRouter();
                     View all
                     <ChevronRight className="h-4 w-4" />
                   </Link>
+                  </div>
                 </div>
-                <div
+                {viewMode === "grid" ? <div
                   key={`desktop-active-grid-${recentActive.length}`}
                   className="grid grid-cols-2 gap-x-5 gap-y-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
                 >
                   {recentActive.map((event, index) => (
                     <FadeIn key={event.id} delay={30 + index * 80}>
-                      <EventCard
-                        id={event.id}
-                        name={event.name}
-                        status={event.status}
-                        budgetTotal={event.budget_total}
-                        totalSpent={event.total_spent}
-                        numEntries={event.num_entries}
-                        createdByName={event.created_by_name}
-                        href={`${paths.event}/${event.id}`}
-                      />
+                      <FolderCard id={event.id} name={event.name} href={`${paths.event}/${event.id}`} />
                     </FadeIn>
                   ))}
-                </div>
+                </div> : <EventTable events={recentActive} basePath={paths.event} caption="Recent active events" />}
               </section>
             )}
 
@@ -584,25 +523,7 @@ const router = useRouter();
                       return (
                         <div key={year}>
                           <p className="mb-3 text-xs font-medium uppercase tracking-wide text-text-muted">{year}</p>
-                          <div
-                            key={`desktop-archive-${year}-${visibleYear.length}`}
-                            className="flex flex-col gap-2"
-                          >
-                            {visibleYear.map((event, index) => (
-                              <FadeIn key={event.id} delay={30 + index * 80}>
-                                <EventListItem
-                                  id={event.id}
-                                  name={event.name}
-                                  status={event.status}
-                                  budgetTotal={event.budget_total}
-                                  totalSpent={event.total_spent}
-                                  numEntries={event.num_entries}
-                                  createdAt={event.created_at}
-                                  href={`${paths.event}/${event.id}`}
-                                />
-                              </FadeIn>
-                            ))}
-                          </div>
+                          <EventTable events={visibleYear} basePath={paths.event} caption={`Archived events from ${year}`} />
                         </div>
                       );
                     })}

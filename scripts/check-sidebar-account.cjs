@@ -66,7 +66,19 @@ async function main() {
   for (const [role, title] of [["treasurer", "Treasurer"], ["adviser", "Adviser"]]) {
     const Sidebar = require("../components/" + role + "/" + title + "Sidebar.tsx")[title + "Sidebar"];
     const Shell = require("../components/" + role + "/" + title + "LayoutShell.tsx")[title + "LayoutShell"];
-    const desktop = Sidebar({ account, unreadCount: 7, pendingCount: 4 }).props.navItems;
+    const desktopSidebar = find(Sidebar({ account, unreadCount: 7, pendingCount: 4 }), (n) => n.type === require("../components/layout/Sidebar.tsx").Sidebar);
+    const desktop = desktopSidebar.props.navItems;
+    if (role === "treasurer") {
+      for (const collapsed of [true, false]) {
+        const action = desktopSidebar.props.primaryAction(collapsed);
+        assert.equal(action.type, "button");
+        assert.equal(action.props["aria-label"], "New Event");
+        assert.equal(typeof action.props.onClick, "function");
+        assert.equal(Boolean(find(action, (n) => n.type === "span" && n.props.children === "New Event")), !collapsed);
+      }
+    } else {
+      assert.equal(desktopSidebar.props.primaryAction, undefined, "read only roles must not get an event creation control");
+    }
     assert(!desktop.some((item) => item.label === "Profile"));
     assert.equal(desktop.find((item) => item.label === "Notifications").badge, 7);
     assert.equal(desktop.find((item) => item.label === "Approvals")?.badge ?? 0, role === "adviser" ? 4 : 0, "adviser Approvals badge must carry the pending approval count");

@@ -6,6 +6,10 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Current Status
 
+**Desktop Treasurer home and shared event browsing (2026-10-06):** Treasurer desktop home now shows Welcome Back and the Admin-style persistent rounded search. New Event lives above navigation in the Treasurer sidebar and opens the existing lazy-loaded dialog; expanded and collapsed targets are accessible. Desktop event grids reuse the mobile FolderCard across Treasurer, Adviser and Admin event browsers. List mode and year-grouped archives use a shared six-column table without Status. Existing mobile layouts, read-only permissions, recent-four selection and archive pagination remain. Render checks, sidebar checks, scoped lint and the production build with TypeScript pass. The build required network access for the existing Poppins font. Live visual/keyboard QA remains unavailable because no browser is connected.
+
+**Login credential notice refinement (2026-10-05):** Rejected login credentials now use only the shared server error alert, without duplicate "Check your email and password." notices below the fields. Both fields retain red outlines, shake feedback, and accessible links to the shared alert. Required and malformed email messages remain unchanged. Other auth flows are untouched.
+
 **Auth field outline and error feedback (2026-10-05):** The password visibility control in shared `AuthInput` is now transparent and inset, so it cannot cover the red rounded outline. It keeps a 44px target, keyboard focus ring, and pressed state. Invalid fields receive a repeatable 250ms shake, disabled for reduced motion. Login, public recovery/reset, profile change, and associated OTP forms now connect empty and incorrect values to field feedback. Specific messages and linked alerts replace misleading required notices for filled invalid fields. The new Node regression check, existing profile password check, TypeScript, and production build pass; scoped lint has no errors and the existing shared OTP unused token warning. The build required network access for the existing Poppins font download. Live visual QA remains unavailable.
 
 **Auth alignment and labels refinement (2026-10-05):** Signup and password flow headings/subheaders now align left on mobile and remain centered at `md` and above. Titles use `font-bold`. Progress step labels are visible at both sizes with accessible state descriptions retained. Desktop vertical centering, mobile 24px top spacing, back-first ordering, and form behavior are unchanged. TypeScript, scoped component lint, all flow/step render checks, and the existing profile password check pass. Live visual QA remains unavailable because no browser is connected. This supersedes the centered mobile headings and hidden labels in the earlier auth entries.
@@ -114,6 +118,19 @@ Update this file after every completed feature. Any AI agent reading this should
 ---
 
 ## Decisions Made During Build
+
+### 2026-10-06 - Desktop Treasurer home, folders and event tables
+
+- Treasurer home at `lg` replaces Events/subtitle and in-page creation with centered Welcome Back, a `max-w-3xl` rounded search and `max-w-6xl` content width. Search reads `q` directly from Next search params and updates native history without a server navigation per keystroke. The existing mobile search and creation flow remain; the `md` tablet header retains creation where the sidebar is not visible.
+- Reused `FolderCard` for desktop grids in the shared home, active Events page and Admin department `EventBrowser`. Adviser retains its existing heading and read-only role paths. List mode and archives at the existing `md` desktop-content breakpoint use `EventTable`: Name, Date, Treasurer, Budget, Spent, Entries, with no Status or invented category. Tables have semantic headers, hidden captions, horizontal overflow, real event links, Philippine dates and exact currency formatting. Existing archive grouping and reveal pagination are preserved.
+- Shared Sidebar accepts an optional primary action; only Treasurer supplies New Event. The button opens the existing `NewEventModal`, not a new creation workflow. It retains its accessible name when collapsed and has a 44px target and keyboard focus. ViewToggle now exposes pressed states and focus rings.
+- `scripts/check-desktop-events.mjs` covers rendered table values and role links, home query results, recent-four selection, empty/read-only states, desktop component wiring and unchanged mobile home JSX against the pre-change HEAD. Sidebar checks cover the action in expanded/collapsed states and its absence for Adviser. Both checks, auth feedback regression check, scoped ESLint and production build pass. No backend, schema, dependency or auth-guard changes. Live browser QA is unavailable.
+
+### 2026-10-05 - Single shared login credential notice
+
+- `AuthInput.errorDescriptionId` links invalid fields to an existing shared error alert and suppresses only the duplicate field notice. Login uses `login-error` for both fields after a credential rejection, preserving invalid styles and motion. The server message and attempt guidance remain unchanged; required and malformed email notices remain individual.
+- Extended `scripts/check-auth-field-feedback.mjs` with a rendered login error case: exactly one alert, both fields invalid and linked to it, no duplicate notices. Other auth flows retain their defaults.
+- Verification: auth feedback and existing profile password checks, TypeScript, scoped lint, and diff checks pass. Live browser verification remains unavailable.
 
 ### 2026-10-05 - Password outline fix and invalid field feedback
 

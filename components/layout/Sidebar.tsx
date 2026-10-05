@@ -22,9 +22,10 @@ type SidebarProps = {
   navItems: NavItemConfig[];
   role: "treasurer" | "adviser" | "admin";
   account: SidebarAccount;
+  primaryAction?: (collapsed: boolean) => React.ReactNode;
 };
 
-export function Sidebar({ navItems, role, account }: SidebarProps): React.JSX.Element {
+export function Sidebar({ navItems, role, account, primaryAction }: SidebarProps): React.JSX.Element {
   const pathname = usePathname();
   // Read the same state that SidebarShell uses to size the content column.
   const collapsed = useSyncExternalStore(subscribeToSidebar, getCollapsed, () => true);
@@ -57,6 +58,8 @@ export function Sidebar({ navItems, role, account }: SidebarProps): React.JSX.El
           {collapsed ? <PanelLeftOpen className="size-5" aria-hidden="true" /> : <PanelLeftClose className="size-5" aria-hidden="true" />}
         </button>
       </div>
+
+      {primaryAction && <div className={cn("shrink-0 pb-2", collapsed ? "px-2" : "px-3")}>{primaryAction(collapsed)}</div>}
 
       <nav aria-label={role + " navigation"} className={cn("min-h-0 flex-1 overflow-y-auto py-4", collapsed ? "px-2" : "px-3")}>
         {!collapsed && <p className="mb-3 px-3 text-xs font-medium uppercase tracking-wider text-text-muted">Workspace</p>}

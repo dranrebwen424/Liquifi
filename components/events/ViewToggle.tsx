@@ -15,8 +15,9 @@ export function ViewToggle({ value, onChange }: Props) {
         type="button"
         onClick={() => onChange("grid")}
         aria-label="Grid view"
+        aria-pressed={value === "grid"}
         className={cn(
-          "flex h-8 w-8 items-center justify-center rounded-md transition-colors",
+          "flex h-8 w-8 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
           value === "grid"
             ? "bg-accent text-accent-foreground"
             : "text-text-muted hover:text-text-primary",
@@ -28,8 +29,9 @@ export function ViewToggle({ value, onChange }: Props) {
         type="button"
         onClick={() => onChange("list")}
         aria-label="List view"
+        aria-pressed={value === "list"}
         className={cn(
-          "flex h-8 w-8 items-center justify-center rounded-md transition-colors",
+          "flex h-8 w-8 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
           value === "list"
             ? "bg-accent text-accent-foreground"
             : "text-text-muted hover:text-text-primary",

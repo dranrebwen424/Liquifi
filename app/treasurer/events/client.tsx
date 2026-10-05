@@ -5,9 +5,8 @@ import { useState } from "react";
 import { ArrowLeft, Archive } from "lucide-react";
 import { FadeIn } from "@/components/ui/FadeIn";
 import { FolderCard } from "@/components/events/FolderCard";
-import { EventCard } from "@/components/events/EventCard";
+import { EventTable } from "@/components/events/EventTable";
 import { ArchiveEventRow } from "@/components/events/ArchiveEventRow";
-import { EventListItem } from "@/components/events/EventListItem";
 import { ViewToggle } from "@/components/events/ViewToggle";
 import { EmptyState } from "@/components/ui/EmptyState";
 import type { EventWithMeta } from "@/lib/queries/events";
@@ -72,33 +71,25 @@ export function ActiveEventsClient({
         >
           {activeEvents.map((event, index) => (
             <FadeIn key={event.id} delay={30 + index * 80}>
-              {/* Mobile uses the folder card; desktop uses the event card. */}
+              {/* The same folder silhouette at both sizes. */}
               <div className="md:hidden">
                 <FolderCard id={event.id} name={event.name} href={`${basePath}/${event.id}`} />
               </div>
               <div className="hidden md:block">
-                <EventCard
-                  id={event.id}
-                  name={event.name}
-                  status={event.status}
-                  budgetTotal={event.budget_total}
-                  totalSpent={event.total_spent}
-                  numEntries={event.num_entries}
-                  createdByName={event.created_by_name}
-                  href={`${basePath}/${event.id}`}
-                />
+                <FolderCard id={event.id} name={event.name} href={`${basePath}/${event.id}`} />
               </div>
             </FadeIn>
           ))}
         </div>
       ) : (
+        <>
         <div
           key={`active-list-${viewMode}`}
-          className="flex flex-col gap-3 md:gap-2"
+          className="flex flex-col gap-3 md:hidden"
         >
           {activeEvents.map((event, index) => (
             <FadeIn key={event.id} delay={30 + index * 80}>
-              {/* Mobile matches the archive row look; desktop uses the full list item. */}
+              {/* Keep the existing mobile archive row presentation. */}
               <div className="md:hidden">
                 <ArchiveEventRow
                   id={event.id}
@@ -107,21 +98,13 @@ export function ActiveEventsClient({
                   href={`${basePath}/${event.id}`}
                 />
               </div>
-              <div className="hidden md:block">
-                <EventListItem
-                  id={event.id}
-                  name={event.name}
-                  status={event.status}
-                  budgetTotal={event.budget_total}
-                  totalSpent={event.total_spent}
-                  numEntries={event.num_entries}
-                  createdAt={event.created_at}
-                  href={`${basePath}/${event.id}`}
-                />
-              </div>
             </FadeIn>
           ))}
         </div>
+        <div className="hidden md:block">
+          <EventTable events={activeEvents} basePath={basePath} caption="Active events" />
+        </div>
+        </>
       )}
     </div>
   );
