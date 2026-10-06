@@ -62,6 +62,12 @@ telling the user something about status — not decoration.
   --color-surface-dept: #e9eef6;
   --color-surface-inverse: #111114;
 
+  /* Public landing illustration / CTA palette — marketing only */
+  --color-landing-mint: #e2f5ec;
+  --color-landing-lime: #b9ed9b;
+  --color-landing-lilac: #d7c5f3;
+  --color-landing-lilac-side: #a48acb;
+
   /* Dark nav chrome (sidebar) */
   --color-nav: #0a0a0c;
   --color-nav-hover: #1a1a1e;
@@ -152,6 +158,17 @@ token above:
 ---
 
 ## Color Usage Guide
+
+### Public Landing Illustration Exception (2026-10-06)
+
+The requested playful landing redesign uses `landing-mint` for the page-wide
+scroll-triggered CTA wash, `landing-lime` for the ledger character and number
+tiles, and `landing-lilac` / `landing-lilac-side` for illustration depth.
+Existing info, warning, and success families provide the other illustration
+colors. These decorative uses are limited to the public landing; application
+status colors and white content-card surfaces keep their existing meanings.
+All fills and CSS colors still reference tokens. Do not copy these decorative
+exceptions into authenticated dashboards or status badges.
 
 ### Page Layout
 

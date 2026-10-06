@@ -58,8 +58,23 @@ Files: `components/layout/{Sidebar,SidebarAccountMenu,MobileSidebarDrawer,NavIte
 - **Adviser Approvals badge (2026-09-30):** the Approvals nav item carries a count at both sizes. `countPendingApprovals()` in `lib/adviser-approval-inbox.ts` counts pending treasurer applicants + pending manual entries in non-archived department events, mirroring `app/adviser/approvals/page.tsx` exactly; `app/adviser/layout.tsx` calls it server-side alongside the unread-notification count and passes `pendingCount` to both `AdviserSidebar` and `AdviserLayoutShell`. Badge rendering was already in `NavItem`, so this is data plumbing only — no new badge component.
 
 ### LandingPage
-Files: app/page.tsx (server) + components/landing/HeroSection.tsx (client) + components/ui/AnimatedBlock.tsx · 2026-07-17
-Public route: Features ×3 / How it works ×3 (accent `01/02/03` labels) / single CTA card / footer. Hero header `sticky top-0 z-50 w-full bg-surface/90 backdrop-blur border-b border-border`, inner `h-16 max-w-[1440px]`; mobile hamburger = `<details>/<summary>` (no JS). Eyebrow pill `bg-accent-light text-text-dark`; H1 `text-[34px] sm:text-[48px] md:text-[56px] tracking-tight`; sections `py-28 md:py-36` (pre-approved airy deviation). **Documented deviation:** hardcoded arbitrary shadow `shadow-[0px_1px_2px_rgba(17,17,20,0.04),0px_1px_3px_rgba(17,17,20,0.06)]` on cards/dropdown/visual — same rgba values everywhere; keep them in sync. Animation = framer-motion `AnimatedBlock` (fade-up `y:24→0`, 0.5s easeOut, `whileInView once margin:"-80px"`, `delay={i*0.1}`). Logo = inline monoline SVG (`--color-accent`) + 20px/700 wordmark.
+Files: `app/page.tsx`, `components/landing/{HeroSection,LedgerIllustration,LandingExperience}.tsx`, `components/landing/landing.module.css`.
+Last updated: 2026-10-06. Replaces the 2026-07-17 landing; `AnimatedBlock` and the old dashboard screenshot are no longer used here.
+
+| Property | Pattern |
+| --- | --- |
+| Background | `surface` page; GSAP washes the same page to `landing-mint` during final CTA entry |
+| Cards | `surface`, 1px `border`, `radius-xl`; illustrations have separately documented marketing tints |
+| Typography | Poppins; 600-weight hero 38–64px, section titles 27–42px, CTA 39–70px; primary/secondary text tokens |
+| Spacing | 20px mobile / 48px desktop gutters; 70–110px sections; 24–30px cards; 12px checklist gaps |
+| Buttons | Ink `accent`/`accent-foreground`, full radius, 50–52px primary targets, 2px lift and 0.98 press |
+| Focus | 2px accent outline with 5px offset; labeled mobile navigation; skip link |
+| Shadow | Existing `shadow-card`; number-tile extrusions use token-colored offset shadows |
+| Artwork | Original receipt/folder characters, scanner, signed-report SVG; four `landing-*` tokens plus existing state palette |
+
+**Pattern notes:** Static page content and artwork stay Server Components, passed through a client `LandingExperience` wrapper. The public narrative is hero → role strip → three problems/benefits → capture/track/report → department ownership → four native FAQ disclosures → unboxed CTA → footer. Sample budget explicitly says Illustrative preview; currency uses `formatPHP`. Signup/login use existing routes; no fabricated testimonials or customer statistics.
+
+GSAP owns title/section reveals, budget-bar entry, pointer parallax, and the reversible ScrollTrigger page-color wash (`top bottom` → `top 20%`, scrub 1). Scoped `gsap.context`/`matchMedia` clean up on unmount and preference changes. CSS handles SVG blinking/scanning/signature drawing and 6–12s float/rotation loops. Final CTA tiles contain only 7/24/8/100/12/5/0, with deterministic scattered positions; pointer movement adds small parallax. Pause/Resume, reduced motion, offscreen IntersectionObserver pausing and document visibility pausing are required. CSS defaults keep all content visible with no JS. Mobile navigation and FAQs use native details/summary; mobile links dismiss the menu, Escape restores focus, and outside clicks dismiss it. The marketing-only exceptions are recorded in ui-rules/ui-tokens. Check: `node scripts/check-landing.cjs`; add `--render` to rasterize the three SVGs for inspection. Live browser layout/motion QA remains pending when no browser is connected.
 
 ### Auth pages
 Files: components/auth/* · 2026-07-14 (Figma-matched restyle). Centered form on white; real wiring (login/signup/OTP/pending/forgot/change-password); signup role selector excludes Admin.

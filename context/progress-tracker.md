@@ -6,6 +6,8 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Current Status
 
+**Public landing redesign (2026-10-06):** Replaced `/` with a responsive illustrated council story, original animated receipt/folder/scanner/report SVGs, staggered text/section reveals, cursor-responsive background, and a final CTA whose shared page background gradually washes mint with ScrollTrigger. Seven number-only dimensional tiles float/rotate around the CTA. Native mobile navigation and FAQs, Pause/Resume, reduced motion, offscreen/hidden-tab pausing and no-JS-readable content are included. Existing auth routes and backend are unchanged; no dependencies added. Production build, TypeScript, scoped ESLint and the landing render check pass; three SVGs were rasterized and visually inspected. Live browser viewport, pointer, and scroll QA remains pending because no browser provider is connected.
+
 **Desktop archived event actions (2026-10-06):** BudgetSummary's desktop Generate Report navigation is now View Report and stays enabled for open, locked and archived events. Archived desktop events omit New Entry, Add Budget and the header Archive control rather than disabling them. The existing guarded report workspace remains the destination and owns actual generation. Mobile markup, read only role paths and server mutation guards are unchanged. Action render checks and TypeScript pass; scoped lint retains two existing unused creator prop warnings and no errors. Live visual QA remains unavailable.
 
 **Desktop event back arrow alignment (2026-10-06):** Treasurer event detail and the shared Adviser/Admin view now place an icon only back link directly beside the event name, with metadata aligned below the name. Existing role destinations, status and right Archive/View Report action remain. Mobile event markup is unchanged. Event checks, scoped lint and TypeScript pass; live visual QA remains unavailable.
@@ -126,6 +128,15 @@ Update this file after every completed feature. Any AI agent reading this should
 ---
 
 ## Decisions Made During Build
+
+### 2026-10-06 - Illustrated landing and scroll-washed final CTA
+
+- `app/page.tsx` and `HeroSection` remain server-rendered. `LandingExperience` owns the sticky header, native mobile menu behavior, motion controls and GSAP lifecycle. `LedgerIllustration` supplies three original token-colored SVG scenes. Route-local `landing.module.css` owns the responsive composition and ambient CSS animation.
+- Used the supplied landing anatomy and floating-tile references plus Duolingo's public illustration guidelines as design direction. Kept the copy grounded in the actual receipt confirmation, adviser review and physical-signature workflow; replaced unspecified logo/testimonial sections with role and department-ownership content. The budget example is explicitly illustrative and internally consistent.
+- Final CTA has no card or section divider. ScrollTrigger interpolates the shared page background from surface to landing-mint as the CTA enters, reversing when scrolling away. Seven deterministic number tiles have dimensional token-colored shadows, independent float/rotation timing and pointer parallax. Reduced motion skips GSAP and loops; the CTA gets a static mint surface instead. A visible motion control, offscreen loop pausing, document visibility handling and complete effect cleanup limit ambient animation.
+- Four marketing-only tokens were added to `@theme` and documented in ui-tokens; the user-requested colored artwork, enlarged typography, open sections and slower decorative motion are explicitly scoped exceptions in ui-rules. Imprint refreshed the existing LandingPage registry entry.
+- `node scripts/check-landing.cjs --render` checks real server output: one H1, unique IDs, resolved section labels/anchor destinations, real auth links, native FAQ content, pause control, numeric CTA tiles, sample arithmetic and workflow claims; it also rasterizes all three SVGs. Scoped lint, TypeScript and the production build pass. Browser inventory returned no connected browsers, so real viewport geometry and animation behavior are not claimed as visually verified.
+- Production preview HTTP smoke check at `http://localhost:3000/` returns 200; all three linked stylesheets load and include the landing palette, floating-number keyframes and reduced-motion rules. The local preview server was left running for review.
 
 ### 2026-10-06 - View Report remains available on archived desktop events
 
