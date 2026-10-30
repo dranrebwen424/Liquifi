@@ -33,6 +33,10 @@ export function ManualCategoryPicker({ onSelect }: ManualCategoryPickerProps) {
 
   return (
     <div className="flex flex-col gap-5">
+      <div className="hidden lg:block">
+        <h3 className="text-sm font-semibold text-text-primary">What kind of expense is this?</h3>
+        <p className="mt-1 text-xs leading-5 text-text-secondary">Choose a category to get the right fields for your entry.</p>
+      </div>
       <motion.div
         variants={container}
         initial="hidden"
@@ -48,12 +52,12 @@ export function ManualCategoryPicker({ onSelect }: ManualCategoryPickerProps) {
               type="button"
               onClick={() => onSelect(key)}
               className={cn(
-                "flex flex-col items-center gap-3 rounded-xl border border-border-strong bg-surface px-4 py-6 text-center transition-all",
+                "flex flex-col items-center gap-3 rounded-xl border border-border-strong bg-surface px-4 py-6 text-center transition-all lg:rounded-2xl lg:border-border lg:px-3 lg:py-5 lg:focus-visible:outline-2 lg:focus-visible:outline-offset-2 lg:focus-visible:outline-accent",
                 "hover:border-accent hover:bg-accent-muted hover:shadow-sm",
                 "active:scale-[0.97]",
               )}
             >
-              <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-accent-light text-accent">
+              <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-accent-light text-accent lg:rounded-xl lg:bg-surface-secondary">
                 <Icon className="h-5 w-5" />
               </div>
               <span className="text-sm font-medium text-text-primary">

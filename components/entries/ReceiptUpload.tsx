@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { Upload, FileImage, X, Loader2, Pencil, RefreshCw, Camera, Image } from "lucide-react";
+import { Upload, FileImage, X, Loader2, Camera, Image } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { prepareImage } from "@/lib/image";
 import type { ParsedReceipt } from "@/agent/types";
 import { CameraViewfinder } from "@/components/entries/CameraViewfinder";
+import { ReceiptFeedbackDialog, type ReceiptFeedbackKind } from "@/components/entries/ReceiptFeedbackDialog";
 
 export type ParsedUploadResult = {
   entryId: string;
@@ -28,11 +29,11 @@ type ReceiptUploadProps = {
 
 /**
  * Upload failures. Verdicts (invalid_document/borderline) are guidance, not errors —
- * they render an action banner immediately and never count toward the attempt ceiling.
- * generic/parse_failed keep the inline red text + attempt counting. The reparse
+ * they open receipt guidance without counting toward the attempt ceiling.
+ * Generic failures and exhausted retries use the same white dialog. The reparse
  * ceiling (MAX_ATTEMPTS) only ever trips on genuinely hard-to-read receipt images.
  */
-type FailureKind = "generic" | "parse_failed" | "invalid_document" | "borderline" | "multiple_documents";
+type FailureKind = ReceiptFeedbackKind;
 
 /** Maximum file size in bytes (10 MB). */
 const MAX_SIZE = 10 * 1024 * 1024;
@@ -183,6 +184,7 @@ export function ReceiptUpload({ eventId, onParsed, onExhausted, onNoReceipt, onP
         // Reparse exhausted → manual-entry fallback (the provisional row likely
         // remains; onPending lets the owner discard it on modal close).
         setFailedAttempts(failedAttempts + MAX_ATTEMPTS);
+        setFailure({ kind: "exhausted", message: `After ${MAX_ATTEMPTS} attempts the receipt could not be parsed. You can try another photo or enter the entry manually.` });
         setUploading(false);
         return;
       }
@@ -233,27 +235,29 @@ export function ReceiptUpload({ eventId, onParsed, onExhausted, onNoReceipt, onP
             onDrop={handleDrop}
             onClick={() => inputRef.current?.click()}
             className={cn(
-              "hidden cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-dashed p-12 text-center transition-colors md:flex",
+              "hidden cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-dashed p-12 text-center transition-colors md:flex lg:min-h-64 lg:justify-center lg:rounded-2xl lg:border lg:p-10 lg:focus-visible:outline-2 lg:focus-visible:outline-offset-4 lg:focus-visible:outline-accent",
               isDragOver
                 ? "border-accent bg-accent-muted"
-                : "border-border-strong bg-surface hover:border-accent hover:bg-accent-muted",
+                : "border-border-strong bg-surface hover:border-accent hover:bg-accent-muted lg:border-border lg:hover:bg-surface-secondary",
             )}
             role="button"
             tabIndex={0}
             onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") inputRef.current?.click(); }}
             aria-label="Upload receipt image"
           >
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-light text-accent">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-light text-accent lg:mb-2 lg:size-14 lg:rounded-2xl lg:bg-surface-secondary">
               <Upload className="h-6 w-6" />
             </div>
             <div>
               <p className="text-sm font-medium text-text-primary">
-                Click to upload or drag and drop
+                <span className="lg:hidden">Click to upload or drag and drop</span><span className="hidden lg:inline">Drop your receipt here</span>
               </p>
               <p className="mt-1 text-xs text-text-muted">
                 JPEG, PNG, or WebP — one receipt per upload
               </p>
             </div>
+            <span className="mt-2 hidden min-h-11 items-center rounded-full bg-accent px-5 text-sm font-medium text-accent-foreground lg:inline-flex">Choose a photo</span>
+            <p className="hidden text-xs text-text-muted lg:block">Maximum file size: 10 MB</p>
           </div>
         </>
       )}
@@ -291,11 +295,6 @@ export function ReceiptUpload({ eventId, onParsed, onExhausted, onNoReceipt, onP
             </div>
           </div>
 
-          {/* Inline errors — validation, network, or persistent extraction failures */}
-          {failure && (failure.kind === "generic" || failure.kind === "parse_failed") && (
-            <p className="text-sm text-error">{failure.message}</p>
-          )}
-
           {/* Upload button */}
           <button
             onClick={handleUpload}
@@ -314,108 +313,23 @@ export function ReceiptUpload({ eventId, onParsed, onExhausted, onNoReceipt, onP
         </div>
       )}
 
-      {/* Invalid-document verdict — guidance banner, no dead end, no attempts consumed */}
-      {!uploading && failure?.kind === "invalid_document" && (
-        <div className="flex flex-col gap-3 rounded-xl border border-warning bg-warning-lightest p-4">
-          <div>
-            <p className="text-sm font-semibold text-text-primary">
-              No receipt details found
-            </p>
-            <p className="mt-0.5 text-xs text-text-muted">{failure.message}</p>
-          </div>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <button
-              onClick={onNoReceipt}
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98]"
-            >
-              <Pencil className="h-4 w-4" />
-              Log as No Receipt Entry
-            </button>
-            <button
-              onClick={resetFile}
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-border px-4 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary"
-            >
-              Try Another Photo
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Borderline verdict — retry-first banner */}
-      {!uploading && failure?.kind === "borderline" && (
-        <div className="flex flex-col gap-3 rounded-xl border border-info bg-info-lightest p-4">
-          <div>
-            <p className="text-sm font-semibold text-text-primary">
-              Photo needs a retake
-            </p>
-            <p className="mt-0.5 text-xs text-text-muted">{failure.message}</p>
-          </div>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <button
-              onClick={resetFile}
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98]"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Try Another Photo
-            </button>
-            <button
-              onClick={onNoReceipt}
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-border px-4 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary"
-            >
-              Log as No Receipt Entry
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Multiple-documents verdict — the photo has 2+ receipts; one per upload */}
-      {!uploading && failure?.kind === "multiple_documents" && (
-        <div className="flex flex-col gap-3 rounded-xl border border-warning bg-warning-lightest p-4">
-          <div>
-            <p className="text-sm font-semibold text-text-primary">
-              One receipt per upload
-            </p>
-            <p className="mt-0.5 text-xs text-text-muted">{failure.message}</p>
-          </div>
-          <button
-            onClick={resetFile}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98]"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Try Another Photo
-          </button>
-        </div>
-      )}
-
-      {/* Manual-entry fallback after 3 failed parse attempts */}
-      {!uploading && failedAttempts >= MAX_ATTEMPTS && (
-        <div className="flex flex-col gap-3 rounded-xl border border-warning bg-warning-lightest p-4">
-          <div>
-            <p className="text-sm font-semibold text-text-primary">
-              We couldn&apos;t read this receipt
-            </p>
-            <p className="mt-0.5 text-xs text-text-muted">
-              After {MAX_ATTEMPTS} attempts the receipt couldn&apos;t be parsed. You can try
-              another photo or enter the entry manually.
-            </p>
-          </div>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <button
-              onClick={onExhausted}
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground transition-[color,transform] hover:bg-accent-hover active:scale-[0.98]"
-            >
-              <Pencil className="h-4 w-4" />
-              Enter Entry Manually
-            </button>
-            <button
-              onClick={resetFile}
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-border px-4 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary"
-            >
-              Try Another Photo
-            </button>
-          </div>
-        </div>
-      )}
+      <ReceiptFeedbackDialog
+        kind={!uploading ? failure?.kind ?? null : null}
+        message={failure?.message ?? ""}
+        onClose={() => setFailure(null)}
+        onRetry={() => {
+          const retrySamePhoto = file && (failure?.kind === "generic" || failure?.kind === "parse_failed");
+          setFailure(null);
+          if (retrySamePhoto) void handleUpload();
+          else resetFile();
+        }}
+        onManual={() => {
+          const exhausted = failure?.kind === "exhausted";
+          setFailure(null);
+          if (exhausted) onExhausted();
+          else onNoReceipt();
+        }}
+      />
 
       {/* Hidden file input */}
       <input

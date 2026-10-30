@@ -115,13 +115,26 @@ export async function getReceiptBlob(entryId: string, index = 0): Promise<Blob> 
 
   const keys = parseImageKeys(entry.image_url);
   const key = keys[index];
-  if (!key) throw new Error("Receipt not found");
+  if (!key) {
+    console.error("[storage/receipts] Missing image key", JSON.stringify({ entryId, index }));
+    throw new Error("Receipt not found");
+  }
 
   const { data: blob, error: downloadError } = await insforge.storage
     .from(RECEIPT_BUCKET)
     .download(key);
 
-  if (downloadError || !blob) throw new Error("Receipt not found");
+  if (downloadError || !blob) {
+    console.error("[storage/receipts] Download failed", JSON.stringify({
+      entryId,
+      bucket: RECEIPT_BUCKET,
+      key: /^https?:\/\//.test(key) ? new URL(key).pathname : key,
+      status: downloadError?.statusCode,
+      code: downloadError?.error,
+      message: downloadError?.message,
+    }));
+    throw new Error("Receipt not found");
+  }
   return blob;
 }
 

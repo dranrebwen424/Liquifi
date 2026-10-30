@@ -3,6 +3,7 @@
 
 export type NotificationRow = {
   id: string;
+  type?: string;
   read: boolean;
   created_at: string;
   title: string;

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { requireRole } from "@/lib/auth-guard";
 import { getEventDashboard } from "@/lib/queries/events";
 import { getLatestReportByEvent } from "@/lib/queries/reports";
@@ -63,7 +63,7 @@ export default async function EventDashboardPage({ params }: Props) {
 
   return (
     <FadeIn>
-    <div className="flex flex-col pb-16">
+    <div className="flex flex-col pb-16 lg:pt-6">
       <EventLiveRefresh eventId={eventId} />
       {/* ── MOBILE LAYOUT (matches Figma) ── */}
       <div className="lg:hidden px-3 pt-6">
@@ -192,13 +192,23 @@ export default async function EventDashboardPage({ params }: Props) {
             </div>
           </div>
 
-          {!isArchived && (
-            <ArchiveEventButton
-              eventId={eventId}
-              canArchive={canArchive}
-              isArchived={isArchived}
-            />
-          )}
+          <div className="flex shrink-0 items-center gap-3">
+            {!isArchived && (
+              <ArchiveEventButton
+                eventId={eventId}
+                canArchive={canArchive}
+                isArchived={isArchived}
+              />
+            )}
+            <Link
+              href={`/treasurer/reports/${eventId}`}
+              className="inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-[17px] border border-text-primary px-4 py-[10px] text-[12px] font-medium text-text-primary transition-[color,transform,shadow] hover:bg-surface-secondary hover:shadow-sm hover:scale-[1.02] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              title="View financial report"
+            >
+              <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
+              View Report
+            </Link>
+          </div>
         </div>
 
         {/* Locked / Archived banner */}

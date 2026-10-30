@@ -74,7 +74,7 @@ export function ReadOnlyEventView({ event, latestReport, backHref, reportHref }:
   }));
 
   return (
-    <div className="flex flex-col pb-16">
+    <div className="flex flex-col pb-16 lg:pt-6">
       <EventLiveRefresh eventId={eventId} />
 
       {/* ── MOBILE LAYOUT (matches the treasurer event page) ── */}

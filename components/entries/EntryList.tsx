@@ -94,10 +94,16 @@ export function EntryList({ entries, isArchived, canMutate, mobileLayout, backHr
         </div>
       ) : (
         /* Header — desktop layout (unchanged) */
-        <div className="mb-4 flex flex-wrap items-center gap-3">
-          <h2 className="text-base font-semibold text-text-primary">
-            EXPENSES ({entries.length})
-          </h2>
+        <div className="mb-4 flex flex-wrap items-center gap-3 lg:gap-4">
+          <div className="shrink-0">
+            <h2 className="text-base font-semibold text-text-primary lg:text-[22px] lg:font-medium">
+              <span className="lg:hidden">EXPENSES ({entries.length})</span>
+              <span className="hidden lg:inline">Expenses</span>
+            </h2>
+            <p className="mt-0.5 hidden text-xs text-text-muted lg:block" aria-live="polite" aria-atomic="true">
+              {entries.length === totalEntries ? `Total of ${totalEntries}` : `${entries.length} of ${totalEntries}`} {totalEntries === 1 ? "Entry" : "Entries"}
+            </p>
+          </div>
 
           {/* Desktop: filter chips inline next to title */}
           {filters && (

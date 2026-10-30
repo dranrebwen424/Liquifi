@@ -206,33 +206,38 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
 
   /** Method toggle + active method content */
   const screenContent = (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-5 lg:gap-6">
       {/* Method toggle row */}
       <div className="flex items-center gap-2">
-        <div className="flex flex-1 rounded-xl border border-border bg-surface p-1">
+        <div className="flex flex-1 rounded-xl border border-border bg-surface p-1 lg:rounded-2xl lg:border-transparent lg:bg-surface-secondary lg:p-1.5" role="group" aria-label="Entry method">
           {[
-            { value: "receipt" as Method, label: "Upload Receipt", icon: Camera },
-            { value: "manual" as Method, label: "No Receipt", icon: Pencil },
+            { value: "receipt" as Method, label: "Upload Receipt", description: "Extract details from a photo", icon: Camera },
+            { value: "manual" as Method, label: "No Receipt", description: "Record an expense manually", icon: Pencil },
           ].map((opt) => {
             const active = method === opt.value;
             return (
               <button
                 key={opt.value}
                 type="button"
+                aria-pressed={active}
                 onClick={() => {
                   setMethod(opt.value);
                   setManualScreen("picker");
                   setSelectedCategory(null);
                 }}
                 className={cn(
-                  "flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-medium transition-all",
+                  "flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-medium transition-all lg:justify-start lg:gap-3 lg:rounded-xl lg:p-4 lg:text-left lg:focus-visible:outline-2 lg:focus-visible:outline-offset-2 lg:focus-visible:outline-accent",
                   active
-                    ? "bg-accent text-accent-foreground shadow-sm"
+                    ? "bg-accent text-accent-foreground shadow-sm lg:bg-surface lg:text-text-primary lg:ring-1 lg:ring-border"
                     : "text-text-secondary hover:text-text-primary",
                 )}
               >
-                <opt.icon className="h-4 w-4" />
-                {opt.label}
+                <opt.icon className="h-4 w-4 shrink-0 lg:h-5 lg:w-5" aria-hidden="true" />
+                <span>
+                  <span className="block">{opt.label}</span>
+                  <span className="mt-1 hidden text-[11px] font-normal leading-4 text-text-secondary lg:block">{opt.description}</span>
+                </span>
+                {active && <Check className="ml-auto hidden h-4 w-4 shrink-0 text-text-primary lg:block" aria-hidden="true" />}
               </button>
             );
           })}
@@ -241,7 +246,7 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
         <button
           type="button"
           onClick={closeModal}
-          className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-surface-secondary hover:text-text-primary sm:flex"
+          className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-surface-secondary hover:text-text-primary sm:flex lg:hidden"
           aria-label="Close"
         >
           <X className="h-4 w-4" />
@@ -314,7 +319,7 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
   const reviewContent = parsedData && (
     <div className="flex flex-col gap-5">
       {/* Header */}
-      <div className="flex items-start gap-4">
+      <div className="flex items-start gap-4 lg:hidden">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-info-lightest text-info">
           <FileText className="h-6 w-6" />
         </div>
@@ -329,7 +334,7 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
         <button
           type="button"
           onClick={closeModal}
-          className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-surface-secondary hover:text-text-primary sm:flex"
+          className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-surface-secondary hover:text-text-primary sm:flex lg:hidden"
           aria-label="Close"
         >
           <X className="h-4 w-4" />
@@ -424,7 +429,7 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
       )}
 
       {/* Actions */}
-      <div className="flex flex-col gap-2.5 sm:flex-row-reverse">
+      <div className="flex flex-col gap-2.5 sm:flex-row-reverse lg:border-t lg:border-border lg:pt-6">
         <button
           onClick={handleConfirm}
           disabled={confirming}
@@ -470,10 +475,19 @@ export function LogEntryModal({ open, onClose, eventId }: LogEntryModalProps) {
             initial="hidden"
             animate="show"
             exit="exit"
-            className="fixed inset-0 z-50 hidden overflow-y-auto p-4 sm:flex sm:items-center sm:justify-center"
+            className="scrollbar-hide fixed inset-0 z-50 hidden overflow-y-auto p-4 sm:flex sm:items-center sm:justify-center"
           >
-            <div className="w-full max-w-xl max-h-[85dvh] overflow-y-auto rounded-xl border border-border bg-surface p-6 shadow-card">
-              {reviewOpen ? reviewContent : screenContent}
+            <div role="dialog" aria-modal="true" aria-label={reviewOpen ? "Review receipt" : "New entry"} className="scrollbar-hide w-full max-w-xl max-h-[85dvh] overflow-y-auto rounded-xl border border-border bg-surface p-6 shadow-card lg:max-w-2xl lg:rounded-3xl lg:p-0 lg:shadow-xl lg:shadow-overlay/10">
+              <header className="hidden items-start gap-4 border-b border-border px-8 py-7 lg:flex">
+                <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-surface-secondary text-text-primary"><FileText className="size-6" aria-hidden="true" /></span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-text-secondary">Event expenses</p>
+                  <h2 className="mt-1 text-2xl font-semibold tracking-tight text-text-primary">{reviewOpen ? "Review receipt" : "New entry"}</h2>
+                  <p className="mt-1.5 text-sm leading-6 text-text-secondary">{reviewOpen ? "Check the extracted details before confirming this expense." : "Choose how you would like to record this expense."}</p>
+                </div>
+                <button type="button" onClick={closeModal} disabled={confirming || discarding} aria-label="Close new entry" className="-mr-2 -mt-2 flex size-11 shrink-0 items-center justify-center rounded-full text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50"><X className="size-5" aria-hidden="true" /></button>
+              </header>
+              <div className="lg:p-8">{reviewOpen ? reviewContent : screenContent}</div>
             </div>
           </motion.div>
 

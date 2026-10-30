@@ -8,7 +8,7 @@ import { getReceiptBlob, deleteReceiptBlob } from "@/lib/storage";
 /** Guidance copy for model verdicts — the client renders the matching banner. */
 const GUIDANCE = {
   invalid_document:
-    "We couldn't read a receipt number or vendor from this image. If this is a real expense without a receipt (like a sari-sari store purchase), you can log it using No Receipt Entry — just fill in what was bought and the adviser will approve it.",
+    "We couldn't find clear receipt details in this photo. Try a clearer photo, or choose No Receipt Entry to add the expense manually for your adviser to review.",
   borderline:
     "This photo looks blurry or unclear. Try a clearer photo, or log it as a No Receipt Entry.",
   multiple_documents:

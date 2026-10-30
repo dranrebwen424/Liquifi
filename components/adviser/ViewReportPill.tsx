@@ -10,7 +10,7 @@ import { dialogOverlay, dialogContent } from "@/lib/motion-variants";
 // page. Without → muted, non-navigating button that opens a "No report yet"
 // popup (the target page would otherwise render a 404).
 const pillBase =
-  "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-[15px] border px-3 py-[7px] text-[11px] font-medium";
+  "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-[15px] border px-3 py-[7px] text-[11px] font-medium lg:min-h-11 lg:gap-2 lg:rounded-[17px] lg:px-4 lg:py-2.5 lg:text-xs lg:focus-visible:outline-2 lg:focus-visible:outline-offset-2 lg:focus-visible:outline-accent";
 
 type ViewReportPillProps = {
   href: string;
@@ -27,7 +27,7 @@ export function ViewReportPill({ href, hasReport }: ViewReportPillProps) {
         className={`${pillBase} border-text-primary text-text-primary transition-[color,transform,shadow] hover:bg-surface-secondary hover:shadow-sm hover:scale-[1.02] active:scale-[0.98]`}
         title="View report"
       >
-        <ArrowUpRight className="h-3 w-3" />
+        <ArrowUpRight className="h-3 w-3 lg:h-3.5 lg:w-3.5" aria-hidden="true" />
         View Report
       </Link>
     );
@@ -41,7 +41,7 @@ export function ViewReportPill({ href, hasReport }: ViewReportPillProps) {
         className={`${pillBase} cursor-pointer border-border bg-surface text-text-muted`}
         title="No report yet"
       >
-        <ArrowUpRight className="h-3 w-3" />
+        <ArrowUpRight className="h-3 w-3 lg:h-3.5 lg:w-3.5" aria-hidden="true" />
         View Report
       </button>
 

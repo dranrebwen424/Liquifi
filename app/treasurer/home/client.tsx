@@ -197,7 +197,7 @@ export function TreasurerHomeClient({
   };
 
   return (
-    <div className={readOnly ? "flex w-full flex-col lg:mx-auto lg:max-w-6xl" : "flex w-full flex-col"}>
+    <div className="flex w-full flex-col">
       {!isSearching && (
         <div className="px-2 pt-4 pb-10 md:hidden">
           <h1 className="text-center text-xl font-bold tracking-wide text-text-primary">
@@ -206,7 +206,7 @@ export function TreasurerHomeClient({
         </div>
       )}
 
-      <div className={readOnly ? "hidden md:block" : "hidden md:block lg:hidden"}>
+      <div className="hidden md:block lg:hidden">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-xl font-semibold text-text-primary md:text-2xl">Events</h1>
@@ -225,9 +225,9 @@ export function TreasurerHomeClient({
         </div>
       </div>
 
-      {!readOnly && <div className="hidden pt-6 lg:block">
+      <div className="hidden pt-6 lg:block">
         <h1 className="text-center text-2xl font-medium text-text-primary">Welcome Back!</h1>
-      </div>}
+      </div>
 
       {/* ═══════════════════════════════════════════════════════════
           MOBILE LAYOUT — Figma "treasurer home page" design
@@ -421,7 +421,7 @@ export function TreasurerHomeClient({
       <div className="hidden md:block">
         {/* Search + Filters */}
         <div className="mb-10 flex flex-col gap-6">
-          <div role="search" className="mx-auto mt-6 flex w-full max-w-3xl items-center gap-3 rounded-full bg-surface-dept px-5 focus-within:ring-2 focus-within:ring-accent">
+          <div role="search" className="mx-auto mt-6 flex w-full max-w-3xl items-center gap-3 rounded-full border border-border bg-surface px-5 focus-within:border-accent focus-within:ring-1 focus-within:ring-accent">
             <Search className="size-5 shrink-0 text-text-secondary" aria-hidden="true" />
             <input type="search" aria-label="Search events" placeholder="Search events" value={search} onChange={(e) => updateQuery(e.target.value)} className="h-12 min-w-0 flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-secondary" />
           </div>

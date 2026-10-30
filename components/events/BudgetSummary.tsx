@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { Plus, FileText } from "lucide-react";
+import { Plus } from "lucide-react";
 import { formatPHP } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { LogEntryModal } from "@/components/entries/LogEntryModal";
@@ -221,15 +220,6 @@ export function BudgetSummary({
                   New Entry
                 </button>
               )}
-
-              <Link
-                href={`/treasurer/reports/${eventId}`}
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-text-inverse/30 px-5 py-2.5 text-sm font-medium text-text-inverse transition-[color,transform,shadow] hover:bg-text-inverse/10 hover:shadow-sm hover:scale-[1.02] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-text-inverse"
-                title="View financial report"
-              >
-                <FileText className="h-4 w-4" />
-                View Report
-              </Link>
 
               {!isArchived && (
                 <button

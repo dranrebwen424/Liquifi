@@ -39,6 +39,7 @@ export async function NotificationsPage({
     const content = notificationContent(row.type, row.payload_json ?? {});
     return {
       id: row.id,
+      type: row.type,
       read: row.read,
       created_at: row.created_at,
       title: content.title,
@@ -50,7 +51,7 @@ export async function NotificationsPage({
   const unreadCount = rows.filter((row) => !row.read).length;
 
   return (
-    <div className="mt-6 flex flex-col gap-5 pb-16 md:pb-24">
+    <div className="mt-4 flex flex-col gap-5 pb-16 md:pb-24 lg:mt-6 lg:gap-7">
       <NotificationHeader role={role} title={title} tagline={tagline} unreadCount={unreadCount} />
       <NotificationsList items={rows} unreadCount={unreadCount} />
     </div>

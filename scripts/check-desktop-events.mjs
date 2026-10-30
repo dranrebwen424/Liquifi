@@ -88,9 +88,10 @@ assert.match(html, /No archived events yet/);
 html = render(React.createElement(TreasurerHomeClient, { events, readOnly: true, paths: {
   home: "/adviser/home", events: "/adviser/events", event: "/adviser/events",
 } }));
-assert.doesNotMatch(html, /aria-label="New event"|>New Event<|>Welcome Back!</);
+assert.doesNotMatch(html, /aria-label="New event"|>New Event</);
+assert.match(html, />Welcome Back!</);
 assert.match(html, /href="\/adviser\/events\/event-4"/);
-assert.ok(html.startsWith('<div class="flex w-full flex-col lg:mx-auto lg:max-w-6xl">'), "Adviser home retains its desktop content cap");
+assert.ok(html.startsWith('<div class="flex w-full flex-col">'), "Adviser home shares Treasurer Home?s uncapped desktop gutters");
 
 // Verify the mobile home JSX was not redesigned while changing the desktop branch.
 function jsxWithClass(source, className, includeExpression = false) {
@@ -132,17 +133,65 @@ for (const state of [
   { canMutate: true, isLocked: false, isArchived: true },
 ]) {
   const actionsHtml = render(React.createElement(actionModule.exports.Actions, { ...state, eventId: "event-1", canIncreaseBudget: state.canMutate && !state.isLocked }));
-  assert.match(actionsHtml, /href="\/treasurer\/reports\/event-1"/);
-  assert.match(actionsHtml, />View Report<\/a>/);
+  assert.doesNotMatch(actionsHtml, /View Report|href="\/treasurer\/reports\//, "Report navigation moved to the desktop header");
   assert.doesNotMatch(actionsHtml, /Generate Report|Archived — no reports/);
   assert.equal((actionsHtml.match(/<button/g) || []).length, state.isArchived ? 0 : 2, "Archived desktop events omit mutating controls");
   assert.equal((actionsHtml.match(/disabled=""/g) || []).length, !state.isArchived && state.isLocked ? 2 : 0, "Locked event mutation controls stay disabled");
 }
 assert.equal(render(React.createElement(actionModule.exports.Actions, { readOnly: true })), "", "Read only viewers keep their existing role specific report control");
+const eventPageSource = read("app/treasurer/events/[eventId]/page.tsx");
+assert.match(eventPageSource, /flex flex-col pb-16 lg:pt-6/, "Event top spacing is desktop only");
+const headerActions = jsxWithClass(eventPageSource, "flex shrink-0 items-center gap-3");
+const headerCode = ts.transpileModule(`export function Header({ isArchived, eventId, canArchive }) { return (${headerActions}); }`, {
+  compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS },
+}).outputText;
+const headerModule = { exports: {} };
+new Function("require", "module", "exports", "Link", "ArrowUpRight", "ArchiveEventButton", headerCode)(
+  require, headerModule, headerModule.exports, require("next/link").default, require("lucide-react").ArrowUpRight,
+  ({ canArchive }) => React.createElement("button", { disabled: !canArchive }, "Archive"),
+);
+for (const isArchived of [false, true]) {
+  const headerHtml = render(React.createElement(headerModule.exports.Header, { isArchived, eventId: "event-1", canArchive: false }));
+  assert.match(headerHtml, /href="\/treasurer\/reports\/event-1"/);
+  assert.match(headerHtml, /rounded-\[17px\] border border-text-primary/, "View Report matches the mobile outlined pill");
+  assert.equal(headerHtml.includes(">Archive</button>"), !isArchived);
+  if (!isArchived) assert(headerHtml.indexOf(">Archive</button>") < headerHtml.indexOf("View Report"), "Archive precedes View Report");
+}
+const entryListSource = read("components/entries/EntryList.tsx");
+const expenseHeader = jsxWithClass(entryListSource, "mb-4 flex flex-wrap items-center gap-3 lg:gap-4");
+const expenseHeaderCode = ts.transpileModule(`export function ExpenseHeader({ entries, totalEntries, filters }) { return (${expenseHeader}); }`, {
+  compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS },
+}).outputText;
+const expenseHeaderModule = { exports: {} };
+new Function("require", "module", "exports", "ExpenseFilterChips", "ExpenseFilterIcon", "ViewToggle", "view", "setView", expenseHeaderCode)(
+  require, expenseHeaderModule, expenseHeaderModule.exports,
+  () => React.createElement("div", { "aria-label": "Expense filters" }), () => null, () => null, "grid", () => {},
+);
+for (const [count, total, expected] of [[4, 4, "Total of 4 Entries"], [1, 1, "Total of 1 Entry"], [2, 4, "2 of 4 Entries"], [0, 0, "Total of 0 Entries"]]) {
+  const headerHtml = render(React.createElement(expenseHeaderModule.exports.ExpenseHeader, { entries: Array(count), totalEntries: total, filters: { state: {}, categories: [], onChange() {} } }));
+  assert.match(headerHtml, /hidden lg:inline">Expenses/);
+  assert(headerHtml.includes(expected), "Expense subtitle reflects total and filtered counts");
+  assert.match(headerHtml, /items-center gap-3 lg:gap-4/, "Chips center against the complete title stack");
+  assert.match(headerHtml, /aria-label="Expense filters"/);
+}
+const originalEntryList = execFileSync("git", ["show", "HEAD:components/entries/EntryList.tsx"], { encoding: "utf8" });
+const mobileExpenseHeader = source => source.slice(source.indexOf("{mobileLayout ? ("), source.indexOf(") : (", source.indexOf("{mobileLayout ? ("))).replace(/\r\n/g, "\n");
+assert.equal(mobileExpenseHeader(entryListSource), mobileExpenseHeader(originalEntryList), "Mobile expense header stays unchanged");
+assert.match(read("components/events/ReadOnlyEventView.tsx"), /flex flex-col pb-16 lg:pt-6/, "Read only event top spacing is desktop only");
+const { ViewReportPill } = load("components/adviser/ViewReportPill.tsx");
+for (const hasReport of [true, false]) {
+  const reportPillHtml = render(React.createElement(ViewReportPill, { href: "/adviser/reports/event-1", hasReport }));
+  assert.match(reportPillHtml, /lg:min-h-11/);
+  assert.match(reportPillHtml, /lg:px-4 lg:py-2.5 lg:text-xs/);
+  assert.match(reportPillHtml, /text-\[11px\]/, "Mobile report pill size stays unchanged");
+  if (hasReport) assert.match(reportPillHtml, /href="\/adviser\/reports\/event-1"/);
+  else assert.doesNotMatch(reportPillHtml, /href=/, "Missing reports still show guidance instead of navigating");
+}
 const originalBudget = execFileSync("git", ["show", "HEAD:components/events/BudgetSummary.tsx"], { encoding: "utf8" });
 const mobileBudgetBranch = (source) => source.slice(source.indexOf("  if (mobileOnly) {"), source.indexOf("  // ── Desktop layout")).replace(/\r\n/g, "\n");
 assert.equal(mobileBudgetBranch(budgetSource), mobileBudgetBranch(originalBudget), "Mobile budget markup and actions stay unchanged");
 assert.match(jsxWithClass(read("app/treasurer/events/[eventId]/page.tsx"), "hidden lg:block"), /\{!isArchived && \(\s*<ArchiveEventButton/, "Desktop archived events omit the Archive action");
+assert.match(read("app/treasurer/home/client.tsx"), /rounded-full border border-border bg-surface px-5 focus-within:border-accent/);
 const originalHome = execFileSync("git", ["show", "HEAD:app/treasurer/home/client.tsx"], { encoding: "utf8" });
 assert.equal(jsxWithClass(read("app/treasurer/home/client.tsx"), "md:hidden"), jsxWithClass(originalHome, "md:hidden"), "Mobile home markup stays identical");
 for (const [path, mobileClass] of [
