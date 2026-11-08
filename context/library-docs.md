@@ -660,6 +660,12 @@ After wiring, use via Tailwind utility class `font-sans` — which resolves to `
 
 ---
 
+## lottie-web
+
+The public landing has a user approved exception to the original loading only rule. `LandingAnimation` dynamically imports the installed `lottie-web` and renders self contained JSON extracted from the supplied `.lottie` ZIPs. The served hero JSON repairs 26 stationary keyframes missing hold markers in the supplied export; keep the original archive unchanged. `node scripts/check-landing-animation.cjs` verifies interpolation and looping with the actual installed renderer. The shared app `LottiePlayer` stays unchanged. Use `AnimationItem` types. The Home walkthrough intentionally has no image placeholder; its load failure shows readable refresh guidance. The optional poster remains only on the final CTA, until `DOMLoaded` or on `data_failed`/`error`. Clean up the instance and observers. Start playback only in view and in a visible tab, respect reduced motion, and preserve the user's explicit playback choice. Only the Home walkthrough has a visible pause/play control; the final CTA has none. No additional player package is required.
+
+---
+
 ## framer-motion
 
 **Check first:** Use only when CSS can't handle the animation — see `code-standards.md` → Animation Library Selection (Tier 2). Use GSAP for heavy/timeline animation (Tier 3).

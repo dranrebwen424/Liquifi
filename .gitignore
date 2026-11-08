@@ -60,3 +60,9 @@ dev-server.log
 # design artifacts
 artifacts/
 figma/
+
+# heavy/unreferenced landing source renders (app serves .webp variants)
+public/landing/**/*.gif
+public/landing/**/*.lottie
+public/landing/img-1.png
+/admin-departments-4col*.png

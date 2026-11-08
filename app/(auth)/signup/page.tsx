@@ -274,12 +274,12 @@ export default function SignupPage() {
     }
   }
 
-  // Back within the wizard: step 2 -> 1, step 3 -> 2. No back button on step 1.
+  // Later steps return within the wizard; the first step returns to the landing.
   const back =
     step === 2 ? () => setStep(1) : step === 3 ? () => setStep(2) : undefined;
 
   return (
-    <AuthShell onBack={back} progress={<AuthFlowProgress flow="signup" step={step} />}>
+    <AuthShell backHref={step === 1 ? "/" : undefined} onBack={back} progress={<AuthFlowProgress flow="signup" step={step} />}>
       <div>
         <AuthCard title="Get Started" subtitle="Request an account for your council." compactSubtitle flow>
         <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">

@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { BackLink } from "@/components/ui/BackLink";
 import { LockedBanner } from "@/components/events/LockedBanner";
 import { BudgetSummary } from "@/components/events/BudgetSummary";
 import { SpendingBreakdownCard } from "@/components/events/SpendingBreakdownCard";
@@ -82,13 +82,13 @@ export function ReadOnlyEventView({ event, latestReport, backHref, reportHref }:
         <FadeIn>
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 items-start gap-2.5">
-              <Link
+              <BackLink
                 href={backHref}
                 className="mt-0.5 inline-flex shrink-0 items-center justify-center"
                 aria-label="Back to events"
               >
                 <ArrowLeft className="h-5 w-5 text-text-primary" />
-              </Link>
+              </BackLink>
               <div className="min-w-0">
                 <h1 className="min-w-0 truncate text-[20px] font-semibold leading-tight text-text-primary">
                   {event.name}
@@ -150,14 +150,14 @@ export function ReadOnlyEventView({ event, latestReport, backHref, reportHref }:
         <FadeIn delay={100}>
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-start gap-2.5">
-              <Link
+              <BackLink
                 href={backHref}
                 aria-label="Back to events"
                 title="Back to events"
                 className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-text-primary transition-colors hover:bg-surface-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
               >
                 <ArrowLeft className="h-5 w-5" aria-hidden="true" />
-              </Link>
+              </BackLink>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <h1 className="min-w-0 truncate text-lg font-semibold text-text-primary sm:text-2xl md:text-[28px]">

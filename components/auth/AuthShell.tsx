@@ -34,6 +34,7 @@ export default function AuthShell({
   hideLogo,
   top,
   backHref,
+  backAtPageEdge = false,
   onBack,
   progress,
 }: {
@@ -42,12 +43,13 @@ export default function AuthShell({
   hideLogo?: boolean;
   top?: boolean;
   backHref?: string;
+  backAtPageEdge?: boolean;
   /** Optional function back — renders a button instead of the href Link (used by multi-step wizards). */
   onBack?: () => void;
   progress?: React.ReactNode;
 }) {
   return (
-    <main className={`flex bg-background px-4 font-sans ${progress ? "min-h-dvh flex-col items-center justify-start pt-6 pb-12 sm:px-6 md:justify-center md:py-12" : `min-h-full justify-center ${top ? "items-start pt-0" : "items-center py-12"}`}`}>
+    <main className={`relative flex bg-background px-4 font-sans ${progress ? "min-h-dvh flex-col items-center justify-start pt-6 pb-12 sm:px-6 md:justify-center md:py-12" : `min-h-full justify-center ${top ? "items-start pt-0" : "items-center py-12"}`}`}>
       <div className={`w-full ${progress ? "max-w-sm md:max-w-md" : "max-w-sm"}`}>
         {onBack ? (
           <button
@@ -61,8 +63,8 @@ export default function AuthShell({
         ) : backHref ? (
           <Link
             href={backHref}
-            aria-label="Go back"
-            className={`inline-flex items-center justify-center rounded-lg outline-none transition-colors hover:bg-surface hover:text-text-primary ${progress ? "mb-6 h-11 w-11 text-text-secondary focus-visible:ring-2 focus-visible:ring-accent" : "mb-4 h-9 w-9 text-text-muted"}`}
+            aria-label={backHref === "/" ? "Back to landing page" : "Go back"}
+            className={`inline-flex items-center justify-center rounded-lg outline-none transition-colors hover:bg-surface hover:text-text-primary ${progress || backHref === "/" ? "h-11 w-11 text-text-secondary focus-visible:ring-2 focus-visible:ring-accent" : "h-9 w-9 text-text-muted"} ${backAtPageEdge ? "absolute left-4 top-4 z-10 sm:left-6 sm:top-6" : progress || backHref === "/" ? "mb-6" : "mb-4"}`}
           >
             <BackIcon />
           </Link>

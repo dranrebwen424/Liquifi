@@ -373,17 +373,7 @@ Every section that can be empty must have an empty state. Keep it minimal:
 
 ## Animation Standards
 
-**Public landing exception (2026-10-06, user-requested redesign):** `/` uses
-playful SVG illustrations, slow ambient floating/rotation, staggered title
-reveals, cursor parallax, and a GSAP ScrollTrigger background wash into its
-final CTA. The CTA is unboxed, without a separator; its shared page background
-changes from `surface` to `landing-mint` as the user scrolls. Illustration
-panels and decorative number tiles may use the documented landing palette.
-Marketing headings and open sections use the scale in the landing registry,
-not the application's card-title scale. These exceptions apply only to `/`.
-Provide Pause/Resume, respect reduced motion, pause ambient loops offscreen
-and in hidden tabs, and keep content/navigation readable before JavaScript.
-Never repurpose these exceptions for application forms, tables or status UI.
+**Public landing exception (2026-11-08, user supplied Figma redesign):** `/` follows desktop `743:198` and mobile `890:501` in `werwziocGxW0hh7a4sWvhl`. It uses light gray `landing-panel` illustration cards, `landing-border` outlines, `landing-muted` supporting copy, inverse feature/CTA bands and the landing typography/spacing recorded in the registry. These marketing exceptions do not apply to authenticated application cards. Keep the supplied illustrations and Lotties. The only visible pause/play control belongs to the Lottie beneath the Home CTA; do not add a global control or a control on the final CTA. Respect reduced motion and pause animations offscreen/in hidden tabs. Content, static art and navigation must remain readable before JavaScript. Mobile workflow cards scroll horizontally with accessible indicator controls. About/footer policy destinations are mock buttons until the user supplies real destinations. The user requested a retracting sticky header, smooth section scrolling, a staggered mobile sidebar and one-time directional section reveals. These landing entrances are permitted; keep movement subtle, content readable before JavaScript and all motion disabled under reduced motion. Prepare reveals paused and invisible before their scroll trigger; play at viewport entry with the requested smoother 700ms duration and 100ms stagger. The Home Lottie has no image placeholder; retain the final CTA poster only.
 
 See `code-standards.md` → Animation Library Selection for the tool selection rules (CSS → framer-motion → GSAP). This section defines the *what* and *how* — the visual standards every animation must meet.
 

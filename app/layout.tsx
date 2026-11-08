@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import { SIDEBAR_INIT_SCRIPT } from "@/lib/sidebar";
+import { AppHistoryTracker } from "@/components/ui/BackLink";
 import "./globals.css";
 
 // Loaded once, root only. next/font exposes the loaded face as --font-sans,
@@ -22,13 +23,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${poppins.variable} h-full antialiased`}>
+    // The sidebar script restores a browser preference on this element before hydration.
+    <html lang="en" className={`${poppins.variable} h-full antialiased`} suppressHydrationWarning>
       <head>
         {/* Must resolve the sidebar width on the first frame, before any
             useEffect can. See lib/sidebar.ts. */}
         <script dangerouslySetInnerHTML={{ __html: SIDEBAR_INIT_SCRIPT }} />
       </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <AppHistoryTracker />
+        {children}
+      </body>
     </html>
   );
 }

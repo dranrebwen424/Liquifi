@@ -203,7 +203,7 @@ export function DepartmentsListClient({ initialDepartments, loadError }: Props) 
             variants={staggerContainer}
             initial="hidden"
             animate="show"
-            className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-5 lg:grid-cols-3 xl:grid-cols-5 xl:gap-4"
+            className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-5 lg:grid-cols-3 xl:grid-cols-4 xl:gap-6"
           >
             {filtered.map((dept) => (
               <motion.div key={dept.id} variants={fadeUpItem}>

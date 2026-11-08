@@ -67,6 +67,9 @@ telling the user something about status — not decoration.
   --color-landing-lime: #b9ed9b;
   --color-landing-lilac: #d7c5f3;
   --color-landing-lilac-side: #a48acb;
+  --color-landing-panel: #f0f0f0;
+  --color-landing-muted: #a09b9c;
+  --color-landing-border: #77777b;
 
   /* Dark nav chrome (sidebar) */
   --color-nav: #0a0a0c;
@@ -159,16 +162,9 @@ token above:
 
 ## Color Usage Guide
 
-### Public Landing Illustration Exception (2026-10-06)
+### Public Landing Illustration Exception (2026-11-08)
 
-The requested playful landing redesign uses `landing-mint` for the page-wide
-scroll-triggered CTA wash, `landing-lime` for the ledger character and number
-tiles, and `landing-lilac` / `landing-lilac-side` for illustration depth.
-Existing info, warning, and success families provide the other illustration
-colors. These decorative uses are limited to the public landing; application
-status colors and white content-card surfaces keep their existing meanings.
-All fills and CSS colors still reference tokens. Do not copy these decorative
-exceptions into authenticated dashboards or status badges.
+The Figma landing uses `landing-panel` for light gray illustration cards, `landing-muted` for quiet supporting copy and `landing-border` for card outlines. Page background uses `background`; Features and the final CTA use `surface-inverse`. Original supplied illustration colors remain embedded in their assets. The older mint/lime/lilac palette remains available but is not used by this redesign. These decorative exceptions apply only to the public landing; application status colors and white card surfaces retain their existing meanings. All component CSS colors still reference tokens.
 
 ### Page Layout
 

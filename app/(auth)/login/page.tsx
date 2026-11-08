@@ -64,7 +64,7 @@ export default function LoginPage() {
   }
 
   return (
-    <AuthShell hideLogo top>
+    <AuthShell hideLogo top backHref="/" backAtPageEdge>
       <div className="pt-4 sm:pt-0">
         <LottiePlayer
           src="/Auth%20pages/Employee-content.json"

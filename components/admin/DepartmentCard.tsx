@@ -13,23 +13,23 @@ export function DepartmentCard({ department }: Props) {
     <Link
       href={`/admin/departments/${department.id}`}
       prefetch
-      className="group relative flex min-h-32 w-full flex-col rounded-lg border border-border bg-surface p-4 shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent md:min-h-48 md:p-5 xl:p-4"
+      className="group relative flex min-h-36 w-full flex-col rounded-2xl border border-border bg-surface p-5 shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent md:min-h-52 md:p-6"
     >
-      <div className="flex items-start justify-between gap-4 xl:block">
+      <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase text-text-muted xl:pr-10">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">
             {department.code}
           </p>
-          <h2 className="mt-2 line-clamp-2 text-base font-bold leading-snug text-text-primary md:text-lg xl:mt-4 xl:line-clamp-3 xl:text-base">
+          <h2 className="mt-2 line-clamp-3 text-base font-bold leading-snug text-text-primary md:text-lg xl:text-xl">
             {department.name}
           </h2>
         </div>
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface-secondary text-text-primary transition-colors duration-200 group-hover:bg-accent group-hover:text-accent-foreground xl:absolute xl:right-3 xl:top-3 xl:size-8">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface-secondary text-text-primary transition-colors duration-200 group-hover:bg-accent group-hover:text-accent-foreground">
           <ChevronRight className="h-5 w-5" strokeWidth={2.5} />
         </span>
       </div>
 
-      <div className="mt-auto flex flex-col gap-1 pt-7 text-xs text-text-muted">
+      <div className="mt-auto flex flex-col gap-1.5 border-t border-border-light pt-4 text-xs text-text-muted md:text-sm">
         <p className="truncate">
           Treasurer: <span className="font-semibold text-text-primary">{department.treasurer ?? "—"}</span>
         </p>

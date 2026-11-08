@@ -14,6 +14,7 @@ import { ArchiveEventButton } from "@/components/events/ArchiveEventModal";
 import { ExpensesSection } from "@/components/entries/ExpensesSection";
 import { FadeIn } from "@/components/ui/FadeIn";
 import { EventLiveRefresh } from "@/components/events/EventLiveRefresh";
+import { BackLink } from "@/components/ui/BackLink";
 
 type Props = {
   params: Promise<{ eventId: string }>;
@@ -70,13 +71,13 @@ export default async function EventDashboardPage({ params }: Props) {
         {/* Back arrow + Event name + Archive Report (all in one row) */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-2.5 min-w-0">
-            <Link
+            <BackLink
               href="/treasurer/home"
               className="mt-0.5 inline-flex shrink-0 items-center justify-center"
               aria-label="Back to events"
             >
               <ArrowLeft className="h-5 w-5 text-text-primary" />
-            </Link>
+            </BackLink>
             <div className="min-w-0">
               <h1 className="min-w-0 truncate text-[20px] font-semibold leading-tight text-text-primary">
                 {event.name}
@@ -168,14 +169,14 @@ export default async function EventDashboardPage({ params }: Props) {
         {/* Header — title left, Archive far right */}
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-start gap-2.5">
-            <Link
+            <BackLink
               href="/treasurer/home"
               aria-label="Back to events"
               title="Back to events"
               className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-text-primary transition-colors hover:bg-surface-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               <ArrowLeft className="h-5 w-5" aria-hidden="true" />
-            </Link>
+            </BackLink>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h1 className="min-w-0 truncate text-lg font-semibold text-text-primary sm:text-2xl md:text-[28px]">

@@ -105,11 +105,14 @@
   --color-surface-dept: #e9eef6;
   --color-surface-inverse: #111114;
 
-  /* Public landing illustrations and scroll-washed CTA (marketing only). */
+  /* Public landing palette (marketing only). */
   --color-landing-mint: #e2f5ec;
   --color-landing-lime: #b9ed9b;
   --color-landing-lilac: #d7c5f3;
   --color-landing-lilac-side: #a48acb;
+  --color-landing-panel: #f0f0f0;
+  --color-landing-muted: #a09b9c;
+  --color-landing-border: #77777b;
 
   /* Dark nav chrome (sidebar) */
   --color-nav: #0a0a0c;
